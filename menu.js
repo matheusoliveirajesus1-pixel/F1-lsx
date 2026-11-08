@@ -28,6 +28,7 @@ function cfgModal(){const seg=(act,cur,opts)=>`<div class="tpick">${opts.map(([v
    <h3>Transmissão</h3><div class="choice"><button class="chip${PREFS.tv?" on":""}" data-act="mnTv"><b>${PREFS.tv?"✓ ":""}Gráficos de TV (vinhetas, faixas, avisos e legendas)</b></button></div>
    ${typeof sndPanel==="function"?sndPanel():""}
    ${typeof liveryCard==="function"?liveryCard():""}
+   ${G&&!G.mp?`<h3>Assistências de pilotagem</h3><p class="muted" style="font-size:12.5px">Escolha o que fica automático, em sugestão ou manual.</p><button class="btn sm" data-act="ccAs">Abrir assistências</button>`:""}
    <div class="row" style="margin-top:10px"><button class="btn go sm" data-act="closeModal">Pronto</button></div>`)}
 function helpModal(){modal(`<h2>Como jogar</h2><ol class="howto">
   <li><b>Fim de semana:</b> coletiva, treino livre (escolha o foco), classificação e estratégia. Cada escolha muda a corrida.</li>

@@ -371,10 +371,11 @@ function step(dt){
     // aproximação da entrada do pit lane: freia até 80 km/h
     const toPit=(c.pitCall||(R.red&&R.red.phase==="return"))&&R.started;if(toPit){const pd=pitDist(c);if(pd<260){const vc=Math.sqrt(PIT_LIM*PIT_LIM+2*24*Math.max(0,pd-6));if(v1>vc){v1=vc;hard=true}}}
     if(c.lose>0){v1*=.7;c.lose=Math.max(0,c.lose-dt*.3);hard=true}
+    if(typeof ccAdj==="function")v1=ccAdj(c,v1,i);
     if(v1>c.vCap){v1=c.vCap;hard=true}
     const brk=geo.ai.ph[i]===1||c.prof.v[(i+1)%N]<c.prof.v[i]-.02;
     const vp=c.v||0;if(R.started)v1=clamp(v1,vp-(hard||brk?46:1.6)*dt,vp+16*dt);v1=Math.max(0,v1);
-    if(c.ex){v1=exStep(c,dt,vp);if(!running(c))continue}
+    if(c.ex){v1=exStep(c,dt,vp);if(!running(c))continue}else if(typeof revStep==="function"){const rv=revStep(c,dt,v1);if(rv!==null)v1=rv}
     const before=Math.floor(c.prog),pb=c.prog;let ds=v1*dt;c.v=v1;c.acc=(c.v-vp)/dt;c.prog+=ds/geo.len;secCheck(c,pb);
     aiLateral(c,dt);if(c.ex)exApplyLat(c);
     if(toPit){const E=Math.floor(pb-R.pitLane.fe)+1+R.pitLane.fe;if(pb<E&&c.prog>=E){enterPit(c,(c.prog-E)*geo.len,E,!!R.red);pitMove(c,0);continue}}

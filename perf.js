@@ -26,11 +26,11 @@ if(typeof window!=="undefined"){recalcQueueInstall();perfWrap()}
 // ===================== CARREGAR SÓ QUANDO PRECISA =====================
 // O desenho da pista (cenário, carros, câmeras, transmissão, radar) só é baixado quando um fim de semana começa;
 // o modo online, só quando alguém abre a corrida online. O menu e a carreira abrem bem mais rápido.
-const LAZY={race:["scene.js","render.js","cars.js","camera.js","tv.js","wx.js"],online:["config.js","net.js","mp.js","mpssn.js"]};const LZ={};const LZF={};
+const LAZY={race:["scene.js","render.js","cars.js","camera.js","tv.js","tv2.js","wx.js"],online:["config.js","net.js","mp.js","mpssn.js"]};const LZ={};const LZF={};
 function lazyScript(f){if(LZF[f])return LZF[f];return LZF[f]=new Promise(ok=>{const s=document.createElement("script");s.src=f;s.async=false;s.onload=()=>ok(true);s.onerror=()=>ok(false);document.body.appendChild(s)})}
 function lazyLoad(name){if(LZ[name])return LZ[name];const files=name==="online"?[...LAZY.race,...LAZY.online]:LAZY[name];
   LZ[name]=files.reduce((p,f)=>p.then(()=>lazyScript(f)),Promise.resolve()).then(()=>{perfWrap();return true});return LZ[name]}
-function raceReady(){return typeof drawScene==="function"&&typeof buildTrack==="function"&&typeof smartPick==="function"&&typeof tvOverlay==="function"}
+function raceReady(){return typeof drawScene==="function"&&typeof buildTrack==="function"&&typeof smartPick==="function"&&typeof tvOverlay==="function"&&typeof drawOnboard==="function"&&typeof wxDraw==="function"}
 function onlineReady(){return typeof mpAction==="function"&&typeof ssnAction==="function"}
 function lazyWait(){const el=document.getElementById("app");if(el&&!el.querySelector(".lzw"))el.insertAdjacentHTML("beforeend",`<div class="lzw" role="status"><span class="lzs"></span>Carregando…</div>`)}
 function lazyDone(){document.querySelectorAll(".lzw").forEach(x=>x.remove())}

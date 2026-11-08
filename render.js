@@ -222,7 +222,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     const base=trackPos(f0+(w.f-f0)*se,(l0+(w._lw-l0)*se)*WS);let lift=0,dx=0;
     const truckIn=Math.min(1,Math.max(0,(age-dur*.25)/(dur*.25)));const liftK=Math.max(0,(age-dur*.6)/(dur*.4));lift=Math.min(1,liftK)*24*U;
     const s=toScreen(base.x,base.y,0,cw,ch);if(!onScreen(s,cw,ch,200*U*Z+40))return;if(age<25)occl.push({x:s[0],y:s[1],d:base.x+base.y});
-    items.push({d:base.x+base.y,draw:()=>{drawCar(ctx,cw,ch,{col:w.col,col2:w.col2,wreck:true,code:w.code},{x:base.x,y:base.y,h:w.ang+(w.spin||0)*(1-se)},detail,{z:lift});
+    items.push({d:base.x+base.y,draw:()=>{drawCar(ctx,cw,ch,w.real&&w.c?w.c:{col:w.col,col2:w.col2,wreck:true,code:w.code},{x:base.x,y:base.y,h:w.ang+(w.spin||0)*(1-se)},detail,{z:lift});
       if(w.fire&&age>w.slide&&age<18)post.push(()=>{if(age<16)drawFire(ctx,cw,ch,base,age,Z,now);if(age>5)drawExt(ctx,cw,ch,base,age,Z,now)});if(w.kind==="beach"&&age<4){ctx.fillStyle=`rgba(217,197,144,${.5*(1-age/4)})`;const q=toScreen(base.x,base.y,4*U,cw,ch);ctx.beginPath();ctx.ellipse(q[0],q[1],(12+age*6)*U*Z,(6+age*3)*U*Z,0,0,7);ctx.fill()}
       if(age<dur*.9){for(let k=0;k<5;k++){const a=(age*1.3+k*1.7)%3;const q=toScreen(base.x,base.y,(8+a*14)*U,cw,ch);ctx.fillStyle=`rgba(90,90,90,${.35*(1-a/3)})`;ctx.beginPath();ctx.arc(q[0]+Math.sin(k+age)*6*U*Z,q[1],(4+a*5)*U*Z,0,7);ctx.fill()}}
       if(age>6&&detail){const m=U*Z;for(let k=0;k<3;k++){const q=toScreen(base.x+Math.cos(k*2.1)*16*U,base.y+Math.sin(k*2.1)*16*U,0,cw,ch);ctx.fillStyle="#FF8F00";ctx.fillRect(q[0]-1.5*m,q[1]-6*m,3*m,6*m);ctx.fillStyle="#F1C9A5";ctx.beginPath();ctx.arc(q[0],q[1]-7.5*m,1.6*m,0,7);ctx.fill()}}

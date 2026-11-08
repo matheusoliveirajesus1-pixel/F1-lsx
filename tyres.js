@@ -11,13 +11,13 @@ function tyreStep(c,dt,inc){if(!c.tyre||!running(c))return;const w4=tyreW4(c);co
   for(let j=0;j<4;j++)w4[j]=Math.min(1,w4[j]+inc*f[j]/m);
   {const mean=(w4[0]+w4[1]+w4[2]+w4[3])/4,d=c.tyre.wear-mean;if(d>.0005)for(let j=0;j<4;j++)w4[j]=Math.min(1,w4[j]+d)}// toques e travadas também gastam
   // furado: depois de ~1,2 km, roda no aro (faíscas, assoalho e suspensão sofrem)
-  const t=c.tyre;if(t.punct&&!c.pit){t.rimD=(t.rimD||0)+v*dt;
+  const t=c.tyre;if(t.punct&&!c.pit){t.rimD=(t.rimD||0)+v*dt;if(!c.pitCall&&!R.red)c.pitCall=COMP[t.c].dry?pickDry(Math.max(1,R.L-c.lap)):t.c;
     if(!t.rim&&t.rimD>1200){t.rim=true;if(c.hum||c.isP)radio(c,"A borracha saiu! Estou andando na roda!",{pause:!!c.isP});bubble(c,"Na roda! Faíscas!","bad",3)}
     if(t.rim){if(v>38)c.v=v-(v-38)*Math.min(1,dt*1.6);c.dmg.floor=Math.min(1,(c.dmg.floor||0)+dt*.004);if(Math.random()<dt*6)R.fxq.push({type:"sparks",f:fr(c.prog),lat:c.y||0,t0:R.t});
-      if(t.rimD>6500&&!c.parked){mechFail(c,`Suspensão quebrada (correu demais na roda)`);}}}}
+      if(t.rimD>Math.max(8000,R.geo.len*1.6+2000)&&!c.parked&&rnd()<dt*.5){mechFail(c,`Suspensão quebrada (correu demais na roda)`);}}}}
 // fim de cada volta: a roda mais gasta pode estourar (em velocidade, pode tirar o carro da pista)
 function tyreBlowCheck(c){if(!c.tyre||c.tyre.punct||c.pit)return false;const w4=tyreW4(c);let j=0;for(let q=1;q<4;q++)if(w4[q]>w4[j])j=q;const mx=w4[j];
-  if(mx<.9||rnd()>=(mx-.88)*1.1)return true;// sem estouro (true = já tratado aqui)
+  if(mx<.95||rnd()>=(mx-.94)*2)return true;// sem estouro (true = já tratado aqui)
   const t=c.tyre;t.punct=true;t.pw=j;recalc(c);const nm=WK_N[WK[j]];rcMsg(`${c.code}: o pneu ${nm} estourou!`,"bad");hlight("spin",[c],`Pneu de ${c.code} estoura`,c.isP?3:2);
   if(c.hum)radio(c,`ESTOUROU O PNEU ${nm.toUpperCase()}! Vou para o box!`,{pause:true});else if(typeof tvRadio==="function")tvRadio(c,"crash",2);
   if(c.v>55&&typeof exStart==="function"&&rnd()<(j<2?.35:.5))exStart(c,j<2?"off":"spin");

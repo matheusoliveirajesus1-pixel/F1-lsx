@@ -194,7 +194,7 @@ function resultTable(cls){return`<div class="tw"><table><thead><tr><th>#</th><th
 
 // ---------- corrida
 function raceStep(){const me=R.cars.find(c=>c.isP);UI.trace=new Float32Array(R.geo.N);UI.best=null;UI.lastLap=-1;UI.radioN=R.radio.length;UI.msgN=0;UI.paused=false;CAM.init=0;if(typeof tvReset==="function")tvReset();if(typeof wxReset==="function")wxReset();if(typeof smartReset==="function")smartReset();if(typeof tipsReset==="function")tipsReset();CAM.userZ=1;CAM.pan=null;TV.cam=null;DIR.subj=null;DIR.until=0;UI.rtab=UI.rtab||"radio";
-  const cams=[["auto","Auto"],["chase","Perseguição"],["tv","TV"],["director","Diretor"],["all","Pista"]];
+  const cams=[["auto","Auto"],["chase","Perseguição"],["onboard","Bordo"],["tv","TV"],["director","Diretor"],["all","Pista"]];
   $("#wk").innerHTML=`<div class="race2">
    <div class="stage" id="stage"><canvas class="main" id="rc"></canvas>
     <div class="rhud" id="hud">
@@ -217,7 +217,7 @@ function raceStep(){const me=R.cars.find(c=>c.isP);UI.trace=new Float32Array(R.g
    <div class="rpanes">
     <section class="pane pane-radio${UI.rtab==="radio"?" on":""}" data-pane="radio"><div class="radioctl">
      <div class="card"><h3>Ritmo ${ib("temperatura")}</h3><div class="seg">${[["attack","Atacar"],["normal","Normal"],["save","Poupar"]].map(([k,n])=>`<button data-act="mode" data-k="${k}" id="m_${k}">${n}</button>`).join("")}</div>
-      <h3>Energia ${ib("ers")}</h3><div class="seg">${[["auto","Auto"],["attack","Boost"],["defend","Defesa"],["save","Recarregar"]].map(([k,n])=>`<button data-act="ers" data-k="${k}" id="e_${k}">${n}</button>`).join("")}</div>
+      ${typeof ccCard==="function"&&!(R&&R.mpGuest)?ccCard():""}<h3>Energia ${ib("ers")}</h3><div class="seg">${[["auto","Auto"],["attack","Boost"],["defend","Defesa"],["save","Recarregar"]].map(([k,n])=>`<button data-act="ers" data-k="${k}" id="e_${k}">${n}</button>`).join("")}</div>
       <h4 class="ag" style="margin-top:8px">Plano de energia</h4><div class="seg">${Object.entries(EPLAN).map(([k,n])=>`<button data-act="eplan" data-k="${k}" id="ep_${k}">${n}</button>`).join("")}</div>
       <h3>Disputa ${ib("duelo")}</h3><div class="seg">${Object.entries(ASTYLE_S).map(([k,n])=>`<button data-act="astyle" data-k="${k}" id="as_${k}">${n}</button>`).join("")}</div>
       <div class="row" style="margin-top:8px"><button class="btn sm" data-act="go" id="gob">Atacar agora</button><button class="btn sm" data-act="def" id="defb">Segurar posição</button><button class="btn sm" data-act="back" id="backb">Recuar</button><span class="muted num" id="gost" style="font-size:12.5px"></span></div>
@@ -312,7 +312,7 @@ function directorPick(){const me=R.cars.find(c=>c.isP);const h=R.hl[R.hl.length-
   if(me&&running(me)&&(r<.5||!b)){setShot(me,rnd()<.45?"chase":"tv",9,`Você · P${pos(me)} · ${me.code}`);return}
   if(b&&r<.85){setShot(b.B,"tv",8,`Briga pelo ${pos(b.A)}º · ${b.A.code} × ${b.B.code}`);return}
   const l=R.order.find(c=>running(c)&&!c.pit);if(l)setShot(l,"tv",7,`Líder · ${l.code}`)}
-function cameraFrame(dt,cw,ch){const me=R.cars.find(c=>c.isP);let foc=me,kind=UI.cam;if(kind==="auto"&&typeof smartPick==="function")return smartPick(dt,cw,ch);
+function cameraFrame(dt,cw,ch){const me=R.cars.find(c=>c.isP);let foc=me,kind=UI.cam;if(kind==="onboard"&&me){const p=me._w||carWorld(me);const[tx,ty]=iso(p.x,p.y);camTo(dt,tx,ty,Math.min(cw,ch*1.3)/(WS*24)*CAM.userZ,.04,.25);CAM.sx=0;CAM.sy=0;return me}if(kind==="auto"&&typeof smartPick==="function")return smartPick(dt,cw,ch);
   if(UI.cam==="director"){directorPick();foc=DIR.subj||me;kind=DIR.kind}
   if(kind==="all"){shotAll(dt,cw,ch);camShake(dt,null);return null}
   if(kind==="fixed"&&DIR.fixed){const[tx,ty]=iso(DIR.fixed.x,DIR.fixed.y);camTo(dt,tx,ty,Math.min(cw,ch*1.3)/(WS*85)*CAM.userZ,.2,1.5);camShake(dt,null);return null}
@@ -327,9 +327,9 @@ function raceLoop(now){if(typeof MUS!=="undefined"&&MUS.on)sndMusic(false);if(G.
   if(R.mpHost)mpHostTick(now);
   if(R.redChoose&&!$("#ask").dataset.red)showRedChoice();
   const s=typeof stageVisible!=="function"||stageVisible()?fitRaceCanvas():null;let foc=null;if(s){const{ctx,cw,ch}=s;let drew=false;if(UI.cam==="auto"&&typeof SMART!=="undefined"&&SMART.mode==="replay")drew=smartDrawReplay(ctx,cw,ch,rdt);
-    if(!drew){foc=cameraFrame(rdt,cw,ch);drawScene(ctx,cw,ch)}drawRain(ctx,cw,ch,R.rain&&R.w>.15?R.rain:0);if(UI.cam!=="all"&&(typeof QL==="undefined"||QL.lvl>0))drawVignette(ctx,cw,ch);if(UI.cam==="auto"&&typeof smartPip==="function")smartPip(ctx,cw,ch);if(typeof tvOverlay==="function")tvOverlay(ctx,cw,ch,rdt);else if(CAM.flash>0){ctx.fillStyle=`rgba(0,0,0,${.55*CAM.flash})`;ctx.fillRect(0,0,cw,ch)}
+    if(!drew){foc=cameraFrame(rdt,cw,ch);if(UI.cam==="onboard"&&typeof drawOnboard==="function")drawOnboard(ctx,cw,ch,foc);else drawScene(ctx,cw,ch)}drawRain(ctx,cw,ch,R.rain&&R.w>.15?R.rain:0);if(UI.cam!=="all"&&(typeof QL==="undefined"||QL.lvl>0))drawVignette(ctx,cw,ch);if(UI.cam==="auto"&&typeof smartPip==="function")smartPip(ctx,cw,ch);if(typeof tvOverlay==="function")tvOverlay(ctx,cw,ch,rdt);else if(CAM.flash>0){ctx.fillStyle=`rgba(0,0,0,${.55*CAM.flash})`;ctx.fillRect(0,0,cw,ch)}
     const mm=$("#mm");if(mm&&!mm.hidden){const mx=mm.getContext("2d");mx.setTransform(2,0,0,2,0,0);drawMinimap(mx,mm.width/2,mm.height/2)}}
-  updatePanels(now);if(typeof tipsTick==="function")tipsTick();if(typeof pxRefresh==="function"&&(UI.pxN=(UI.pxN||0)+1)%15===0)pxRefresh();
+  updatePanels(now);if(typeof tipsTick==="function")tipsTick();if(typeof pxRefresh==="function"&&(UI.pxN=(UI.pxN||0)+1)%15===0){pxRefresh();if(typeof ccRefresh==="function")ccRefresh()}
   const lw=$("#lower");if(lw){if(typeof tvLower==="function")tvLower(lw,foc||R.cars.find(c=>c.isP));else{const lab=UI.cam==="director"?DIR.label:UI.cam==="auto"&&typeof SMART!=="undefined"?SMART.label:"";const show=!!lab;lw.hidden=!show;if(show&&lw.textContent!==lab)lw.textContent=lab}}
   if(UI.sound){const me=R.cars.find(c=>c.isP);const f=foc||me;let near=null;if(f&&f._w){let bd=1e9;for(const c of R.cars){if(c===f||!running(c)||!c._w)continue;const d=Math.hypot(c._w.x-f._w.x,c._w.y-f._w.y);if(d<bd){bd=d;near={v:c.v,d:d/(12*WS),app:c.prog<f.prog,pan:(-Math.sin(f._w.h)*(c._w.x-f._w.x)+Math.cos(f._w.h)*(c._w.y-f._w.y))/(14*WS)}}}if(bd>60*WS)near=null}
     if(UI.paused)sndSilence();else sndUpdate(f,{speed:1,near,cheer:R.finishing?1:f?crowdExc(fr(f.prog),R.t):0})}
@@ -517,7 +517,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
   if(a==="gloss"){e.stopPropagation();const g=GLOSS[k];modal(`<h2>${g.t}</h2><p style="font-size:15px;line-height:1.55">${g.d}</p><button class="btn" data-act="closeModal">Entendi</button>`);return}
   if(a==="closeModal"||(a==="bgClose"&&e.target===b)){modal("");return}
   if(a==="bgClose")return;
-  if(a.startsWith("mp")){mpAction(a,k,b);return}if(a.startsWith("tv")&&typeof tvAction==="function"){tvAction(a,k,b);return}if(a.startsWith("px")&&typeof pxAction==="function"){pxAction(a,k);return}if(a.startsWith("mn")&&typeof mnAction==="function"){mnAction(a,k,b);return}
+  if(a.startsWith("mp")){mpAction(a,k,b);return}if(a.startsWith("tv")&&typeof tvAction==="function"){tvAction(a,k,b);return}if(a.startsWith("px")&&typeof pxAction==="function"){pxAction(a,k);return}if(a.startsWith("mn")&&typeof mnAction==="function"){mnAction(a,k,b);return}if(a.startsWith("wk")&&typeof wkAction==="function"){wkAction(a,k);return}if(a.startsWith("lf")&&typeof lfAction==="function"){lfAction(a,k,b);return}if(a.startsWith("ow")&&typeof owAction==="function"){owAction(a,k);return}if(a.startsWith("cc")&&typeof ccAction==="function"){if(a==="ccAsSet"||a==="ccAsP")ccAction2(a,k);else ccAction(a,k);return}
   const A={
    continue(){if(load()){UI.scr="hub";if(G.phase==="weekend"){G.phase="home"}render()}},
    newCareer(){UI.scr="create";render()},toTitle(){UI.scr="title";render()},

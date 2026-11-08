@@ -164,7 +164,11 @@ function makeWreckRaw(c,kind,f,s){const ro=c.crashRo||(R.C.street?"muro":"brita"
   if(w.fire)rcMsg(`Fogo no carro de ${c.code}! Os fiscais correm com os extintores.`,"bad","fiscais");if(kind==="crash"){R.fxq.push({type:"tyres",f:w.f,lat:w.lat,t0:R.t+1.2});w.okMsg=R.t+6}
   R.wrecks.push(w);addYellow(fr(w.f),1e9,kind==="crash",w);R.fxq.push({type:kind==="crash"?"debris":kind==="beach"?"dust":"smoke",f:kind==="crash"?f:w.f,lat:kind==="crash"?(c.y||0):w.lat,t0:R.t});
   rcMsg(kind==="crash"?"Bandeira amarela dupla no local do acidente: os pilotos devem reduzir bastante e não podem ultrapassar.":`Bandeira amarela: ${c.code} parou ao lado da pista.`,"warn",kind==="crash"?"dupla":"amarela");return w}
-function updWrecks(){for(const w of R.wrecks){if(w.okMsg&&R.t>=w.okMsg){w.okMsg=0;rcMsg(`${w.code} saiu do carro sozinho e está bem.`,"","fiscais")}if(!w.removed&&R.t>=w.removeAt){w.removed=true;rcMsg(`Fiscais e guindaste removeram o carro de ${w.code}. Trecho liberado, bandeira verde no setor.`,"","fiscais");R.greenT=R.t+25}}
+// VSC termina poucos segundos depois que o trecho é liberado; o safety car apaga as luzes na volta seguinte à limpeza
+function scClearTick(){const S=R.sc;if(!S||R.red)return;const clear=R.wrecks.every(w=>w.removed)&&!(R.cars.some(c=>running(c)&&c.ex&&c.ex.ph==="stop"));
+  if(S.type==="sc"&&clear&&!S.ending&&R.t-S.t0>20){S.ending=true;S.endT=R.t;rcMsg("Pista liberada: as luzes do safety car apagaram, ele entra nos boxes NESTA volta.","","sc")}
+  if(S.type==="vsc"&&clear){if(!S.vEnd){S.vEnd=R.t+7;S.ending=true;rcMsg("Pista liberada: o VSC termina em instantes.","","sc")}else if(R.t>=S.vEnd){rcMsg("VSC encerrado. BANDEIRA VERDE!","","verde");R.sc=null;R.greenT=R.t+20}}}
+function updWrecks(){scClearTick();for(const w of R.wrecks){if(w.okMsg&&R.t>=w.okMsg){w.okMsg=0;rcMsg(`${w.code} saiu do carro sozinho e está bem.`,"","fiscais")}if(!w.removed&&R.t>=w.removeAt){w.removed=true;rcMsg(`Fiscais e guindaste removeram o carro de ${w.code}. Trecho liberado, bandeira verde no setor.`,"","fiscais");R.greenT=R.t+25}}
   R.yellows=R.yellows.filter(y=>y.w?!y.w.removed:R.t<y.until)}
 function bubble(c,text,kind,dur){if(!c||!R.bubbles)return;R.bubbles.push({id:c.id,text:text.length>78?text.slice(0,76)+"…":text,kind:kind||"",t:R.t,dur:dur||4.5});if(R.bubbles.length>16)R.bubbles.shift()}
 function rcMsg(t,cls,k){R.msgs.unshift({lap:Math.max(1,R.lead+1),t,cls:cls||"",k});if(R.msgs.length>60)R.msgs.pop()}
@@ -200,7 +204,7 @@ function incident(c,ctx){
 function dnf(c,why,kind){if(c.status!=="run")return;c.status="dnf";c.why=why;if(!c.pit)makeWreck(c,kind||"stop");c.pit=null;if(c.hum)radio(c,why==="Acidente"?"Bati... desculpa, pessoal.":`Abandono: ${why}.`,{pause:true});
   if(c.isP)R.repair=(R.repair||0)+(why.includes("Acidente")?1.2:.4)}
 function triggerSC(type){if(R.sc||R.finishing||R.red)return;R.nSC=(R.nSC||0)+(type==="sc"?1:0);R.nVSC=(R.nVSC||0)+(type==="vsc"?1:0);
-  R.sc={type,laps:type==="sc"?ri(2,4):ri(1,2),start:R.lead,t0:R.t};
+  R.sc={type,laps:1,start:R.lead,t0:R.t};// sai assim que a pista é limpa (o SC precisa de pelo menos a volta de entrada)
   narr(type==="sc"?"Entra o safety car! A corrida fica neutralizada.":"Virtual safety car acionado.",2);
   rcMsg(type==="sc"?"SAFETY CAR na pista! Os carros formam fila atrás dele e ninguém pode ultrapassar.":"VIRTUAL SAFETY CAR: todos reduzem a velocidade e mantêm a distância, sem ultrapassar.","warn",type);
   R.cars.filter(c=>c.hum&&running(c)&&!c.pit).forEach(c=>{radio(c,type==="sc"?"Safety car! Parar agora custa bem menos tempo, porque todos estão andando devagar.":"VSC: uma parada agora custa menos que o normal.",{k:type});
@@ -338,8 +342,8 @@ function mechFail(c,why){c.smokeT=R.t+10;if(why){dnf(c,why,"stop");rcMsg(`${c.co
 function leaderLap(c){// chuva, safety car e contagem de voltas (quando o líder cruza a linha)
   const r=rainAt(c.lap);if(c===R.order[0]){if(r!==R.rain){if(r>R.rain){rcMsg(r===2?"Chuva forte!":"Começou a chover.","warn");R.cars.filter(x=>x.hum&&running(x)).forEach(x=>radio(x,r===2?"Chuva forte agora! A pista vai encharcar.":"Começou a chover em algumas curvas.",{pause:true,k:"chuva"}))}else rcMsg(r===0?"A chuva parou. A pista vai secar.":"A chuva diminuiu.");R.rain=r}
     {const clear=R.wrecks.every(w=>w.removed);
-    if(R.sc&&!R.sc.ending&&c.lap-R.sc.start>=R.sc.laps-1&&clear){R.sc.ending=true;rcMsg(R.sc.type==="sc"?"As luzes do safety car apagaram: ele entra nos boxes NESTA volta.":"O VSC vai terminar em instantes.","","sc")}
-    if(R.sc&&c.lap-R.sc.start>=R.sc.laps){if(clear){rcMsg(R.sc.type==="sc"?"Safety car nos boxes. BANDEIRA VERDE: corrida liberada!":"VSC encerrado. BANDEIRA VERDE!","","verde");R.sc=null;R.greenT=R.t+30;R.cars.filter(running).forEach(x=>{x.tyre.temp=Math.min(x.tyre.temp,TYRES[x.tyre.c].opt-22)});narr("Relargada! Pneus frios depois do safety car: quem esquentar primeiro leva vantagem.",2)}
+    if(R.sc&&R.sc.type==="sc"&&!R.sc.ending&&clear){R.sc.ending=true;R.sc.endT=R.t;rcMsg(R.sc.type==="sc"?"As luzes do safety car apagaram: ele entra nos boxes NESTA volta.":"O VSC vai terminar em instantes.","","sc")}
+    if(R.sc&&R.sc.type==="sc"&&(R.sc.ending||c.lap-R.sc.start>=R.sc.laps)){if(clear&&R.sc.ending&&R.t-(R.sc.endT||0)>3){rcMsg(R.sc.type==="sc"?"Safety car nos boxes. BANDEIRA VERDE: corrida liberada!":"VSC encerrado. BANDEIRA VERDE!","","verde");R.sc=null;R.greenT=R.t+30;R.cars.filter(running).forEach(x=>{x.tyre.temp=Math.min(x.tyre.temp,TYRES[x.tyre.c].opt-22)});narr("Relargada! Pneus frios depois do safety car: quem esquentar primeiro leva vantagem.",2)}
       else if(!R.sc.waitMsg){R.sc.waitMsg=1;rcMsg("O safety car continua: o guindaste ainda está removendo o carro acidentado.","warn","fiscais")}}
     if(R.rain===2&&R.w>.93&&rnd()<.14&&!R.redDone){R.redDone=true;redFlag("chuva torrencial")}}
     R.lead=c.lap}}

@@ -155,26 +155,40 @@ function visCells(S,cw,ch,extra){const Z=CAM.z;const inv=(sx,sy)=>{const a=(sx-c
   const out=[];const i0=Math.floor(x0/S.RC),i1=Math.floor(x1/S.RC),j0=Math.floor(y0/S.RC),j1=Math.floor(y1/S.RC);if((i1-i0+1)*(j1-j0+1)>4000)return null;
   for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const c=S.cells.get(i+":"+j);if(c)out.push(c)}return out}
 // ---------- imagens prontas (sprites) de prédios e árvores, por faixa de zoom; preparadas aos poucos e liberadas quando longe
-const SPR={n:0,budget:0,trees:new Map(),last:0,reset(){this.n=0;this.trees.clear();if(typeof TRACKGEO!=="undefined"&&TRACKGEO&&TRACKGEO.scn)TRACKGEO.scn.bld.forEach(b=>{b._spr=null})}};
+const SPR={n:0,budget:0,trees:new Map(),last:0,bytes:0,live:new Map(),frame:0,reset(){for(const b of[...this.live.keys()])sprDrop(b);this.n=0;this.bytes=0;this.live.clear();this.trees.clear();if(typeof TRACKGEO!=="undefined"&&TRACKGEO&&TRACKGEO.scn)TRACKGEO.scn.bld.forEach(b=>{b._spr=null})}};
+// memória das imagens de prédios: cada imagem é um canvas guardado na memória de vídeo. Em pistas de rua (Mônaco, Singapura, Baku, Las Vegas)
+// há centenas de prédios; sem limite, isso passava de 900 MB e o navegador do celular fechava a aba e recarregava a página.
+// Agora há um teto em bytes: as imagens usadas há mais tempo são liberadas, e se o teto estiver cheio o prédio é desenhado direto.
+function sprLow(){try{return (navigator.deviceMemory||8)<=4||matchMedia("(pointer:coarse)").matches}catch(e){return false}}
+function sprCap(){if(SPR._cap)return SPR._cap;return SPR._cap=(sprLow()?56:150)*1e6}
+function sprDprB(){return Math.min(sprLow()?1:1.25,sprDpr())}
+function sprBytes(s){let n=0;if(s)for(const c of[s.cv,s.day&&s.day.cv,s.lit&&s.lit.cv])if(c)n+=c.width*c.height*4;return n}
+function sprFree(s){if(s)for(const c of[s.cv,s.day&&s.day.cv,s.lit&&s.lit.cv])if(c){c.width=0;c.height=0}}
+function sprDrop(b){const s=b._spr;if(s){SPR.bytes-=s.bytes||0;SPR.n--;sprFree(s)}SPR.live.delete(b);b._spr=null}
+function sprPut(b,n){sprDrop(b);n.bytes=sprBytes(n);b._spr=n;SPR.bytes+=n.bytes;SPR.n++;SPR.live.set(b,SPR.frame);sprTrim()}
+function sprTouch(b){if(SPR.live.has(b)){SPR.live.delete(b);SPR.live.set(b,SPR.frame)}}
+// libera as mais antigas até caber; não mexe nas usadas neste quadro
+function sprTrim(extra){const cap=sprCap()-(extra||0);for(const[b,f]of SPR.live){if(SPR.bytes<=cap)break;if(f===SPR.frame)break;sprDrop(b)}return SPR.bytes<=cap}
 function zBucket(Z){return Math.pow(1.25,Math.round(Math.log(Z)/Math.log(1.25)))}
 function sprDpr(){return typeof qDpr==="function"?qDpr():Math.min(2,(typeof window!=="undefined"&&window.devicePixelRatio)||1)}
 // desenha algo num canvas próprio com a câmera centrada no ponto (x,y)
-function bakeAt(x,y,zb,pts,fn){const sv={x:CAM.x,y:CAM.y,z:CAM.z,sx:CAM.sx,sy:CAM.sy};const[ix,iy]=iso(x,y);CAM.x=ix;CAM.y=iy;CAM.z=zb;CAM.sx=0;CAM.sy=0;
+function bakeAt(x,y,zb,pts,fn,dd){const sv={x:CAM.x,y:CAM.y,z:CAM.z,sx:CAM.sx,sy:CAM.sy};const[ix,iy]=iso(x,y);CAM.x=ix;CAM.y=iy;CAM.z=zb;CAM.sx=0;CAM.sy=0;
   try{let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const p of pts){const q=toScreen(p[0],p[1],p[2],0,0);x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);y0=Math.min(y0,q[1]);y1=Math.max(y1,q[1])}
-    const pad=4,W=Math.ceil(x1-x0+2*pad),H=Math.ceil(y1-y0+2*pad);if(W<2||H<2||W*H>900000)return null;const d=sprDpr();const cv=document.createElement("canvas");cv.width=Math.ceil(W*d);cv.height=Math.ceil(H*d);
+    const pad=4,W=Math.ceil(x1-x0+2*pad),H=Math.ceil(y1-y0+2*pad);if(W<2||H<2||W*H>900000)return null;const d=dd||sprDpr();const cv=document.createElement("canvas");cv.width=Math.ceil(W*d);cv.height=Math.ceil(H*d);
     const c=cv.getContext("2d");c.setTransform(d,0,0,d,0,0);CAM.sx=-x0+pad;CAM.sy=-y0+pad;c.lineJoin="round";c.lineCap="round";fn(c);return{cv,ax:-x0+pad,ay:-y0+pad,w:W,h:H,zb}}
   finally{Object.assign(CAM,sv)}}
 function bakeBuilding(b,zb,night){const cor=boxCorners(b.x,b.y,b.w,b.d,b.ang);const pts=[];for(const p of cor){pts.push([p.x,p.y,0],[p.x,p.y,b.h+4*WS],[p.x+b.h*.45,p.y+b.h*.1,0])}
-  const body=bakeAt(b.x,b.y,zb,pts,c=>drawBuilding(c,0,0,b,zb,true,[]));if(!body)return null;
-  if(zb>=.45){const w=bakeAt(b.x,b.y,zb,pts,c=>drawWindows(c,0,0,b,zb,!!night));if(night)body.lit=w;else body.day=w}body.night=!!night;
-  SPR.n++;return body}
+  const d=sprDprB();if(!sprTrim(2.2e6))return null;// sem espaço: o prédio é desenhado direto neste quadro
+  const body=bakeAt(b.x,b.y,zb,pts,c=>drawBuilding(c,0,0,b,zb,true,[]),d);if(!body)return null;
+  if(zb>=.45){const w=bakeAt(b.x,b.y,zb,pts,c=>drawWindows(c,0,0,b,zb,!!night),d);if(night)body.lit=w;else body.day=w}body.night=!!night;
+  return body}
 function drawSprite(ctx,cw,ch,s,x,y,Z){const sc=Z/s.zb;const q=toScreen(x,y,0,cw,ch);ctx.drawImage(s.cv,q[0]-s.ax*sc,q[1]-s.ay*sc,s.w*sc,s.h*sc)}
 function treeKey(t,zb){return t.k+"|"+Math.round(t.s*4)+"|"+Math.min(2,Math.floor(t.c*3))+"|"+zb}
 function treeSprite(t,zb){const k=treeKey(t,zb);let s=SPR.trees.get(k);if(s!==undefined)return s;if(SPR.budget<=0)return null;SPR.budget--;
   const tt={x:0,y:0,s:Math.round(t.s*4)/4,c:(Math.min(2,Math.floor(t.c*3))+.5)/3,k:t.k};const r=26*WS*tt.s;
   s=bakeAt(0,0,zb,[[-r,-r,0],[r,r,0],[r,-r,0],[-r,r,0],[0,0,26*WS*tt.s]],c=>drawTree(c,0,0,tt,zb));SPR.trees.set(k,s);if(SPR.trees.size>400)SPR.trees.delete(SPR.trees.keys().next().value);return s}
 // libera imagens de blocos que ficaram longe
-function sprSweep(S,now){if(now-SPR.last<2)return;SPR.last=now;for(const c of S.cells.values()){if(now-c.seen>8&&c.b.length&&c.b[0]._spr!==undefined){for(const b of c.b){if(b._spr){b._spr=null;SPR.n--}}}}}
+function sprSweep(S,now){if(now-SPR.last<2)return;SPR.last=now;for(const c of S.cells.values()){if(now-c.seen>8&&c.b.length){for(const b of c.b){if(b._spr)sprDrop(b)}}}}
 function pick2(rng,a){return a[Math.floor(rng()*a.length)]}
 // lateral do muro (para posicionar batidas)
 function sceneWallLat(f,sign){const g=TRACKGEO;if(!g||!g.scn)return null;const i=Math.round(fr(f)*g.M)%g.M;const a=g.scn.wl[sign>0?1:-1];return a?a[i]:null}
@@ -253,16 +267,16 @@ function drawKerbs(ctx,cw,ch,street){const g=TRACKGEO,S=g.scn,M=g.M,Z=CAM.z;cons
 function sceneItems(items,post,ctx,cw,ch,night,now,detail){const g=TRACKGEO,S=g.scn,Z=CAM.z,th=S.th;const m=v=>v*WS;
   const vis=(x,y,r)=>{const s=toScreen(x,y,0,cw,ch);return s[0]>-r*Z-40&&s[0]<cw+r*Z+40&&s[1]>-r*Z*1.6-60&&s[1]<ch+r*Z*.6+40};
   if(!detail){for(const o of S.lms)if(o.k!=="yachts"&&o.k!=="bowl")lmItems(o,items,post,ctx,cw,ch,night,now,vis);return}
-  const vc=visCells(S,cw,ch)||[...S.cells.values()];const tnow=now;const zb=zBucket(Z);const pip=ctx.canvas&&ctx.canvas!==document.getElementById("rc");SPR.budget=pip?0:6;
+  const vc=visCells(S,cw,ch)||[...S.cells.values()];const tnow=now;const zb=zBucket(Z);const pip=ctx.canvas&&ctx.canvas!==document.getElementById("rc");SPR.budget=pip?0:6;if(!pip)SPR.frame++;
   const TL=[],BL=[],LL=[];for(const c of vc){c.seen=tnow;for(const t of c.t)TL.push(t);for(const b of c.b)BL.push(b);for(const l of c.l)LL.push(l)}
   const fewTrees=typeof QL!=="undefined"&&QL.lvl===0;for(const t of TL){if(fewTrees&&((t.x*7+t.y*13)|0)%2)continue;if(!vis(t.x,t.y,m(30)))continue;items.push({d:t.x+t.y,draw:()=>{const sp=treeSprite(t,zb);if(sp)drawSprite(ctx,cw,ch,sp,t.x,t.y,Z);else drawTree(ctx,cw,ch,t,Z)}})}
   for(const b of BL){if(!vis(b.x,b.y,Math.max(b.w,b.h)))continue;items.push({d:b.x+b.y,draw:()=>{let sp=b._spr;const ok=sp&&Z/sp.zb>.66&&Z/sp.zb<1.5;
-      if(sp&&sp.night!==!!night)sp=b._spr=null;
-      if((!sp||sp.zb!==zb)&&SPR.budget>0&&Z>=.3&&(typeof perfBudget!=="function"||perfBudget(3))){SPR.budget--;const n=bakeBuilding(b,zb,night);if(n){if(!b._spr)SPR.n++;else SPR.n--;b._spr=n;sp=n}}
+      if(sp&&sp.night!==!!night){sprDrop(b);sp=null}if(sp)sprTouch(b);
+      if((!sp||sp.zb!==zb)&&SPR.budget>0&&Z>=.3&&(typeof perfBudget!=="function"||perfBudget(3))){SPR.budget--;const n=bakeBuilding(b,zb,night);if(n){sprPut(b,n);sp=n}}
       if(sp&&(ok||sp.zb===zb)){drawSprite(ctx,cw,ch,sp,b.x,b.y,Z);const wl=night?sp.lit:sp.day;if(wl&&Z>=.45){if(night)post.push(()=>drawSprite(ctx,cw,ch,wl,b.x,b.y,Z));else drawSprite(ctx,cw,ch,wl,b.x,b.y,Z)}}
       else drawBuilding(ctx,cw,ch,b,Z,night,post,true)}})}
   // prepara os blocos vizinhos (na direção em que a câmera anda) com o que sobrar do orçamento
-  if(!pip){sprSweep(S,tnow);const ring=visCells(S,cw,ch,1)||[];for(const c of ring){if(SPR.budget<=0)break;c.seen=Math.max(c.seen,tnow-1);for(const b of c.b){if(SPR.budget<=0||(typeof perfBudget==="function"&&!perfBudget(4)))break;if(b._spr&&b._spr.zb===zb)continue;SPR.budget--;const n=bakeBuilding(b,zb,night);if(n){if(!b._spr)SPR.n++;else SPR.n--;b._spr=n}}}}
+  if(!pip){sprSweep(S,tnow);const ring=visCells(S,cw,ch,1)||[];for(const c of ring){if(SPR.budget<=0)break;c.seen=Math.max(c.seen,tnow-1);for(const b of c.b){if(SPR.budget<=0||(typeof perfBudget==="function"&&!perfBudget(4)))break;if(b._spr&&b._spr.zb===zb)continue;if(SPR.bytes>sprCap()*.8)break;SPR.budget--;const n=bakeBuilding(b,zb,night);if(n)sprPut(b,n)}}}
   for(const L of LL){if(!vis(L.x,L.y,m(20)))continue;items.push({d:L.x+L.y,draw:()=>{const a=toScreen(L.x,L.y,0,cw,ch),b=toScreen(L.x,L.y,m(14),cw,ch);ctx.strokeStyle="#3A4048";ctx.lineWidth=Math.max(1,.5*WS*Z);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
     ctx.fillStyle="#FFF6D8";ctx.fillRect(b[0]-2*Z*WS*.5,b[1]-1,4*Z*WS*.5,2);post.push(()=>{const r=Math.max(6,m(9)*Z);const gr=ctx.createRadialGradient(b[0],b[1],0,b[0],b[1],r);gr.addColorStop(0,"rgba(255,246,216,.55)");gr.addColorStop(1,"rgba(255,246,216,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(b[0],b[1],r,0,7);ctx.fill()})}})}
   for(const o of S.lms)lmItems(o,items,post,ctx,cw,ch,night,now,vis)}

@@ -1,7 +1,6 @@
 PADDOCK 2026 — arquivos do site
 
-Coloque TODOS estes arquivos na raiz do repositório do GitHub (index.html precisa ficar na raiz, não dentro de uma pasta).
-Depois ative o GitHub Pages em Settings > Pages > Branch: main / (root).
-
-O jogo salva a carreira no navegador de quem joga (cada pessoa tem a sua).
-O modo "Corrida online" fora do Claude precisa de um servidor Firebase configurado no arquivo config.js.
+1) Coloque TODOS estes arquivos na raiz do repositório do GitHub (o index.html fica na raiz, não dentro de uma pasta).
+2) Ative o GitHub Pages: Settings > Pages > Deploy from a branch > main > / (root) > Save.
+3) Para o modo online funcionar fora do Claude: crie um projeto no Firebase (grátis), crie um Realtime Database,
+   cole as regras do arquivo regras-firebase.json na aba "Regras" do banco e cole o firebaseConfig no arquivo config.js.

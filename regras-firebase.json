@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "pdk": {
+      "$room": {
+        ".read": true,
+        "$peer": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['j']) && newData.child('j').isString() && newData.child('j').val().length < 6000"
+        }
+      }
+    }
+  }
+}

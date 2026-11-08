@@ -5,12 +5,12 @@
 const SSN_AREAS=[["aero","Aerodinâmica","mais rápido nas curvas"],["eng","Motor","mais rápido nas retas"],["chas","Chassi e freios","freia mais tarde e gasta menos pneu"],["rel","Confiabilidade","menos quebras"]];
 const SSN_MAX=6,SSN_CALS=[[6,"Curta","6 GPs"],[11,"Média","11 GPs"],[22,"Completa","22 GPs"]],SSN_PRE="paddock-mpseason-";
 const SSN={cache:null,ck:"",ui:{n:6,lp:.15,wx:"auto",tab:"drv"},sure:""};
-const SSN_ON=false;// temporada online: pausada até terminar os testes
+const SSN_ON=true;// temporada online: pausada até terminar os testes
 const SSN_ID=x=>String(x||"").replace(/[^a-z0-9]/g,"").slice(0,16);
 const SSN_TXT=x=>String(x||"").replace(/[\u0000-\u001f\u007f-\u009f<>]/g,"").trim();
 const fmtM=t=>(t/10).toFixed(1).replace(".",",")+" mi";
 // ---------- identidade fixa do jogador (sobrevive a recarregar a página: é assim que ele volta para o próprio carro)
-function mpUid(){if(MP.uid)return MP.uid;let u=null;try{u=localStorage.getItem("paddock-mp-uid")}catch(e){}
+function mpUid(){if(MP.uid)return MP.uid;let u=null;try{u=sessionStorage.getItem("paddock-mp-uid-tab")||localStorage.getItem("paddock-mp-uid")}catch(e){}// (a aba pode ter um id próprio: dois jogadores no mesmo navegador)
   if(!u||!/^[a-z0-9]{8,16}$/.test(u)){u="";for(let i=0;i<10;i++)u+=MP_ALPH[Math.floor(Math.random()*MP_ALPH.length)];try{localStorage.setItem("paddock-mp-uid",u)}catch(e){}}MP.uid=u;return u}
 function mpRemember(code,role){try{localStorage.setItem("paddock-mp-last",JSON.stringify({code,role,t:Date.now()}))}catch(e){}}
 function mpForget(){try{localStorage.removeItem("paddock-mp-last")}catch(e){}}

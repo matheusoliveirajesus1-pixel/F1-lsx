@@ -1,5 +1,9 @@
-// ===================== CONFIGURAÇÃO DO SERVIDOR ONLINE =====================
-// Só é usada quando o jogo roda no seu próprio site (fora do Claude). Dentro do Claude, a sala online já funciona sozinha.
-// Cole entre as chaves o "firebaseConfig" do seu projeto Firebase (o guia mostra onde achar). Exemplo:
-// window.PADDOCK_ONLINE={firebase:{apiKey:"AIza...",authDomain:"meu-paddock.firebaseapp.com",databaseURL:"https://meu-paddock-default-rtdb.firebaseio.com",projectId:"meu-paddock",appId:"1:123:web:abc"}};
-window.PADDOCK_ONLINE={firebase:null};
+window.PADDOCK_ONLINE={firebase:{
+  apiKey:"AIzaSyBmExecUj17sSjgTGVJjpYXl_cPlju4Nsw",
+  authDomain:"f1-multiplayer-12c0a.firebaseapp.com",
+  databaseURL:"https://f1-multiplayer-12c0a-default-rtdb.firebaseio.com",
+  projectId:"f1-multiplayer-12c0a",
+  storageBucket:"f1-multiplayer-12c0a.firebasestorage.app",
+  messagingSenderId:"286541939032",
+  appId:"1:286541939032:web:b3a191d13fb15cf15ce52d"
+}};

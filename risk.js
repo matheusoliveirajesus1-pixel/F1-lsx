@@ -48,12 +48,12 @@ function crowdEv(f,a){if(!R)return;R.crowd=R.crowd||[];R.crowd.push({f:fr(f),t:R
 function trackLimit(c){if(R.sc)return;c.warn=(c.warn||0)+1;if(c.warn===3&&c.hum)radio(c,"Terceira advertência por limite de pista. Mais uma e vem punição!",{pause:false});
   if(c.warn>=4){c.warn=0;c.pen+=5;rcMsg(`${c.code}: 5s de punição por limites de pista.`,"warn","limites");if(c.hum)radio(c,"Recebemos 5 segundos por limites de pista.",{k:"limites"})}}
 function errorOutcome(c,ev,kind,ro,fast,cn,saved){const f=fr(c.prog),out=sideAt(f),nm=cn?cn.n:"curva",pp=pos(c);const say=(t,o)=>{if(c.hum)radio(c,t,o||{})};const kk=1.6-(c.d.a.kerb||75)/100;
-  if(kind==="save"){bubble(c,"Segurou!","pass",2.4);R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:.8});c.lose+=rr(.4,1.1);say(pick([`A traseira escapou na ${nm}, mas eu segurei!`,`Quase rodei na ${nm}! Segurei o carro.`]),{me:1,k:"limite"});if(pp<=8||c.hum)crowdEv(f,.55);return}
+  if(kind==="save"){bubble(c,"Segurou!","pass",2.4);c.vis={type:"slide",t:0,dur:1.3,dir:rnd()<.5?1:-1};R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:.8});c.lose+=rr(.4,1.1);say(pick([`A traseira escapou na ${nm}, mas eu segurei!`,`Quase rodei na ${nm}! Segurei o carro.`]),{me:1,k:"limite"});if(pp<=8||c.hum)crowdEv(f,.55);return}
   if(kind==="minor"){
-    if(ev==="brake"){bubble(c,"Travou!","bad",2.5);R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:.3});c.lose+=rr(.25,.7);
+    if(ev==="brake"){bubble(c,"Travou!","bad",2.5);c.vis={type:"slide",t:0,dur:.7,dir:rnd()<.5?1:-1};R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:.3});c.lose+=rr(.25,.7);
       if(rnd()<.22&&!c.tyre.flat){c.tyre.flat=1;recalc(c);say(`Travei na ${nm} e marquei o pneu: está vibrando.`,{k:"rodada"})}else say(`Travei na ${nm}, perdi um pouco.`,{me:1})}
     else if(ev==="apex"){bubble(c,"Alargou!","bad",2.5);exStart(c,"wide",{dir:out});if(rnd()<.3*kk)trackLimit(c);if(rnd()<.25*kk)kerbHit(c,.5);say(`Alarguei na ${nm}.`,{me:1})}
-    else{bubble(c,"Patinou!","bad",2.2);R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});c.lose+=rr(.2,.55);c.tyre.wear=Math.min(1,c.tyre.wear+.004);say(`A traseira escapou na saída da ${nm}.`,{me:1})}
+    else{bubble(c,"Patinou!","bad",2.2);c.vis={type:"slide",t:0,dur:1,dir:rnd()<.5?1:-1};R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});c.lose+=rr(.2,.55);c.tyre.wear=Math.min(1,c.tyre.wear+.004);say(`A traseira escapou na saída da ${nm}.`,{me:1})}
     if(pp<=6||c.hum)crowdEv(f,.35);return}
   if(kind==="off"){
     if(ro==="brita"){bubble(c,"Foi para a brita!","bad",3.5);exStart(c,"off",{dir:out,ro:"brita",fast});R.fxq.push({type:"dust",f,lat:out*12,t0:R.t});c.tyre.wear=Math.min(1,c.tyre.wear+.04);

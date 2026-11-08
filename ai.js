@@ -4,6 +4,9 @@
 // defende com uma mudança de trajetória, administra pneus e bateria. Nada de sorteio para ultrapassar:
 // quem passa é quem tem velocidade e espaço.
 const CARW=2.0,CARL=5.6,TRK_H=7.4,YMAX=TRK_H-1.05;
+// em disputa (atacar, defender, lado a lado, desviar) o piloto usa a pista inteira: pode deixar metade do carro além da linha branca
+const YATK=TRK_H-.1;
+function usesWidth(c){if(c.emerg)return true;if(c.neut)return false;return!!(c.atk||c.defend||c.coverY!=null||c.towY!=null||(c.alongs&&c.alongs.length)||c.emerg||c.bypass)}
 // mapa de fases da pista: 0 reta/aceleração, 1 frenagem, 2 curva; distância até a próxima freada; lado de dentro da próxima curva
 function aiPrep(geo){if(geo.ai)return geo.ai;const N=geo.N,k=geo.k;
   const p=speedProfile(geo,{pw:1,cd:1,cl:1,mass:PH.mass+15},tyreMu("M",0,.2,null),4.0,geo.gk);const v=Float32Array.from(p.v);
@@ -38,6 +41,7 @@ function aiSense(){const L=R.geo.len;const arr=R.cars.filter(c=>running(c)&&!c.p
 function sideRoom(oy,cy){const s=cy>=oy?1:-1;return Math.abs(oy+s*3)>YMAX?-s:s}
 // chance de o piloto se comprometer com uma tentativa nesta reta
 function attemptProb(c,A,adv,dA){let p=.04+adv*.6+(c.ovMode?.16:0)+(c.mode==="attack"?.1:c.mode==="save"?-.1:0)+(aggrEff(c,A)-.5)*.35+((c.st?c.st.conf:50)-50)/400+((c.d.a.craft||75)-75)/500*(adv>0?1:-1)+(c.batt>45?.05:c.batt<15?-.12:0)+R.C.ovt*.12-(A.d.a.def-75)/160+(dA<25?.05:0);
+  const close=Math.max(0,(c.v||0)-(A.v||0));p+=clamp(close/18,0,.15)+(c.tow||0)*.08;// chegando mais rápido e no vácuo: a oportunidade é real
   if(rivals(c,A))p+=.15;if(c.t===A.t)p-=.3;if(R.w>.4)p-=.06;return clamp(p,.02,.92)}
 function wantsDefend(c,B){if(B.prog>c.prog+.5||c.prog>B.prog+.5)return false;if(c.t===B.t)return false;if(c.defOrd)return true;const adv=(c.Ls??c.L)-(B.Ls??B.L);
   // decisão pela personalidade (agressivo defende, cuidadoso cede); uma pequena variação de humor por decisão
@@ -49,7 +53,7 @@ function deployRate(c){const close=c.ahead&&c.dA<70&&c.atk,threat=c.behind&&c.dB
       return c.batt<22?.72:c.batt>85?1.12:1}}
 // ---------- decisão de cada piloto a cada instante: linha alvo, limite de velocidade e multiplicador
 function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;const ph=AI.ph[i],ins=AI.insN[i],nb=AI.nbD[i],cw=AI.cw[i];
-  const neutral=!R.started||!!R.sc||!!R.red||(R.yellows.length&&inYellow(c));
+  const neutral=!R.started||!!R.sc||!!R.red||(R.yellows.length&&inYellow(c));c.neut=neutral;
   const amp=.22+(1-c.d.a.cons/100)*1.5;c.lineN+=(-c.lineN*.6+gauss()*amp*1.2)*dt;c.lineN=clamp(c.lineN,-1.1,1.1);
   const ideal=g.line[i]*c.lineK;let yT=ideal+c.lineN,m=1;c.vCap=Infinity;c.hard=false;c.dirty=false;c.atk=false;c.defend=false;c.bypass=false;
   const A=c.ahead,dA=c.dA,B=c.behind;c.cdAtt=Math.max(0,c.cdAtt-dt);
@@ -66,10 +70,11 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   if(c.att&&c.att.commit&&c.att.y!=null)yT=c.att.y;
   else if(!neutral&&ph===0&&A&&dA<75&&dA>CARL+1&&!c.bypass&&!c.blue&&!c.yieldTo&&!(c.pitCall&&R.started&&pitDist(c)<330)&&nb>120)yT=clamp(A.y,-YMAX,YMAX);// pega o vácuo
   // defesa: uma única mudança de trajetória antes da freada, para o lado de dentro
-  if(!neutral&&B&&c.dB<34&&c.dB>CARL+4&&ph===0&&nb<280&&nb>60&&!c.coverDone&&!(c.att&&c.att.commit)){c.coverDone=true;const cy=clamp(ins*3.3,-YMAX,YMAX);if(Math.abs(B.y-cy)>2.8&&wantsDefend(c,B))c.coverY=cy}
-  if(!neutral&&ph===0&&B&&c.dB<48&&c.dB>CARL+3&&nb>230&&!c.coverDone&&c.towY==null&&(B.tow||0)>.55&&!(c.att&&c.att.commit)&&running(B)&&!B.pit){
-    const want=c.towReq||(!c.hum&&c.t!==B.t&&rnd()<dt*.25*(.6+c.aggr)*clamp(((c.d.a.def||75)-55)/35,.2,1.3));
-    if(want){c.towReq=false;c.coverDone=true;const s=Math.sign((c.y||0)-(B.y||0))||(rnd()<.5?1:-1);let ty=(c.y||0)+s*3.4;if(Math.abs(ty)>YMAX)ty=(c.y||0)-s*3.4;c.towY=clamp(ty,-YMAX,YMAX);c.towT=R.t;
+  if(!neutral&&B&&c.dB<34&&c.dB>CARL+4&&ph===0&&nb<280&&nb>60&&!c.coverDone&&!(c.att&&c.att.commit)){c.coverDone=true;const cy=clamp(ins*4.7,-YATK,YATK);if(Math.abs(B.y-cy)>2.4&&wantsDefend(c,B))c.coverY=cy}
+  if(!neutral&&ph===0&&B&&c.dB<48&&c.dB>CARL+3&&nb>300&&!c.coverDone&&c.towY==null&&(B.tow||0)>.55&&(B.v||0)>(c.v||0)+1&&!(c.att&&c.att.commit)&&running(B)&&!B.pit){
+    if(c.towSeen==null||c.towSeenId!==B.id){c.towSeen=R.t;c.towSeenId=B.id}const defK=clamp(((c.d.a.def||75)-50)/45,0,1);const rt=.5+(1-defK)*1.3+(1-clamp(c.aggr,0,1))*.6;
+    const want=c.towReq||(!c.hum&&c.t!==B.t&&R.t-c.towSeen>rt&&(defK>.25||c.aggr>.55||rivals(c,B)));
+    if(want){c.towReq=false;c.coverDone=true;const s=Math.sign((c.y||0)-(B.y||0))||(rnd()<.5?1:-1);let ty=(c.y||0)+s*3.6;if(Math.abs(ty)>YATK-.3)ty=(c.y||0)-s*3.6;c.towY=clamp(ty,-YATK+.3,YATK-.3);c.towT=R.t;
       bubble(c,"Quebrou o vácuo!","",2.5);if(B.hum)radio(B,`${c.code} mudou de linha e quebrou o nosso vácuo.`,{k:"vacuo"});if(c.hum)radio(c,`Mudei de linha: ${B.code} saiu do vácuo.`,{me:1,k:"vacuo"})}}
   if(c.towY!=null){if(ph!==0||R.t-c.towT>7)c.towY=null;else yT=c.towY}
   if(ph===2){c.coverDone=false;c.coverY=null}
@@ -82,10 +87,10 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
       // abrir a trajetória na saída sem deixar espaço (espremer)
       if(c.runWide&&c.runWide.o===o.id&&R.t<c.runWide.until&&ph!==1){yT=clamp(o.y-s*1.75,-YMAX,YMAX);continue}
       const sep=Math.max(2.22,sep0-aggrEff(c,o)*.16-feud(c.d.id,o.d.id)*.002);const lim=o.y-s*sep;
-      if(s>0){if(yT>lim)yT=lim}else{if(yT<lim)yT=lim}if(Math.abs(lim)>YMAX&&Math.sign(lim)===-s){squeezed=true;c.sqBy=o}
+      if(s>0){if(yT>lim)yT=lim}else{if(yT<lim)yT=lim}if(Math.abs(lim)>YATK&&Math.sign(lim)===-s){squeezed=true;c.sqBy=o}
       const inside=c.att&&c.att.commit&&c.att.side===ins&&c.y*ins>o.y*ins;
       if(ds>1.2&&ph!==0&&!inside&&Math.abs(o.y-c.y)<3.2){m*=.975;c.hard=true}}
-    if(squeezed){squeezeOut(c,c.sqBy,ph);m*=.95;c.hard=true}yT=clamp(yT,-YMAX,YMAX)}
+    if(squeezed){squeezeOut(c,c.sqBy,ph);m*=.95;c.hard=true}yT=clamp(yT,-YATK,YATK)}
   // erro de julgamento: fecha a porta / alarga em cima do carro ao lado por um instante
   if(c.squeeze){const o=R.t<c.squeeze.until&&R.cars.find(x=>x.id===c.squeeze.id);if(o&&running(o)&&!o.pit)yT=clamp(o.y,-YMAX,YMAX);else c.squeeze=null}
   if(c.lateBrake){if(R.t>c.lateBrake.until||neutral)c.lateBrake=null;else if(ph===1)m*=1.06}
@@ -97,8 +102,8 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   const off=Math.min(1,Math.abs(c.y-ideal)/5);m*=1-.085*cw*off*off;if(Math.abs(c.y)>TRK_H)m*=.93;
   // vácuo na reta, ar sujo na curva (só quando está atrás, na mesma faixa)
   const F=c.aheadO,dF=c.dAO;c.tow=0;c.dirtyK=0;
-  if(A&&dA<88&&!neutral&&running(A)&&!A.pit){const dy=Math.abs((A.y||0)-(c.y||0));const al=dy<1.1?1:dy<3.2?1-(dy-1.1)/2.1:0;
-    if(ph===0&&c.v>40&&al>0){c.tow=al*clamp(1-(dA-8)/80,0,1);m*=1+.027*c.tow}
+  if(A&&dA<110&&!neutral&&running(A)&&!A.pit){const dy=Math.abs((A.y||0)-(c.y||0));const al=dy<1.1?1:dy<3.2?1-(dy-1.1)/2.1:0;
+    if(ph===0&&c.v>40&&al>0){c.tow=al*clamp(1-(dA-10)/95,0,1);m*=1+.045*c.tow}
     else if(ph!==0&&dA<48&&al>.15){const k=al*clamp(1-(dA-6)/42,0,1);m*=1-.018*k*(cw<.5?1.25:1);c.dirtyK=k;c.dirty=k>.25}}
   // mergulho por dentro na freada: freia mais tarde, com risco de travar e passar reto
   if(c.att&&c.att.commit&&ph===1&&c.att.side===ins&&A&&dA<CARL*(c.att.go?2.3:1.6)){m*=1+.02*(.6+(c.d.a.ovt*.5+(c.d.a.brk||75)*.5)/250)*(c.att.go?1.35:1);
@@ -112,7 +117,7 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   const free=c.bypass||(c.att&&c.att.commit);const Q=(neutral||!free)?c.aheadQ:F,dQ=(neutral||!free)?c.dAQ:dF;
   if(Q&&!(c.lateBrake&&c.lateBrake.id===Q.id)){const close=!neutral&&ph===0&&c.att&&c.att.commit&&Q===A;const dmin=CARL+(close?1.2+c.v*.045:.8+c.v*(R.sc&&R.sc.type==="sc"?.38:.15));// reação: o piloto percebe a velocidade do carro da frente com um pequeno atraso
     const tau=(.1+(1-clamp((sk(c,"craft")-55)/45,0,1))*.28)*(1+(c.spray||0)*1.6);if(c.pqId!==Q.id){c.pqId=Q.id;c.pqv=Q.v}else c.pqv+=(Q.v-c.pqv)*Math.min(1,dt/tau);const qv=neutral?Q.v:Math.max(Q.v,c.pqv);const qa=Math.min(0,Q.acc||0);
-    let cap=dQ>dmin?Math.sqrt(Math.max(0,qv*qv+2*28*(dQ-dmin)+(qa<-8&&neutral?qa*Q.v*.35:0))):qv-(dmin-dQ)/.6;cap=Math.max(cap,dQ<CARL+.4?Q.v*.6:Q.v*.8-1.5);
+    let cap=dQ>dmin?Math.sqrt(Math.max(0,qv*qv+2*28*(dQ-dmin)+(qa<-8&&neutral?qa*Q.v*.35:0))):qv-(dmin-dQ)/.6;cap=Math.max(cap,dQ<CARL+1.5?0:dQ<dmin*.6?Q.v*.5:Q.v*.8-1.5);// colado demais: pode frear até parar (antes havia um piso que fazia o de trás bater no da frente)
     if(cap<c.v+25){c.vCap=Math.max(0,cap);if(dQ<dmin+25)c.hard=true}}
   if(c.hzCap!=null){c.vCap=Math.min(c.vCap,c.hzCap);c.hard=true}
   // pressão: carro colado atrás aumenta a chance de erro
@@ -137,7 +142,7 @@ function battle(c,A,dA,ph,ins,nb){const adv=(A.Ls??A.L)-(c.Ls??c.L);
   const go=c.goReq&&ph===0&&A.t!==c.t&&((dA<Math.min(60,CARL+6+(nb||0)*.03)&&dA/Math.max(30,c.v)<.3)||((nb||0)<170&&dA<CARL*2.3+Math.max(0,c.v-A.v)*.5));
   if(!c.att||c.att.id!==A.id||(go&&!c.att.commit)){if(ph===0&&dA<75&&(c.cdAtt<=0||go)){const p=go?Math.max(.93,attemptProb(c,A,adv,dA)):clamp(attemptProb(c,A,adv,dA)*styleK(c,adv),.01,.95);c.decN=gauss()*.05;
       // oportunidade real: vale a pena pela vantagem e pela personalidade, e só se houver espaço do lado escolhido
-      let side=atkSide(c,A,ins);const room=sd=>{const y=(A.y||0)+sd*2.8;if(Math.abs(y)>YMAX+.3)return false;return!(A.alongs||[]).some(o=>o!==c&&Math.abs((o.y||0)-y)<CARW+.2)};if(!room(side)&&room(-side))side=-side;
+      let side=atkSide(c,A,ins);const room=sd=>{const y=(A.y||0)+sd*2.8;if(Math.abs(y)>YATK)return false;return!(A.alongs||[]).some(o=>o!==c&&Math.abs((o.y||0)-y)<CARW+.2)};if(!room(side)&&room(-side))side=-side;
       const take=(c.backOff||0)<R.t&&room(side)&&p>=.42-(aggrEff(c,A)-.5)*.3+c.decN;c.att={id:A.id,commit:take,side,t:R.t,y:null,go:take&&go};if(!take)c.cdAtt=rr(2.5,6);
       if(go&&!take&&c.hum){c.goReq=false;radio(c,`Sem espaço para atacar o ${A.code} agora.`,{me:1,k:"duelo"})}
       if(take&&go){c.goReq=false;c.goT=R.t;R.goN=(R.goN||0)+1;bubble(c,"Vai pra cima!","pass",2.5);if(c.hum)radio(c,`Vou pra cima do ${A.code}!`,{me:1,k:"duelo"})}}
@@ -147,14 +152,14 @@ function battle(c,A,dA,ph,ins,nb){const adv=(A.Ls??A.L)-(c.Ls??c.L);
   // fica no vácuo até chegar perto (ou até a freada estar próxima) e só então sai para o lado: estilingue
   if(ph===0){const pull=dA<70&&(a.y!=null||dA<CARL+2.5||(nb||0)<120+c.v*.9);
     if(pull&&a.y==null){a.side=atkSide(c,A,ins)}// escolhe o lado na hora de sair do vácuo
-    a.y=pull?clamp(A.y+a.side*2.8,-YMAX,YMAX):null;if(R.t-a.t>(a.go?20:14)){a.commit=false;c.cdAtt=rr(3,6)}}
+    if(pull){let ty=(A.y||0)+a.side*2.9;if(a.side===ins&&(nb||0)<160)ty=a.side*Math.max(a.side*ty,YATK-.7);else if(a.side===-ins)ty=a.side*Math.max(a.side*ty,Math.min(YATK-.4,Math.abs(A.y||0)+3.4));a.y=clamp(ty,-YATK,YATK)}else a.y=null;if(R.t-a.t>(a.go?20:14)){a.commit=false;c.cdAtt=rr(3,6)}}
   else if(ph===1){if(dA>CARL*1.05&&!(a.side===ins&&dA<CARL*(a.go?2.3:1.8))){a.commit=false;a.y=null;c.cdAtt=rr(3,6);if(a.go&&c.hum)radio(c,`Não deu para colocar o carro do lado do ${A.code}.`,{me:1,k:"duelo"})}}
   else if(dA>CARL*1.3){a.commit=false;a.y=null;c.cdAtt=rr(2,5)}}
 function lockUp(c,A){bubble(c,"Travou as rodas!","bad",3.5);R.fxq.push({type:"puff",f:fr(c.prog),lat:c.y||0,t0:R.t});c.att=null;c.cdAtt=6;const f=fr(c.prog);exStart(c,"off",{dir:sideAt(f),why:"travada"});R.fxq.push({type:"skid",f,lat:c.y,t0:R.t,turn:1});
   const p=pos(c);if(c.hum)radio(c,`Travei as rodas tentando passar o ${A.code}!`,{k:"escape"});else if(p<=8||A.isP)narr(`${c.code} trava as rodas no mergulho e passa reto! ${A.code} respira.`,2);c.tyre.wear=Math.min(1,c.tyre.wear+.02)}
 // ---------- movimento lateral (suave, com limite de velocidade lateral)
 function aiLateral(c,dt){if(c.ex)return;const em=!!c.emerg;const vyMax=em?6.2:c.coverY!=null?2.6:clamp(1.2+c.v*.045,1.2,4.8);const want=clamp((c.yT-c.y)*(em?3.2:2.4),-vyMax,vyMax);c.vy+=clamp(want-c.vy,-(em?22:9)*dt,(em?22:9)*dt);c.y+=c.vy*dt;
-  const lim=em?YMAX+2.6:YMAX;if(Math.abs(c.y)>lim){if(Math.abs(c.y)>YMAX+3)c.y=Math.sign(c.y)*Math.max(lim,Math.abs(c.y)-dt*2.5);else{c.y=Math.sign(c.y)*lim;c.vy=0}}}
+  const lim=em?YMAX+2.6:usesWidth(c)?YATK:YMAX;if(Math.abs(c.y)>lim){if(Math.abs(c.y)>YMAX+3)c.y=Math.sign(c.y)*Math.max(lim,Math.abs(c.y)-dt*2.5);else{c.y=Math.sign(c.y)*lim;c.vy=0}}}
 // ---------- toques: só quando dois carros realmente se encostam
 function aiContacts(){const L=R.geo.len;R.touchCd=R.touchCd||{};
   for(const c of R.phys){const o=c.along;if(!o||!running(c)||!running(o)||c.pit||o.pit)continue;let ds=o.fs-c.fs;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;

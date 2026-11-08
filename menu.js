@@ -1,7 +1,7 @@
 // ===================== MENU PRINCIPAL E CONFIGURAÇÕES =====================
 // Preferências do aparelho (valem para qualquer carreira): qualidade gráfica, gráficos de TV, voz e volumes.
 let PREFS=(()=>{let o=null;try{o=JSON.parse(localStorage.getItem("paddock-prefs")||"null")}catch(e){}o=o&&typeof o==="object"?o:{};
-  return{q:["auto","alto","medio","leve"].includes(o.q)?o.q:"auto",tv:o.tv!==false,tts:!!o.tts,vol:o.vol&&typeof o.vol==="object"?o.vol:{}}})();
+  return{q:["auto","alto","medio","leve"].includes(o.q)?o.q:"auto",tv:o.tv!==false,tts:!!o.tts,map:["auto","simples","completo"].includes(o.map)?o.map:"auto",vol:o.vol&&typeof o.vol==="object"?o.vol:{}}})();
 function prefsSave(){try{localStorage.setItem("paddock-prefs",JSON.stringify(PREFS))}catch(e){}}
 const Q_NAMES=[["auto","Automática","ajusta sozinha se o aparelho engasgar"],["alto","Alta","cenário completo e tela nítida"],["medio","Média","menos detalhes no cenário"],["leve","Leve","para celulares mais simples"]];
 // resumo da carreira salva, sem abrir o jogo
@@ -25,6 +25,7 @@ function titleScreen(){const sv=hasSave()?saveSummary():null;
 function cfgModal(){const seg=(act,cur,opts)=>`<div class="tpick">${opts.map(([v,n,d])=>`<button class="tchip ni${cur===v?" on":""}" data-act="${act}" data-k="${v}"><b>${n}</b>${d?`<small>${d}</small>`:""}</button>`).join("")}</div>`;
   modal(`<h2>Configurações</h2><p class="muted" style="font-size:14px">Valem para este aparelho e ficam salvas.</p>
    <h3>Qualidade gráfica</h3>${seg("mnQ",PREFS.q,Q_NAMES)}
+   <h3>Mapa</h3>${seg("mnMap",PREFS.map||"auto",[["auto","Automático","simples no celular, completo no computador"],["simples","Simples","sem janelas e com menos árvores; usa bem menos memória"],["completo","Completo","todos os detalhes; pode fechar a página em celulares"]])}
    <h3>Transmissão</h3><div class="choice"><button class="chip${PREFS.tv?" on":""}" data-act="mnTv"><b>${PREFS.tv?"✓ ":""}Gráficos de TV (vinhetas, faixas, avisos e legendas)</b></button></div>
    ${typeof sndPanel==="function"?sndPanel():""}
    ${typeof liveryCard==="function"?liveryCard():""}
@@ -40,4 +41,5 @@ function helpModal(){modal(`<h2>Como jogar</h2><ol class="howto">
   <div class="row"><button class="btn go sm" data-act="closeModal">Entendi</button></div>`)}
 function mnAction(a,k,b){if(typeof racelogAction==="function"&&racelogAction(a,k,b))return;if(a==="mnCfg")return cfgModal();if(a==="mnHelp")return helpModal();
   if(a==="mnQ"&&Q_NAMES.some(x=>x[0]===k)){PREFS.q=k;prefsSave();if(typeof qualityApply==="function")qualityApply(true);return cfgModal()}
+  if(a==="mnMap"&&["auto","simples","completo"].includes(k)){PREFS.map=k;prefsSave();try{if(typeof SPR!=="undefined")SPR.reset();if(typeof GCH!=="undefined")GCH.map.clear()}catch(e){}return cfgModal()}
   if(a==="mnTv"){PREFS.tv=!PREFS.tv;prefsSave();return cfgModal()}}

@@ -238,7 +238,10 @@ function pitService(c){const P=c.pit,comp=P.comp;const keepN=typeof pxService===
   if(c.dmg.wing>=.3&&!keepN)c.dmg.wing=0;if(c.dmg.rwing>=.3)c.dmg.rwing=0;if(c.dmg.floor>.3){c.dmg.floor=0;c.floorMsg=0}if(c.pen>0&&c.penServe){c.pen=0;c.penServe=false}
   if(c.hum){const st=c.plan&&c.plan.stops[c.planIdx];if(st&&Math.abs(st.lap-c.lap)<=6)c.planIdx++;radio(c,`Parado ${P.stop.toFixed(1)}s.${P.stop<2.35&&!P.note?" Pit stop excelente da equipe!":P.stop>3.6&&!P.note?" Pit stop lento.":""} Vai, vai, vai!`);c.wearWarn=0;c.compWarn=0}
   recalc(c)}
-function exitPit(c){c.pit=null;c.pitExit=R.t;c.y=R.geo.pitSide*4.1;c.vy=0;c.lineN=0;c.att=null;recalc(c);if(c.hum)radio(c,"Saindo do pit lane. Cuidado com os pneus frios na primeira volta.")}
+function exitPit(c){c.pit=null;c.pitExit=R.t;c.y=R.geo.pitSide*4.1;c.vy=0;c.lineN=0;c.att=null;recalc(c);
+  // saída do pit: se há carro logo à frente na pista (fila do safety car, por exemplo), entra na velocidade dele em vez de bater
+  {const L=R.geo.len,fs=fr(c.prog)*L;let best=null,bd=1e9;for(const o of R.cars){if(o===c||!running(o)||o.pit||o.parked)continue;let d=fr(o.prog)*L-fs;if(d<0)d+=L;if(d<bd&&d<90&&Math.abs((o.y||0)-c.y)<4.6){bd=d;best=o}}
+    if(best){const allow=bd<CARL+2?Math.max(0,(best.v||0)-3):Math.sqrt(Math.max(0,(best.v||0)*(best.v||0)+2*28*(bd-CARL-2)));c.v=Math.min(c.v||0,allow)}}if(c.hum)radio(c,"Saindo do pit lane. Cuidado com os pneus frios na primeira volta.")}
 // movimento dentro do pit lane
 function pitMove(c,dt){const P=c.pit,PL=R.pitLane;let v=c.v||0,ds;
   if(P.phase==="in"){const d=P.gar-P.s;v=Math.min(PIT_LIM,Math.sqrt(2*11*Math.max(0,d))+.4);ds=Math.min(v*dt,Math.max(0,d));if(d-ds<=.05){P.s=P.gar;P.phase="stop";pitArrive(c);ds=0;v=0}}
@@ -370,7 +373,7 @@ function step(dt){
     if(R.red&&v1>45){v1=45;hard=true}
     // aproximação da entrada do pit lane: freia até 80 km/h
     const toPit=(c.pitCall||(R.red&&R.red.phase==="return"))&&R.started;if(toPit){const pd=pitDist(c);if(pd<260){const vc=Math.sqrt(PIT_LIM*PIT_LIM+2*24*Math.max(0,pd-6));if(v1>vc){v1=vc;hard=true}}}
-    if(c.lose>0){v1*=.7;c.lose=Math.max(0,c.lose-dt*.3);hard=true}
+    if(c.lose>0){v1*=.86;c.lose=Math.max(0,c.lose-dt*.14);hard=true}
     if(typeof ccAdj==="function")v1=ccAdj(c,v1,i);
     if(v1>c.vCap){v1=c.vCap;hard=true}
     const brk=geo.ai.ph[i]===1||c.prof.v[(i+1)%N]<c.prof.v[i]-.02;

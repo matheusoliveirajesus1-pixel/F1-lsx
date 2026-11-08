@@ -159,7 +159,7 @@ const SPR={n:0,budget:0,trees:new Map(),last:0,bytes:0,live:new Map(),frame:0,re
 // memória das imagens de prédios: cada imagem é um canvas guardado na memória de vídeo. Em pistas de rua (Mônaco, Singapura, Baku, Las Vegas)
 // há centenas de prédios; sem limite, isso passava de 900 MB e o navegador do celular fechava a aba e recarregava a página.
 // Agora há um teto em bytes: as imagens usadas há mais tempo são liberadas, e se o teto estiver cheio o prédio é desenhado direto.
-function sprLow(){try{return (navigator.deviceMemory||8)<=4||matchMedia("(pointer:coarse)").matches}catch(e){return false}}
+function sprLow(){if(typeof devLow==="function")return devLow();try{return (navigator.deviceMemory||8)<=4||matchMedia("(pointer:coarse)").matches}catch(e){return false}}
 function sprCap(){if(SPR._cap)return SPR._cap;return SPR._cap=(sprLow()?56:150)*1e6}
 function sprDprB(){return Math.min(sprLow()?1:1.25,sprDpr())}
 function sprBytes(s){let n=0;if(s)for(const c of[s.cv,s.day&&s.day.cv,s.lit&&s.lit.cv])if(c)n+=c.width*c.height*4;return n}
@@ -204,7 +204,7 @@ function drawGround(ctx,cw,ch,detail,wet,night){const g=TRACKGEO;
   let budget=3;const need=[];const got=[];
   for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const k=zb+"|"+wk+"|"+i+"|"+j;let c=GCH.map.get(k);if(c){GCH.map.delete(k);GCH.map.set(k,c);got.push([c,i,j])}else need.push([k,i,j])}
   for(const n of need){if(budget<=0||(typeof perfBudget==="function"&&!perfBudget(5)&&got.length))break;budget--;const c=bakeChunk(n[1],n[2],L,zb,wet,detail);if(c){GCH.map.set(n[0],c);got.push([c,n[1],n[2]])}}
-  while(GCH.map.size>GCH.cap)GCH.map.delete(GCH.map.keys().next().value);
+  const gcap=typeof mapSimple==="function"&&mapSimple()?10:GCH.cap;while(GCH.map.size>gcap)GCH.map.delete(GCH.map.keys().next().value);
   if(got.length<(i1-i0+1)*(j1-j0+1)){// pedaços que ainda não ficaram prontos: desenha só eles, recortados (o resto vem pronto)
     const have=new Set(got.map(g=>g[1]+":"+g[2]));ctx.save();ctx.beginPath();for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){if(have.has(i+":"+j))continue;const x=Math.floor((i*L-CAM.x)*Z+cw/2+CAM.sx),y=Math.floor((j*L-CAM.y)*Z+ch/2+CAM.sy),w=Math.ceil(L*Z)+1;ctx.rect(x,y,w,w)}ctx.clip();drawGroundRaw(ctx,cw,ch,detail,wet,night,true);ctx.restore()}
   for(const[c,i,j]of got){const x=Math.floor((i*L-CAM.x)*Z+cw/2+CAM.sx),y=Math.floor((j*L-CAM.y)*Z+ch/2+CAM.sy),w=Math.ceil(L*Z)+1;ctx.drawImage(c,x,y,w,w)}
@@ -267,16 +267,16 @@ function drawKerbs(ctx,cw,ch,street){const g=TRACKGEO,S=g.scn,M=g.M,Z=CAM.z;cons
 function sceneItems(items,post,ctx,cw,ch,night,now,detail){const g=TRACKGEO,S=g.scn,Z=CAM.z,th=S.th;const m=v=>v*WS;
   const vis=(x,y,r)=>{const s=toScreen(x,y,0,cw,ch);return s[0]>-r*Z-40&&s[0]<cw+r*Z+40&&s[1]>-r*Z*1.6-60&&s[1]<ch+r*Z*.6+40};
   if(!detail){for(const o of S.lms)if(o.k!=="yachts"&&o.k!=="bowl")lmItems(o,items,post,ctx,cw,ch,night,now,vis);return}
-  const vc=visCells(S,cw,ch)||[...S.cells.values()];const tnow=now;const zb=zBucket(Z);const pip=ctx.canvas&&ctx.canvas!==document.getElementById("rc");SPR.budget=pip?0:6;if(!pip)SPR.frame++;
+  const vc=visCells(S,cw,ch)||[...S.cells.values()];const tnow=now;const zb=zBucket(Z);const pip=ctx.canvas&&ctx.canvas!==document.getElementById("rc");const simple=typeof mapSimple==="function"&&mapSimple();if(simple&&(SPR.n||SPR.trees.size))SPR.reset();SPR.budget=(pip||simple)?0:6;if(!pip)SPR.frame++;
   const TL=[],BL=[],LL=[];for(const c of vc){c.seen=tnow;for(const t of c.t)TL.push(t);for(const b of c.b)BL.push(b);for(const l of c.l)LL.push(l)}
-  const fewTrees=typeof QL!=="undefined"&&QL.lvl===0;for(const t of TL){if(fewTrees&&((t.x*7+t.y*13)|0)%2)continue;if(!vis(t.x,t.y,m(30)))continue;items.push({d:t.x+t.y,draw:()=>{const sp=treeSprite(t,zb);if(sp)drawSprite(ctx,cw,ch,sp,t.x,t.y,Z);else drawTree(ctx,cw,ch,t,Z)}})}
+  const fewTrees=simple||(typeof QL!=="undefined"&&QL.lvl===0);for(const t of TL){if(fewTrees&&((t.x*7+t.y*13)|0)%2)continue;if(!vis(t.x,t.y,m(30)))continue;items.push({d:t.x+t.y,draw:()=>{const sp=treeSprite(t,zb);if(sp)drawSprite(ctx,cw,ch,sp,t.x,t.y,Z);else drawTree(ctx,cw,ch,t,Z)}})}
   for(const b of BL){if(!vis(b.x,b.y,Math.max(b.w,b.h)))continue;items.push({d:b.x+b.y,draw:()=>{let sp=b._spr;const ok=sp&&Z/sp.zb>.66&&Z/sp.zb<1.5;
       if(sp&&sp.night!==!!night){sprDrop(b);sp=null}if(sp)sprTouch(b);
       if((!sp||sp.zb!==zb)&&SPR.budget>0&&Z>=.3&&(typeof perfBudget!=="function"||perfBudget(3))){SPR.budget--;const n=bakeBuilding(b,zb,night);if(n){sprPut(b,n);sp=n}}
       if(sp&&(ok||sp.zb===zb)){drawSprite(ctx,cw,ch,sp,b.x,b.y,Z);const wl=night?sp.lit:sp.day;if(wl&&Z>=.45){if(night)post.push(()=>drawSprite(ctx,cw,ch,wl,b.x,b.y,Z));else drawSprite(ctx,cw,ch,wl,b.x,b.y,Z)}}
       else drawBuilding(ctx,cw,ch,b,Z,night,post,true)}})}
   // prepara os blocos vizinhos (na direção em que a câmera anda) com o que sobrar do orçamento
-  if(!pip){sprSweep(S,tnow);const ring=visCells(S,cw,ch,1)||[];for(const c of ring){if(SPR.budget<=0)break;c.seen=Math.max(c.seen,tnow-1);for(const b of c.b){if(SPR.budget<=0||(typeof perfBudget==="function"&&!perfBudget(4)))break;if(b._spr&&b._spr.zb===zb)continue;if(SPR.bytes>sprCap()*.8)break;SPR.budget--;const n=bakeBuilding(b,zb,night);if(n)sprPut(b,n)}}}
+  if(!pip&&!simple){sprSweep(S,tnow);const ring=visCells(S,cw,ch,1)||[];for(const c of ring){if(SPR.budget<=0)break;c.seen=Math.max(c.seen,tnow-1);for(const b of c.b){if(SPR.budget<=0||(typeof perfBudget==="function"&&!perfBudget(4)))break;if(b._spr&&b._spr.zb===zb)continue;if(SPR.bytes>sprCap()*.8)break;SPR.budget--;const n=bakeBuilding(b,zb,night);if(n)sprPut(b,n)}}}
   for(const L of LL){if(!vis(L.x,L.y,m(20)))continue;items.push({d:L.x+L.y,draw:()=>{const a=toScreen(L.x,L.y,0,cw,ch),b=toScreen(L.x,L.y,m(14),cw,ch);ctx.strokeStyle="#3A4048";ctx.lineWidth=Math.max(1,.5*WS*Z);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
     ctx.fillStyle="#FFF6D8";ctx.fillRect(b[0]-2*Z*WS*.5,b[1]-1,4*Z*WS*.5,2);post.push(()=>{const r=Math.max(6,m(9)*Z);const gr=ctx.createRadialGradient(b[0],b[1],0,b[0],b[1],r);gr.addColorStop(0,"rgba(255,246,216,.55)");gr.addColorStop(1,"rgba(255,246,216,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(b[0],b[1],r,0,7);ctx.fill()})}})}
   for(const o of S.lms)lmItems(o,items,post,ctx,cw,ch,night,now,vis)}

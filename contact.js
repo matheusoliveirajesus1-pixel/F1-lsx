@@ -15,8 +15,8 @@ function surfAt(c){const ay=Math.abs(c.y||0);if(ay<=TRK_H)return"pista";const g=
 // ---------- escapadas: rodada, passar reto, alargar e bater
 function exStart(c,type,o){if(c.ex||!running(c)||c.pit||c.parked)return false;o=o||{};const v=Math.max(0,c.v||0),dir=o.dir||(sideAt(fr(c.prog))||1);const wet=R.w>.3;
   const ex={type,dir,t:0,t0:R.t,ph:"slide",yaw:0,yr:0,vy:(c.vy||0),dec:8,ro:o.ro||null,fast:o.fast||0,why:o.why||"",cause:o.cause||null,v0:v};
-  if(type==="spin"){ex.yr=dir*(3.2+v/25)*(o.k||1);ex.vy+=dir*(1.2+v*.05);ex.dec=wet?6:8.5}
-  else if(type==="off"){ex.yr=dir*.18;ex.vy+=dir*(1.2+v*.045);ex.dec=9}
+  if(type==="spin"){ex.yr=dir*(3.2+v/25)*(o.k||1);ex.vy+=dir*(1.2+v*.05);ex.dec=wet?7:10}
+  else if(type==="off"){ex.yr=dir*.12;ex.vy+=dir*(.6+v*.012);ex.dec=wet?15:24}// travou ou errou a freada: continua freando forte (2,5 g), só sem conseguir fazer a curva
   else if(type==="wide"){ex.yr=dir*.08;ex.vy+=dir*(1.6+v*.022);ex.dec=2.2}
   else if(type==="crash"){ex.yr=dir*(.8+v/60);ex.vy+=dir*(5+v*.17);ex.dec=4}
   if(type!=="wide"){ex.V=Math.hypot(v,ex.vy);ex.phi=Math.atan2(ex.vy,Math.max(.1,v))}c.ex=ex;c.vis=null;c.att=null;c.cdAtt=8;c.lose=0;R.exN=(R.exN||0)+1;if(type!=="wide")addYellow(fr(c.prog),R.t+(type==="crash"?30:16));return true}
@@ -26,8 +26,12 @@ function exKS(){if(R._kS)return R._kS;let s=1;try{const k=R.geo.kc||R.geo.k;let 
 function exStep(c,dt,vp){const ex=c.ex;ex.t+=dt;const sf=surfAt(c);let v=vp;const ay=Math.abs(c.y||0);
   if(ex.ph==="slide"){const k=sf==="brita"?2.2:sf==="grama"?1.25:1;v=Math.max(0,vp-ex.dec*k*dt);
     // INÉRCIA: o carro sem controle segue reto no mapa; a pista é que curva por baixo dele (sai pela tangente da curva)
-    if(ex.V!=null){const side=Math.abs(Math.sin(ex.yaw))>.55?1.45:1;ex.V=Math.max(0,ex.V-ex.dec*k*side*dt);if(ex.type==="off")ex.phi*=Math.exp(-dt*1.3);const N=R.geo.N,i=Math.floor(fr(c.prog)*N)%N,kc=(R.geo.kc||R.geo.k)[i]||0;
-      ex.phi=clamp(ex.phi+exKS()*kc*ex.V*Math.cos(ex.phi)*dt*(ex.type==="off"?.2:1),-1.45,1.45);v=Math.max(0,ex.V*Math.cos(ex.phi));ex.vyI=ex.V*Math.sin(ex.phi)}
+    if(ex.V!=null){const side=Math.abs(Math.sin(ex.yaw))>.55?1.45:1;ex.V=Math.max(0,ex.V-ex.dec*k*side*dt);const N=R.geo.N,i=Math.floor(fr(c.prog)*N)%N,kc=(R.geo.kc||R.geo.k)[i]||0;
+      let fk=1;if(ex.type==="off"){// passou reto: o carro só sai da curva pelo excesso de velocidade (subesterço); o piloto esterça com a aderência que sobra
+        const need=ex.V*ex.V*Math.abs(kc),have=Math.pow(speedAt(c,fr(c.prog)),2)*Math.abs(kc)*(sf==="pista"?.8:.55);fk=need>1e-6?clamp(1-have/need,0,1):0;if(fk<.05)ex.phi*=Math.exp(-dt*1.4)}
+      ex.phi=clamp(ex.phi+exKS()*kc*ex.V*Math.cos(ex.phi)*dt*fk,-1.45,1.45);v=Math.max(0,ex.V*Math.cos(ex.phi));ex.vyI=ex.V*Math.sin(ex.phi);
+      // passou reto com o carro sob controle: freia em linha reta e, quando a velocidade cai, volta a esterçar sem parar o carro
+      if(ex.type==="off"&&ex.t>.6&&ex.V<Math.max(9,speedAt(c,fr(c.prog))*(sf==="brita"?.3:.5))){ex.ph="rejoin";ex.wt=R.t;ex.vyI=null;ex.V=null;ex.yr=0}}
     if(ex.type==="wide"){v=Math.max(v,speedAt(c,fr(c.prog))*.62);if(ex.t>.8||ay>TRK_H+2.6){ex.ph="rejoin";ex.wt=R.t}}
     ex.yaw+=ex.yr*dt;ex.yr*=Math.exp(-dt*(ex.type==="spin"?(v<15?2.4:.8):2));
     if(ex.vyI!=null)ex.vy=ex.vyI;else{const ld=(sf==="brita"?10:sf==="grama"?3.2:4.2)*(1-R.w*.35);const s0=Math.sign(ex.vy);ex.vy-=s0*Math.min(Math.abs(ex.vy),ld*dt)}// atrito lateral
@@ -38,6 +42,8 @@ function exStep(c,dt,vp){const ex=c.ex;ex.t+=dt;const sf=surfAt(c);let v=vp;cons
     let y0=((ex.yaw%(2*Math.PI))+3*Math.PI)%(2*Math.PI)-Math.PI;const turn=Math.sign(y0)*Math.min(Math.abs(y0),dt*(ex.type==="wide"?3:1.8));ex.yaw=y0-turn;
     const lim=speedAt(c,fr(c.prog))*(ay>TRK_H?.55:.8);v=Math.abs(ex.yaw)>.7?Math.max(0,vp-6*dt):Math.min(lim,vp+(sf==="brita"?3:6.5)*dt);
     const tgt=Math.sign(c.y||ex.dir)*(YMAX-.4);ex.vy=clamp((tgt-c.y)*1.4,-3.2,3.2);
+    // não entra em cima de um carro que está do lado: espera ele passar
+    {const sg=Math.sign(ex.vy),L=R.geo.len;if(sg)for(const o of c.alongs||[]){let ds=fr(o.prog)*L-fr(c.prog)*L;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;const dy=((o.y||0)-(c.y||0))*sg;if(Math.abs(ds)<CARL+1&&dy>0&&dy<CARW+1.2){ex.vy=0;break}}}if(ex.type==="off"&&Math.abs(c.y)>TRK_H+1)v=Math.max(v,Math.min(lim,vp));
     if(Math.abs(c.y)<=YMAX+.05&&Math.abs(ex.yaw)<.08&&v>lim*.6){c.ex=null;c.yaw=0;c.vy=ex.vy*.4;return v}}
   ex.ny=(c.y||0)+ex.vy*dt;
   // muro ou barreira
@@ -67,20 +73,26 @@ function debrisTick(dt){const D=R.debris;if(!D||!D.length)return;const L=R.geo.l
       else c.tyre.wear=Math.min(1,c.tyre.wear+.01)}}}
 // ---------- reflexo: perceber o perigo à frente e decidir desviar ou frear
 function reactTime(c){const s=c.st||{};const craft=clamp((sk(c,"craft")-55)/45,0,1);return(.17+(1-craft)*.2+(100-(s.foco??90))*.0025+(s.fat||0)*.0015)*(1+(c.spray||0)*1.4)}
-function hazardAvoid(c){if(!R.started||c.pit||c.ex)return null;const L=R.geo.len,fs=fr(c.prog)*L,look=Math.max(45,(c.v||0)*2.6);let hz=null,hd=1e9;
-  for(const o of R.phys||[]){if(o===c)continue;const slow=o.ex||(R.started&&!R.sc&&(o.v||0)<Math.max(12,(c.v||0)*.4)&&!o.pit&&!o.parked&&o.lap>0);if(!slow)continue;let d=fr(o.prog)*L-fs;if(d<0)d+=L;if(d>look||d<1)continue;
-    const oy=(o.y||0)+(o.ex?o.ex.vy*Math.min(1.2,d/Math.max(8,c.v)):0);if(Math.abs(oy-(c.y||0))>CARW+3.2&&Math.abs((o.y||0)-(c.y||0))>CARW+3.2)continue;if(d<hd){hd=d;hz={id:o.id,d,y:oy,v:o.v||0,o}}}
-  if(R.debris)for(const b of R.debris){let d=b.fs-fs;if(d<0)d+=L;if(d>look||d<1)continue;if(Math.abs(b.y-(c.y||0))>CARW+1.5)continue;if(d<hd){hd=d;hz={id:"d"+b.fs.toFixed(0),d,y:b.y,v:0,small:true}}}
-  if(!hz){c.hzSeen=null;return null}
+function hazardAvoid(c){if(!R.started||c.pit||c.ex)return null;const L=R.geo.len,fs=fr(c.prog)*L,look=Math.max(45,(c.v||0)*2.6);const hs=[];
+  for(const o of R.phys||[]){if(o===c)continue;const slow=o.ex||(R.started&&!R.sc&&(o.v||0)<Math.max(12,(c.v||0)*.55)&&!o.pit&&!o.parked&&o.lap>0)||(R.sc&&(o.v||0)<4&&!o.pit);if(!slow)continue;let d=fr(o.prog)*L-fs;if(d<0)d+=L;if(d>look||d<1)continue;
+    const oy=(o.y||0)+(o.ex?o.ex.vy*Math.min(1.2,d/Math.max(8,c.v)):0);if(Math.abs(oy-(c.y||0))>CARW+3.2&&Math.abs((o.y||0)-(c.y||0))>CARW+3.2)continue;hs.push({id:o.id,d,y:oy,y0:o.y||0,v:o.v||0,o})}
+  if(R.debris)for(const b of R.debris){let d=b.fs-fs;if(d<0)d+=L;if(d>look||d<1)continue;if(Math.abs(b.y-(c.y||0))>CARW+1.5)continue;hs.push({id:"d"+b.fs.toFixed(0),d,y:b.y,v:0,small:true})}
+  if(!hs.length){c.hzSeen=null;return null}
+  // o perigo principal é o carro mais próximo (destroços pequenos só pedem um desvio, nunca escondem um carro parado logo atrás)
+  hs.sort((a,b)=>a.d-b.d);const cars=hs.filter(h=>!h.small);const hz=cars[0]||hs[0];
   if(!c.hzSeen||c.hzSeen.id!==hz.id){const blocked=c.aheadO&&c.aheadO!==hz.o&&c.dAO<hz.d;c.hzSeen={id:hz.id,t:R.t,rt:reactTime(c)*(blocked?1.35:1)}}
   if(R.t-c.hzSeen.t<c.hzSeen.rt)return{late:true};// ainda não viu
-  const ttc=hz.d/Math.max(1,(c.v||0)-hz.v);const need=(hz.small?CARW*.5+.9:CARW+.5);let best=null,bc=1e9;
-  for(let y=-(YMAX+2.5);y<=YMAX+2.5;y+=.5){if(Math.abs(y-hz.y)<need)continue;if(Math.abs(y-(c.y||0))>6.2*ttc*.85)continue;
-    let blocked=false;for(const o of c.alongs||[]){if(Math.abs((o.y||0)-y)<CARW+.2){blocked=true;break}}if(blocked)continue;
-    const cost=Math.abs(y-(c.y||0))+(Math.abs(y)>YMAX?2.5:0);if(cost<bc){bc=cost;best=y}}
+  const ttc=hz.d/Math.max(1,(c.v||0)-hz.v);let best=null,bc=1e9;
+  for(let y=-(YMAX+2.5);y<=YMAX+2.5;y+=.5){if(Math.abs(y-(c.y||0))>6.2*ttc*.85)continue;let bad=false,cost=Math.abs(y-(c.y||0))+(Math.abs(y)>YMAX?2.5:0);
+    for(const h of hs){const need=h.small?CARW*.5+.9:CARW+.5;const near=Math.min(Math.abs(y-h.y),Math.abs(y-h.y0??h.y));if(near<need){if(h.small)cost+=3;else{bad=true;break}}}if(bad)continue;
+    for(const o of c.alongs||[]){if(Math.abs((o.y||0)-y)<CARW+.2){bad=true;break}}if(bad)continue;
+    if(cost<bc){bc=cost;best=y}}
+  const capCar=cars.length?Math.sqrt(Math.max(0,2*42*(cars[0].d-CARL-.5)))+cars[0].v*.6:null;
   if(best!=null)return{yT:best,cap:ttc<.9&&!hz.small?Math.max(hz.v+8,(c.v||0)*.9):null};
-  return{cap:hz.small?null:Math.sqrt(Math.max(0,2*42*(hz.d-CARL-.5)))+hz.v*.6}}
+  return{cap:capCar}}
 // ---------- contato físico entre carros (rodado a cada passo, depois do movimento)
+// depois de um choque, a escapada continua com a velocidade e a direção resultantes
+function exSync(c){const ex=c.ex;if(!ex||ex.V==null||ex.ph!=="slide")return;const v=Math.max(0,c.v||0),vy=c.vy||0;ex.V=Math.hypot(v,vy);ex.phi=clamp(Math.atan2(vy,Math.max(.1,v)),-1.45,1.45);ex.vyI=ex.V*Math.sin(ex.phi);ex.vy=ex.vyI}
 function physContacts(){const P=R.phys;if(!P||P.length<2)return;const L=R.geo.len;R.cpair=R.cpair||{};
   for(const c of P)c.fsN=fr(c.prog)*L;
   const n=P.length;for(let a=0;a<n;a++){const c=P[a];if(!running(c)||c.pit)continue;
@@ -91,11 +103,11 @@ function physContacts(){const P=R.phys;if(!P||P.length<2)return;const L=R.geo.le
       if(ov/CARL<oy/CARW){// batida de frente/traseira
         const close=Math.max(0,(rear.v||0)-(front.v||0));rear.prog-=ov*.75/L;front.prog+=ov*.25/L;rear.fsN-=ov*.75;
         if(close>0){const va=((rear.v||0)+(front.v||0))/2;rear.v=Math.max(0,va-close*.12);front.v=va+close*.12}
-        if(!was||close>2)contactEvent(rear,front,"long",close,{off:(front.y||0)-(rear.y||0),ds:dsa,pre})}
+        exSync(rear);exSync(front);if(!was||close>2)contactEvent(rear,front,"long",close,{off:(front.y||0)-(rear.y||0),ds:dsa,pre})}
       else{// lado a lado
         const s=Math.sign(dy)||1;const push=oy/2+.02;if(!c.ex||!o.ex){c.y=(c.y||0)-s*push;o.y=(o.y||0)+s*push}
         const close=Math.max(0,((c.vy||0)-(o.vy||0))*s);if(close>0){const avg=((c.vy||0)+(o.vy||0))/2;c.vy=avg-s*close*.3;o.vy=avg+s*close*.3}
-        const dv=Math.abs((c.v||0)-(o.v||0));if(!was||close>1.5)contactEvent(rear,front,"lat",close+dv*.08,{ds:dsa,side:s,dy,pre,mover:((c.vy||0)*s>(-(o.vy||0)*s))?c:o})}}}}
+        exSync(c);exSync(o);const dv=Math.abs((c.v||0)-(o.v||0));const slowBoth=(c.v||0)<8&&(o.v||0)<8;if(!was||(close>1.5&&!slowBoth)||close>4)contactEvent(rear,front,"lat",close+dv*.08,{ds:dsa,side:s,dy,pre,mover:((c.vy||0)*s>(-(o.vy||0)*s))?c:o})}}}}
 // ---------- dano por peça a partir do impacto
 function contactEvent(rear,front,mode,E,g){R.nTouch=(R.nTouch||0)+1;if(typeof sndHitAt==="function")sndHitAt(front,clamp(E/3,.05,.8));dmgInit(rear);dmgInit(front);const f=fr(front.prog),out=[];const add=(car,t)=>out.push([car,t]);
   if(E<.35&&mode==="lat"){if(!rear._rub||R.t-rear._rub>4){rear._rub=R.t;R.fxq.push({type:"sparks",f,lat:((rear.y||0)+(front.y||0))/2,t0:R.t})}return}

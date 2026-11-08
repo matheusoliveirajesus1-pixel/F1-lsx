@@ -67,7 +67,7 @@ function carWorld(c){// onde o carro está no mundo
   // posição lateral vem da simulação (cada piloto escolhe sua linha); o carro aponta para onde está indo
   let lat=(c.y!=null?c.y*WS:lineAt(c.prog)),ang=Math.atan2(c.vy||0,Math.max(6,c.v||0));
   ang+=c.yaw||0;
-  if(c.vis&&!c.ex){const k=c.vis.t/c.vis.dur;if(c.vis.type==="spin"){ang+=c.vis.dir*Math.min(1,k*1.3)*Math.PI*2.2;lat+=c.vis.dir*5*WS*Math.sin(Math.min(1,k)*Math.PI)}else if(c.vis.type==="off")lat+=c.vis.dir*14*WS*Math.sin(Math.min(1,k)*Math.PI);else if(c.vis.type==="wide")lat+=c.vis.dir*4.5*WS*Math.sin(Math.min(1,k)*Math.PI)}
+  if(c.vis&&!c.ex){const k=c.vis.t/c.vis.dur;if(c.vis.type==="spin"){ang+=c.vis.dir*Math.min(1,k*1.3)*Math.PI*2.2;lat+=c.vis.dir*5*WS*Math.sin(Math.min(1,k)*Math.PI)}else if(c.vis.type==="slide"){ang+=c.vis.dir*.42*Math.sin(Math.min(1,k)*Math.PI*3)*(1-k)}else if(c.vis.type==="off")lat+=c.vis.dir*14*WS*Math.sin(Math.min(1,k)*Math.PI);else if(c.vis.type==="wide")lat+=c.vis.dir*4.5*WS*Math.sin(Math.min(1,k)*Math.PI)}
   const p=trackPos(c.prog,lat);p.h+=ang;return p}
 function scWorld(){if(R.scP==null)return null;const PL=R.pitLane;const f=fr(R.scP);
   if(R.sc&&R.sc.ending){const s=((f-PL.fe)+1)%1*R.geo.len;if(s<PL.D)return pitPos(s/PL.D)}

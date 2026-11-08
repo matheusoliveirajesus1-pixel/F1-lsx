@@ -1,3 +1,6 @@
+// ===================== CONFIGURAÇÃO DO SERVIDOR ONLINE =====================
+// Só é usada quando o jogo roda no seu próprio site (fora do Claude). Dentro do Claude, a sala online já funciona sozinha.
+// Servidor: projeto Firebase "f1-multiplayer-12c0a" (Realtime Database).
 window.PADDOCK_ONLINE={firebase:{
   apiKey:"AIzaSyBmExecUj17sSjgTGVJjpYXl_cPlju4Nsw",
   authDomain:"f1-multiplayer-12c0a.firebaseapp.com",

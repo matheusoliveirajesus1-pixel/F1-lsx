@@ -149,6 +149,19 @@ function buildCircuit(id){const C=CIR[id];let P=[],kap=[],first=0,x=0,y=0;
     
     if(typeof REALTRK!=="undefined"&&REALTRK[id])for(let i=0;i<N;i++)line[i]=e[i];
     const KM=+(typeof process!=="undefined"&&process.env&&process.env.KMAX||12);for(let i=0;i<N;i++){let sm=0,w=0;for(let j=-6;j<=6;j++){const ww=Math.exp(-j*j/14);sm+=raw[(i+j+N)%N]*ww;w+=ww}kl[i]=Math.max(-1/KM,Math.min(1/KM,sm/w))}}
+  // curvatura da linha que o carro realmente percorre, na mesma curva que o desenho e a dinâmica usam (render.js trackFrame:
+  // traçado suavizado ¼-½-¼ e Catmull-Rom, normal pela derivada), com a line interpolada como a pilotagem faz (4 amostras por trecho).
+  // O perfil de velocidade é a referência de velocidade segura: não pode supor uma curva mais aberta do que a linha seguida.
+  // (o tempo de volta continua calibrado por calibrate())
+  {const S=4,ps=P.map((_,i)=>{const a=P[(i-1+N)%N],b=P[i],c=P[(i+1)%N];return{x:(a.x+2*b.x+c.x)/4,y:(a.y+2*b.y+c.y)/4}});
+    const qx=new Float32Array(N*S),qy=new Float32Array(N*S);
+    for(let i=0;i<N;i++){const j=(i+1)%N,a=ps[i],b=ps[j],pa=ps[(i-1+N)%N],pb=ps[(j+1)%N];const max=(b.x-pa.x)/2,may=(b.y-pa.y)/2,mbx=(pb.x-a.x)/2,mby=(pb.y-a.y)/2;
+      for(let q=0;q<S;q++){const k=q/S,k2=k*k,k3=k2*k;const h00=2*k3-3*k2+1,h10=k3-2*k2+k,h01=-2*k3+3*k2,h11=k3-k2,d00=6*k2-6*k,d10=3*k2-4*k+1,d01=-6*k2+6*k,d11=3*k2-2*k;
+        const x=h00*a.x+h10*max+h01*b.x+h11*mbx,y=h00*a.y+h10*may+h01*b.y+h11*mby,dx=d00*a.x+d10*max+d01*b.x+d11*mbx,dy=d00*a.y+d10*may+d01*b.y+d11*mby,dl=Math.hypot(dx,dy)||1;
+        const yl=line[i]+(line[j]-line[i])*k;qx[i*S+q]=x-dy/dl*yl;qy[i*S+q]=y+dx/dl*yl}}
+    const NS=N*S,kr=new Float32Array(NS);for(let n=0;n<NS;n++){const a=(n-1+NS)%NS,b=(n+1)%NS;const h1=Math.atan2(qy[n]-qy[a],qx[n]-qx[a]),h2=Math.atan2(qy[b]-qy[n],qx[b]-qx[n]);let dh=h2-h1;while(dh>Math.PI)dh-=2*Math.PI;while(dh<-Math.PI)dh+=2*Math.PI;kr[n]=dh/((Math.hypot(qx[n]-qx[a],qy[n]-qy[a])+Math.hypot(qx[b]-qx[n],qy[b]-qy[n]))/2||1)}
+    const KD=6,SG=+(typeof process!=="undefined"&&process.env&&process.env.KDS||6),W2=Math.ceil(SG*2.5);const ksm=new Float32Array(NS);for(let n=0;n<NS;n++){let sm=0,w=0;for(let j=-W2;j<=W2;j++){const ww=Math.exp(-j*j/(2*SG*SG));sm+=kr[(n+j+NS)%NS]*ww;w+=ww}ksm[n]=sm/w}
+    for(let i=0;i<N;i++){let best=0;for(let q=0;q<S;q++){const v=ksm[i*S+q];if(Math.abs(v)>Math.abs(best))best=v}const kd=Math.max(-1/KD,Math.min(1/KD,best));if(Math.abs(kd)>Math.abs(kl[i]))kl[i]=kd}}
   // curvas nomeadas
   const corners=[];for(let i=0;i<N;i++){const k=absk[i];if(k<1/260)continue;let peak=true;for(let j=-25;j<=25;j++){if(!j)continue;const q=absk[(i+j+N)%N];if(q>k||(q===k&&j<0)){peak=false;break}}if(peak&&!(corners.length&&i-corners[corners.length-1].i<20))corners.push({i,dir:Math.sign(ks[i]),r:1/k})}
   corners.forEach((c,j)=>c.n=C.names[j]||`Curva ${j+1}`);

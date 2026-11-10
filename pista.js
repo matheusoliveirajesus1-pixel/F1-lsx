@@ -30,10 +30,10 @@ function pistaDrive(c,ph,i,dt){let m=1;const g=R.geo,ideal=g.line[i]*(c.lineK||1
       const tk=T.dry?1:c.tyre.c==="I"?.3:.05;const sp=Math.pow(clamp((c.v-50)/32,0,1),1.5);const sk2=Math.exp((75-(c.d.a.wet||75))/20)*expRisk(c);
       if(rnd()<.12*dep*tk*sp*sk2*(1+c.tyre.wear))aquaplane(c,dep)}}
   return m}
-function aquaplane(c,dep){if(c.vis||!running(c))return;const f=fr(c.prog);R.nAqua=(R.nAqua||0)+1;R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});
+function aquaplane(c,dep){if(c.ex||!running(c))return;const f=fr(c.prog);R.nAqua=(R.nAqua||0)+1;R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});
   const r=rnd(),sv=saveChance(c);const cn=nextCorner(c),nm=cn?`antes da ${cn.n}`:"na reta";
-  if(r<.62+sv*.5){bubble(c,"Aquaplanou!","bad",2.6);c.lose+=rr(.5,1.4);c.vis={type:"wide",t:0,dur:1.2,dir:rnd()<.5?1:-1};stEv(c,"err","minor");if(c.hum)radio(c,`Aquaplanei ${nm}! O carro flutuou na poça.`,{me:1,k:"aqua"})}
-  else if(r<.95||dep<.6){bubble(c,"Rodou na poça!","bad",3.2);const d=rnd()<.5?1:-1;exStart(c,"spin",{dir:d});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:d*4});c.tyre.flat=1;recalc(c);addYellow(f,R.t+18);stEv(c,"err","spin");
+  if(r<.62+sv*.5){bubble(c,"Aquaplanou!","bad",2.6);dynError(c,"gripLoss",{axle:"f",k:.25,t:.7});dynError(c,"gripLoss",{axle:"r",k:.35,t:.6});/* a poça tira a aderência; o resto é física */stEv(c,"err","minor");if(c.hum)radio(c,`Aquaplanei ${nm}! O carro flutuou na poça.`,{me:1,k:"aqua"})}
+  else if(r<.95||dep<.6){bubble(c,"Rodou na poça!","bad",3.2);const d=rnd()<.5?1:-1;exStart(c,"spin",{dir:d});stEv(c,"err","spin");
     rcMsg(`${c.code} aquaplanou e rodou ${nm}!`,"warn","aqua");if(c.hum)radio(c,`Aquaplanagem ${nm}! Rodei.`,{pause:true,k:"aqua"});crowdEv(f,.8);hlight("spin",[c],`${c.code} aquaplana`,c.isP?3:2)}
   else{R.errLog&&R.errLog.crash++;stEv(c,"err","crash");rcMsg(`${c.code} aquaplanou e perdeu o carro ${nm}!`,"bad","aqua");exStart(c,"crash",{dir:sideAt(f),fast:.7});crowdEv(f,1)}}
 

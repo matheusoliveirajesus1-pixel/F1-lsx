@@ -17,7 +17,7 @@ function drawOnboard(ctx,cw,ch,c){if(!c){drawScene(ctx,cw,ch);return}const p=c._
   const n=10,lit=Math.round(clamp((g.rpm-7000)/4800,0,1)*n);for(let i=0;i<n;i++){ctx.fillStyle=i<lit?(i<4?"#21C55D":i<7?"#FF4D4D":"#3A86FF"):"#222";ctx.fillRect(x+W*.3+i*W*.04,y+H*.05,W*.03,H*.07)}
   ctx.fillStyle="#3A86FF";ctx.fillRect(x+W*.3,y+H*.8,W*.4*clamp((c.batt||0)/100,0,1),H*.06);ctx.restore()}
 // ---------- gráficos de previsão (um a cada ~45 s, quando não há aviso mais importante)
-function tvGraphics(){if(!R.started||R.over||R.sc||R.red||TVX.ban||TVX.banQ.length)return;if(R.t<(TVX.gfxNext||40))return;TVX.gfxNext=R.t+rr(40,55);const run=R.order.filter(c=>running(c)&&!c.pit);if(run.length<4)return;
+function tvGraphics(){if(!R.started||R.over||R.sc||R.red||TVX.ban||TVX.banQ.length)return;if(R.t<(TVX.gfxNext||40))return;TVX.gfxNext=R.t+vrr(40,55);const run=R.order.filter(c=>running(c)&&!c.pit);if(run.length<4)return;
   const kind=(TVX.gfxK=((TVX.gfxK||0)+1)%4);
   if(kind===0){let best=null;for(let i=1;i<Math.min(12,run.length);i++){const A=run[i-1],B=run[i];const gap=(A.prog-B.prog)*B.L;const d=(A.L||0)-(B.L||0);if(gap>.7&&gap<4&&d>.12){const laps=Math.ceil(gap/d);if(!best||laps<best.laps)best={A,B,laps,gap}}}
     if(best){tvBan("PREVISÃO DE ALCANCE",`${best.B.code} chega em ${best.A.code} em ~${best.laps} volta${best.laps>1?"s":""} (${best.gap.toFixed(1).replace(".",",")} s de diferença)`,best.B.t.c,5,1);return}}

@@ -63,7 +63,7 @@ function sndUpdate(c,opts){if(!SND.on||!SND.eng||!c)return;const e=SND.eng,ctx=S
   e.tb.g.gain.setTargetAtTime(rpm?(c.acc<-4?.06:.02)*D:0,t,.08);e.tb.f.frequency.setTargetAtTime(3800+rpm*.25,t,.1);
   const ersOn=moving&&c.acc>.3&&(c.batt||0)>3;e.ers.frequency.setTargetAtTime(300+v*14,t,.05);e.ersg.gain.setTargetAtTime(ersOn?(c.ers==="attack"||c.ovMode?.035:.016)*D:0,t,.08);
   e.wn.g.gain.setTargetAtTime(Math.min(.26,v*v/26000)*D,t,.1);
-  const kap=Math.abs(R.geo.k[Math.floor(fr(c.prog)*R.geo.N)%R.geo.N]);const lat=v*v*kap/9.81;const lock=c.acc<-30||!!c.ex||(c.vis&&(c.vis.type==="spin"||c.vis.type==="off"));
+  const kap=Math.abs(R.geo.k[Math.floor(fr(c.prog)*R.geo.N)%R.geo.N]);const lat=v*v*kap/9.81;const lock=c.acc<-30||!!c.ex||(c.dyn&&c.dyn.lock>.2)||(c.dyn&&(c.dyn.spin||Math.abs(c.dyn.beta)>.2));
   e.sq.g.gain.setTargetAtTime(lock?.2:(lat>3.6?Math.min(.08,(lat-3.6)*.04):0)*D,t,.04);
   const surf=moving&&typeof surfAt==="function"?surfAt(c):"pista";
   e.gr.g.gain.setTargetAtTime(surf==="brita"?.3*D:surf==="grama"?.12*D:0,t,.05);e.gr.f.frequency.setTargetAtTime(surf==="brita"?520:300,t,.1);

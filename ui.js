@@ -302,14 +302,14 @@ const HL_LABEL={crash:"Acidente",contact:"Toque",spin:"Rodada",lead:"Novo líder
 function setShot(c,kind,dur,label,fixed){if(DIR.subj!==c||DIR.kind!==kind||fixed)CAM.cut=1;DIR.subj=c;DIR.kind=kind;DIR.until=R.t+dur;DIR.label=label;DIR.fixed=fixed||null;TV.cam=null}
 function closestBattle(){if(R.sc||R.red)return null;let best=null,bg=.7;for(let i=1;i<R.order.length;i++){const A=R.order[i-1],B=R.order[i];if(!running(A)||!running(B)||A.pit||B.pit)continue;const g=(A.prog-B.prog)*B.L;const w=g-(i<=6?.15:0);if(w<bg){bg=w;best={A,B}}}return best}
 function directorPick(){const me=R.cars.find(c=>c.isP);const h=R.hl[R.hl.length-1];
-  if(R.form&&R.form.phase!=="lights"&&!R.started){if(!DIR.subj||R.t>DIR.until){const c=pick(R.cars.filter(running));setShot(c,rnd()<.5?"tv":"chase",7,"Volta de apresentação · "+c.code)}return}
+  if(R.form&&R.form.phase!=="lights"&&!R.started){if(!DIR.subj||R.t>DIR.until){const c=vpick(R.cars.filter(running));setShot(c,vrnd()<.5?"tv":"chase",7,"Volta de apresentação · "+c.code)}return}
   if(h&&h.t>DIR.ev&&R.t-h.t<2.5&&h.imp>=2&&h.type!=="start"){DIR.ev=h.t;const c=R.cars.find(x=>x.id===h.cars[0]);
     if(c){const lab=`${HL_LABEL[h.type]||"Replay"} · ${h.cars.map(id=>R.cars.find(x=>x.id===id).code).join(" × ")}`;
       if(!running(c)&&c.status!=="fin"){const w=R.wrecks.find(w=>w.c===c);if(w){const p=trackPos(w.f,(w._lw??w.lat)*WS);setShot(c,"fixed",8,lab,p);return}}
       else{setShot(c,"tv",8,lab);return}}}
   const cur=DIR.subj;if(R.t<DIR.until&&cur&&(running(cur)||DIR.kind==="fixed"))return;
-  const r=rnd();const b=closestBattle();
-  if(me&&running(me)&&(r<.5||!b)){setShot(me,rnd()<.45?"chase":"tv",9,`Você · P${pos(me)} · ${me.code}`);return}
+  const r=vrnd();const b=closestBattle();
+  if(me&&running(me)&&(r<.5||!b)){setShot(me,vrnd()<.45?"chase":"tv",9,`Você · P${pos(me)} · ${me.code}`);return}
   if(b&&r<.85){setShot(b.B,"tv",8,`Briga pelo ${pos(b.A)}º · ${b.A.code} × ${b.B.code}`);return}
   const l=R.order.find(c=>running(c)&&!c.pit);if(l)setShot(l,"tv",7,`Líder · ${l.code}`)}
 function cameraFrame(dt,cw,ch){const me=R.cars.find(c=>c.isP);let foc=me,kind=UI.cam;if(kind==="onboard"&&me){const p=me._w||carWorld(me);const[tx,ty]=iso(p.x,p.y);camTo(dt,tx,ty,Math.min(cw,ch*1.3)/(WS*24)*CAM.userZ,.04,.25);CAM.sx=0;CAM.sy=0;return me}if(kind==="auto"&&typeof smartPick==="function")return smartPick(dt,cw,ch);
@@ -322,8 +322,7 @@ let VIGN=null;
 function drawVignette(ctx,cw,ch){if(!VIGN||VIGN.w!==cw||VIGN.h!==ch){const g=ctx.createRadialGradient(cw/2,ch/2,Math.min(cw,ch)*.38,cw/2,ch/2,Math.max(cw,ch)*.72);g.addColorStop(0,"rgba(0,0,0,0)");g.addColorStop(1,"rgba(0,0,0,.38)");VIGN={w:cw,h:ch,g}}ctx.fillStyle=VIGN.g;ctx.fillRect(0,0,cw,ch)}
 function raceLoop(now){if(typeof MUS!=="undefined"&&MUS.on)sndMusic(false);if(G.phase!=="weekend"||W.step!=="race"||!$("#rc"))return;const rdt=Math.min(.1,(now-UI.last)/1000);UI.last=now;FDT=Math.max(.001,rdt);if(typeof perfFrame==="function")perfFrame(now);
   if(R.mpGuest){mpGuestFrame(now);traceRec();if(R.started&&typeof aiSense==="function")aiSense();rbRecord()}
-  else if(!UI.paused&&!R.over&&!R.redChoose){let sim=rdt*UI.speed;while(sim>1e-6){const d=Math.min(.05,sim);step(d);sim-=d;traceRec();if(R.over)break}}
-  if(typeof recalcFlush==="function")recalcFlush();
+  else if(!UI.paused&&!R.over&&!R.redChoose)simAdvance(rdt*UI.speed,Math.ceil(UI.speed*3)+4,traceRec);
   if(R.mpHost)mpHostTick(now);
   if(R.redChoose&&!$("#ask").dataset.red)showRedChoice();
   const s=typeof stageVisible!=="function"||stageVisible()?fitRaceCanvas():null;let foc=null;if(s){const{ctx,cw,ch}=s;let drew=false;if(UI.cam==="auto"&&typeof SMART!=="undefined"&&SMART.mode==="replay")drew=smartDrawReplay(ctx,cw,ch,rdt);

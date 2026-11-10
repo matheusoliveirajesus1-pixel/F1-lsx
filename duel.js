@@ -40,18 +40,18 @@ function apexRight(c,i){if(!c.alongs||!c.alongs.length||R.sc||R.red)return;const
       R.nOutApex=(R.nOutApex||0)+1;if(c.att&&c.att.commit)R.nOutAtk=(R.nOutAtk||0)+1;if(-ds>-CARL&&-ds<=1.5&&!c.pitCall&&rnd()<clamp(.14+(aggrEff(c,o)-.5)*.3+(1.5-(c.d.a.kerb||75)/100)*.15-(((c.d.pers||{}).disc??65)-60)/400,.04,.55))c.wideExit={o:o.id,at:R.t+rr(.4,1.1)}}
     break}}
 // espremido contra a borda na saída: quem tinha direito é jogado para fora; quem não tinha tira o pé ou passa por fora da pista
-function squeezeOut(c,o,ph){if(!o||c.vis||(c.forcedCd||0)>R.t||R.sc||R.red||c.pitCall||o.pitCall||!R.started)return;if(ph===0&&!((c.exitT||0)>R.t))return;
+function squeezeOut(c,o,ph){if(!o||c.ex||(c.dyn&&dynCmd(c,"pushOut"))||(c.forcedCd||0)>R.t||R.sc||R.red||c.pitCall||o.pitCall||!R.started)return;if(ph===0&&!((c.exitT||0)>R.t))return;
   const g=R.geo,N=g.N,i=Math.floor(fr(c.prog)*N)%N,ins=g.ai.insN[i],L=g.len;let ds=c.fs-o.fs;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;// ds>0: c à frente
   if(Math.abs(ds)>CARL*1.3||Math.abs((c.y||0)-(o.y||0))<1.2)return;if(Math.sign((c.y||0)-(o.y||0))!==-ins)return;// só quem está por fora da curva é jogado para fora
   const ar={right:ds>.5,ds};c.forcedCd=R.t+6;const f=fr(c.prog),out=Math.sign(c.y||1)||1;const cn=cornerAt(g,i),nm=cn?cn.n:"curva";
-  if(ar.right){c.vis={type:"wide",t:0,dur:1.5,dir:out};c.lose+=rr(.3,.9);c.offForced=R.t;bubble(c,"Jogado para fora!","bad",3);R.fxq.push({type:"dust",f,lat:out*8,t0:R.t});
+  if(ar.right){dynError(c,"pushOut",{dir:out,t:1.5});c.offForced=R.t;bubble(c,"Jogado para fora!","bad",3);R.fxq.push({type:"dust",f,lat:out*8,t0:R.t});
     feudAdd(o.d.id,c.d.id,15,"jogou para fora");stEv(c,"hit");crowdEv(f,.6);R.nForced=(R.nForced||0)+1;
     rcMsg(`${o.code} não deixou espaço e jogou ${c.code} para fora na ${nm}. Investigação.`,"warn","direito");
     if(c.hum)radio(c,`${o.code} me jogou para fora! Eu estava na frente no ápice.`,{k:"direito"});if(o.hum)radio(o,`Os comissários estão olhando o lance com ${c.code} na ${nm}.`,{k:"direito"});
     if(c.isP||o.isP||pos(o)<=8){narr(`${o.code} espreme ${c.code} contra a borda na ${nm}!`,2);hlight("contact",[o,c],`${o.code} joga ${c.code} para fora`,2)}
     stewAdd({kind:"forced",cul:o.id,vic:c.id,clear:clamp(ar.ds/2,0,1),nm})}
   else if(rnd()<.2+aggrEff(c,o)*.45){// segue acelerando com as quatro rodas fora da pista
-    c.vis={type:"wide",t:0,dur:1.3,dir:out};c.offAt=R.t;c.offRef={o:o.id,t:R.t};c.lose+=rr(0,.12);R.nKeepOut=(R.nKeepOut||0)+1;if(c.hum)radio(c,`Não tinha espaço na ${nm}, passei por fora da pista.`,{me:1,k:"vantagem"})}}
+    dynError(c,"pushOut",{dir:out,t:1.3});c.offAt=R.t;c.offRef={o:o.id,t:R.t};R.nKeepOut=(R.nKeepOut||0)+1;if(c.hum)radio(c,`Não tinha espaço na ${nm}, passei por fora da pista.`,{me:1,k:"vantagem"})}}
 
 // ---------- vantagem fora da pista e devolução de posição
 function advGain(B,A,why){if(B.gb||R.sc||R.red||!running(B)||!running(A))return;why=why||"fora";const msg=why==="amarela"?"ultrapassou sob bandeira amarela":"ganhou a posição fora da pista";
@@ -70,8 +70,8 @@ function gbDecide(B,A,k){const g=B.gb;if(!g)return;g.mode=k==="gb_keep"?"keep":k
   if(g.mode==="now")B.yieldTo=A.id;
   if(B.hum)radio(B,g.mode==="line"?`Copiado: devolvo a posição perto da linha para pegar o modo de ultrapassagem.`:`Copiado, devolvendo a posição para ${A.code}.`,{me:1,k:"vantagem"})}
 // depois de passar por fora da pista: se terminou na frente de quem disputava, ganhou vantagem
-function wideExitTick(c){const w=c.wideExit;if(!w||R.t<w.at)return;c.wideExit=null;if(c.vis||!running(c)||R.sc||R.red)return;const o=R.cars.find(x=>x.id===w.o);if(!o||!running(o))return;
-  const out=Math.sign(c.y||1)||1;c.vis={type:"wide",t:0,dur:1.3,dir:out};c.offAt=R.t;c.offRef={o:o.id,t:R.t};c.wideBoost=R.t+1.3;if(rnd()<.35)kerbHit(c,.7);R.nKeepOut=(R.nKeepOut||0)+1;R.fxq.push({type:"dust",f:fr(c.prog),lat:out*8,t0:R.t});
+function wideExitTick(c){const w=c.wideExit;if(!w||R.t<w.at)return;c.wideExit=null;if(c.ex||(c.dyn&&dynCmd(c,"pushOut"))||!running(c)||R.sc||R.red)return;const o=R.cars.find(x=>x.id===w.o);if(!o||!running(o))return;
+  const out=Math.sign(c.y||1)||1;dynError(c,"pushOut",{dir:out,t:1.3});c.offAt=R.t;c.offRef={o:o.id,t:R.t};c.wideBoost=R.t+1.3;if(rnd()<.35)kerbHit(c,.7);R.nKeepOut=(R.nKeepOut||0)+1;R.fxq.push({type:"dust",f:fr(c.prog),lat:out*8,t0:R.t});
   if(c.hum)radio(c,`Fui por fora do ${o.code} e passei das linhas brancas na saída.`,{me:1,k:"vantagem"})}
 function offTick(c){wideExitTick(c);const r=c.offRef;if(!r)return;const dt=R.t-r.t;if(dt<1.5)return;const o=R.cars.find(x=>x.id===r.o);
   if(!o||!running(o)||dt>6){c.offRef=null;return}if(c.prog>o.prog+(CARL+1)/R.geo.len&&!o.vis&&!o.ex&&!(o.lose>0)){c.offRef=null;advGain(c,o,"fora")}}

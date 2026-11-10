@@ -149,7 +149,7 @@ function mpSnap(){const L=R.geo.len;const ix=c=>c?c.idx:-1;MP.pubN=(MP.pubN||0)+
 
   const cars=R.cars.map(c=>{const f=(c.status==="run"?0:c.status==="fin"?1:c.status==="dnf"?2:3)|(c.pit?4:0)|(c.pit&&c.pit.phase==="stop"?8:0)|(c.dmg.wing>=.5?16:0)|(c.dmg.rwing>=.5?32:0)|(c.dmg.floor>.5?64:0)|(c.tyre.punct?128:0)|((c.acc||0)<-6?256:0)|(c.ovMode?512:0)|((c.smokeT||0)>R.t?1024:0)|(c.parked?2048:0)|(c.blue?4096:0)|((c.dmg.body||0)>.3?8192:0)|((c.tow||0)>.35?16384:0)|(c.dirty?32768:0);
     const a=[Math.round(c.prog*L*10),Math.round((c.y||0)*10),Math.round((c.v||0)*10),f,c.pit?Math.round((c.pit.s||0)*10):0,Math.max(0,MP_TY.indexOf(c.tyre.c))*1000+Math.round(c.tyre.wear*999)];
-    if(c.vis)a.push(Math.max(0,MP_VIS.indexOf(c.vis.type)),Math.round(c.vis.t*10),Math.round(c.vis.dur*10),c.vis.dir<0?-1:1);else a.push(0,0,0,0);a.push(Math.round((c.yaw||0)*100),(c.dmg.wingL>=.6?1:0)|(c.dmg.wingR>=.6?2:0)|((c.dmg.off>=0?c.dmg.off+1:0)<<2));return a});
+    a.push(0,0,0,0);a.push(Math.round((c.psi||0)*100),/* direção real da carroceria (dyn.js) */(c.dmg.wingL>=.6?1:0)|(c.dmg.wingR>=.6?2:0)|((c.dmg.off>=0?c.dmg.off+1:0)<<2));return a});
   const s={t:+R.t.toFixed(2),st:(R.started?1:0)|(R.form&&R.form.phase==="lights"?2:0)|(R.over?4:0)|(R.finishing?8:0),ls:R.lightsStart==null?-1:+R.lightsStart.toFixed(2),go:isFinite(R.go)?+R.go.toFixed(2):-1,
     ld:R.lead,w:+R.w.toFixed(3),rn:R.rain,o:R.order.map(ix),c:cars,sb:R.secBest.map(b=>b?[+b.t.toFixed(3),ix(R.cars.find(c=>c.id===b.id))]:0)};
   if(R.sc)s.sc=[R.sc.type==="sc"?1:2,R.sc.ending?1:0,R.scP!=null?Math.round(fr(R.scP)*1e5):-1];
@@ -165,7 +165,7 @@ function mpSnap(){const L=R.geo.len;const ix=c=>c?c.idx:-1;MP.pubN=(MP.pubN||0)+
 function mpPublish(){mpCollect();mpSet({s:mpSnap(),lg:MP.log.slice()})}
 // com a aba escondida o navegador quase para a animação: um relógio de reserva mantém a corrida andando para os outros
 function mpBgStart(){mpBgStop();MP.bg=setInterval(()=>{if(!document.hidden||!R||!R.mpHost||R.over||R.redChoose)return;const now=performance.now();let sim=Math.min(2,(now-UI.last)/1000);UI.last=now;
-  while(sim>1e-6){const d=Math.min(.05,sim);step(d);sim-=d;if(R.over)break}mpHostTick(now);if(R.over)mpFinish()},400)}
+  simAdvance(sim,60);mpHostTick(now);if(R.over)mpFinish()},400)}
 function mpBgStop(){if(MP.bg){clearInterval(MP.bg);MP.bg=0}}
 // ---------- convidado: recebe o estado, interpola e manda os comandos
 function mpGuestBegin(hp){const L=(hp.seats||[]).map(mpSeatObj).filter(Boolean);if(!L.length)return;const me=mpSelf();const myPeer=me&&me.peer;
@@ -199,9 +199,8 @@ function mpApplySnap(A,B,k,T,now){const L=R.geo.len,dt=Math.max(.001,FDT||.016);
     c.vy=(c.vy||0)*.7+.3*clamp((y-(c.y||0))/dt,-6,6);c.y=y;c.v=v;c.acc=f&256?-12:clamp((v-vp)/dt,-40,20);
     c.pit=f&4?{s:(ca[4]&&(+ca[3]&4)?lerp(4,10):(+cb[4]||0)/10),phase:f&8?"stop":"in"}:null;
     c.dmg.wing=f&16?1:0;c.dmg.rwing=f&32?1:0;if(!c.isP){c.dmg.floor=f&64?.6:0;c.dmg.body=f&8192?.5:0}c.tyre.punct=!!(f&128);c.ovMode=!!(f&512);c.smokeT=f&1024?R.t+1:0;c.parked=!!(f&2048);c.blue=!!(f&4096);c.tow=f&16384?.8:0;c.dirty=!!(f&32768);
-    if(cb.length>=12){c.yaw=lerp(10,100);const dw=+cb[11]||0;c.dmg.wingL=dw&1?1:0;c.dmg.wingR=dw&2?1:0;c.dmg.off=((dw>>2)&7)-1}
+    if(cb.length>=12){c.psi=lerp(10,100);c.yaw=0;const dw=+cb[11]||0;c.dmg.wingL=dw&1?1:0;c.dmg.wingR=dw&2?1:0;c.dmg.off=((dw>>2)&7)-1}
     const ty=+cb[5]||0;c.tyre.c=MP_TY[Math.floor(ty/1000)]||"M";c.tyre.wear=clamp((ty%1000)/999,0,1);
-    if(cb.length>=10&&MP_VIS[cb[6]]){const dur=Math.max(.1,cb[8]/10);c.vis={type:MP_VIS[cb[6]],dur,t:clamp(cb[7]/10-(B.t-T),0,dur),dir:cb[9]<0?-1:1}}else c.vis=null;
     const hd=Array.isArray(B.h)&&B.h.find(x=>Array.isArray(x)&&x[0]===i);if(hd)mpApplyDetail(c,hd.slice(1))});
   const me=R.cars.find(c=>c.isP);if(!me)return;
   if(!wasStarted&&R.started){MP.outAt=now;if(!R.spect&&!me.tapped)me.hold=true}

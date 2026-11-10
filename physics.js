@@ -1,6 +1,6 @@
 // ===================== FÍSICA DO CARRO (regulamento 2026, simplificado) =====================
 // Modelo de ponto de massa: velocidade máxima em curva pela aderência + downforce, aceleração pela potência e arrasto, frenagem pela aderência.
-const PH={rho:1.2,g:9.81,mass:770,ice:400e3,ers:350e3,cdaCorner:1.42,cdaStraight:.88,cla:4.2,muBrake:1.04,ratioRpm:11800,gears:[96,132,168,203,238,272,306,346]};
+const PH={decMax:60,rho:1.2,g:9.81,mass:770,ice:400e3,ers:350e3,cdaCorner:1.42,cdaStraight:.88,cla:4.2,muBrake:1.04,ratioRpm:11800,gears:[96,132,168,203,238,272,306,346]};
 const TYRES={
  S:{n:"Macio",c:"#E8333C",mu:1.70,wear:1.55,opt:105,dry:true},
  M:{n:"Médio",c:"#F2C230",mu:1.655,wear:1,opt:100,dry:true},
@@ -29,7 +29,7 @@ function speedProfile(geo,car,mu,ersMJ,gk,out){ersMJ*=PH.ersK||1;const N=geo.N,d
       const fp=Pw/vi,ft=amax*m*comb;const pl=fp<ft;const a=(Math.min(fp,ft)-.5*rho*cda*vi*vi)/m;
       let vn=Math.sqrt(Math.max(1,vi*vi+2*a*ds));if(vn>vmax[j])vn=vmax[j];if(it===1)v[j]=vn;else v[j]=vn;if(it===1&&pl)tpl+=ds/vi}
     for(let it=0;it<2;it++)for(let i=N-1;i>=0;i--){const j=(i+1)%N;const vj=v[j];const cda=(zone[i]?PH.cdaStraight:PH.cdaCorner)*car.cd;
-      const ab=PH.muBrake*(car.bk||1)*muE*(g+kd*vj*vj/m)+.5*rho*cda*vj*vj/m;const vb=Math.sqrt(vj*vj+2*ab*ds);if(v[i]>vb)v[i]=vb}
+      const ab=Math.min(PH.decMax,PH.muBrake*(car.bk||1)*muE*(g+kd*vj*vj/m)+.5*rho*cda*vj*vj/m);/* o piloto não freia acima de ~6 g (mesmo limite do núcleo de dinâmica) */const vb=Math.sqrt(vj*vj+2*ab*ds);if(v[i]>vb)v[i]=vb}
     return tpl};
   const iceP=PH.ice*car.pw;let tpl=pass(iceP);
   const need=PH.ers/1e6*tpl;const d=Math.min(1,ersMJ/Math.max(.01,need));

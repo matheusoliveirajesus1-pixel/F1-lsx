@@ -2,20 +2,20 @@
 // A equipe olha o radar e faz uma previsão. Quanto mais longe a chuva, maior o erro; num dia seco ela às vezes vê
 // nuvens que não chegam. Quem fez simulação de corrida no treino livre tem previsão mais precisa.
 const WXR={fc:null,next:0,said:{},cells:null,ang:0,falseAt:null,draw:0};
-function wxReset(){WXR.fc=null;WXR.next=0;WXR.said={};WXR.cells=null;WXR.ang=rr(0,6.28);WXR.falseAt=rnd()<.28?rr(.25,.75):null;WXR.draw=0}
+function wxReset(){WXR.fc=null;WXR.next=0;WXR.said={};WXR.cells=null;WXR.ang=vrr(0,6.28);WXR.falseAt=vrnd()<.28?vrr(.25,.75):null;WXR.draw=0}
 // próximo trecho de chuva do plano (em voltas)
 function wxNextRain(){const lap=R.lead+fr(R.order[0]?R.order[0].prog:0);const pl=(W&&W.weather)||[];let best=null;for(const p of pl){if(p.e<=lap)continue;if(p.s<=lap)return{now:true,s:p.s,e:p.e,int:p.int,eta:0};if(!best||p.s<best.s)best=p}
   return best?{now:false,s:best.s,e:best.e,int:best.int,eta:best.s-lap}:null}
 function wxForecast(){if(R.t<WXR.next&&WXR.fc)return WXR.fc;WXR.next=R.t+6;const nr=wxNextRain();const prec=W&&W.knowWear?.5:1;const left=R.L-R.lead;let fc;
-  if(nr&&nr.now)fc={kind:"now",txt:`Chovendo agora. ${nr.e-R.lead<=left?`A equipe acha que para em ~${Math.max(1,Math.round(nr.e-R.lead+gauss()*.6*prec))} volta(s).`:"Deve seguir até o fim."}`,p:.9,eta:0,int:nr.int};
-  else if(nr&&nr.eta<12){const err=(.6+nr.eta*.28)*prec;const eta=Math.max(1,Math.round(nr.eta+gauss()*err));const p=clamp(.95-nr.eta*.06*prec+gauss()*.05,.35,.95);fc={kind:"rain",eta,p,int:nr.int,txt:`Chuva ${nr.int>1?"forte":"fraca"} chegando em ~${eta} volta${eta>1?"s":""} (${Math.round(p*100)}% de chance).`}}
-  else if(WXR.falseAt!=null&&R.lead/R.L>WXR.falseAt-.12&&R.lead/R.L<WXR.falseAt+.08){const p=clamp(.3+gauss()*.06,.18,.45);fc={kind:"maybe",eta:Math.max(2,Math.round(rr(2,6))),p,int:1,txt:`Nuvens no radar: ${Math.round(p*100)}% de chance de garoa nas próximas voltas.`,fake:true}}
+  if(nr&&nr.now)fc={kind:"now",txt:`Chovendo agora. ${nr.e-R.lead<=left?`A equipe acha que para em ~${Math.max(1,Math.round(nr.e-R.lead+vgauss()*.6*prec))} volta(s).`:"Deve seguir até o fim."}`,p:.9,eta:0,int:nr.int};
+  else if(nr&&nr.eta<12){const err=(.6+nr.eta*.28)*prec;const eta=Math.max(1,Math.round(nr.eta+vgauss()*err));const p=clamp(.95-nr.eta*.06*prec+vgauss()*.05,.35,.95);fc={kind:"rain",eta,p,int:nr.int,txt:`Chuva ${nr.int>1?"forte":"fraca"} chegando em ~${eta} volta${eta>1?"s":""} (${Math.round(p*100)}% de chance).`}}
+  else if(WXR.falseAt!=null&&R.lead/R.L>WXR.falseAt-.12&&R.lead/R.L<WXR.falseAt+.08){const p=clamp(.3+vgauss()*.06,.18,.45);fc={kind:"maybe",eta:Math.max(2,Math.round(vrr(2,6))),p,int:1,txt:`Nuvens no radar: ${Math.round(p*100)}% de chance de garoa nas próximas voltas.`,fake:true}}
   else fc={kind:"dry",eta:99,p:clamp(.85-(1-prec)*-.05,.6,.95),txt:`Sem chuva prevista nas próximas ${Math.min(10,Math.max(1,left))} voltas.`};
   WXR.fc=fc;const me=meCar();
   if(me&&me.isP&&!R.over&&fc.kind!=="dry"&&fc.eta<=5&&!WXR.said[fc.kind]){WXR.said[fc.kind]=1;radio(me,`${G.engineer||"Engenheiro"}: "Radar: ${fc.txt}"`,{k:"chuva"})}
   if(fc.kind==="dry"){WXR.said={}}return fc}
 // células de chuva que andam na direção da pista conforme a previsão
-function wxCells(fc,w,h){if(!WXR.cells){WXR.cells=[];for(let i=0;i<7;i++)WXR.cells.push({a:rr(-.6,.6),r:rr(.06,.15),o:rr(0,1),ph:rr(0,6)})}
+function wxCells(fc,w,h){if(!WXR.cells){WXR.cells=[];for(let i=0;i<7;i++)WXR.cells.push({a:vrr(-.6,.6),r:vrr(.06,.15),o:vrr(0,1),ph:vrr(0,6)})}
   const show=fc.kind!=="dry";const prog=fc.kind==="now"?0:clamp(fc.eta/8,0,1.3);const cx=w/2,cy=h/2,R0=Math.max(w,h)*.62;const t=performance.now()/1000;
   return show?WXR.cells.map(c=>{const d=(prog+c.o*.25)*R0;const a=WXR.ang+c.a;return{x:cx+Math.cos(a)*d+Math.sin(t*.3+c.ph)*6,y:cy+Math.sin(a)*d*.75+Math.cos(t*.25+c.ph)*4,r:c.r*Math.min(w,h)*(fc.int>1?1.5:1.1)*(fc.fake?.7:1),k:fc.int>1?1:.6}}):[]}
 function wxDraw(){const cv=$("#radar");if(!cv||!cv.offsetParent)return;if(performance.now()-WXR.draw<250)return;WXR.draw=performance.now();const ctx=cv.getContext("2d"),w=cv.width,h=cv.height;

@@ -33,7 +33,7 @@ function buildTrack(geo){
   corners.filter(c=>c.sev>.22).slice(0,5).forEach(c=>{const p=P(c.i,-c.dir*(TW+95*U));stands.push({x:p.x,y:p.y,h:heading[c.i],w:70*U,f:c.i/M,seed:c.i*.37,o:-c.dir})});
   {const minD=(x,y)=>{let b=1e9;for(let i=0;i<M;i+=2){const p=path[i];const d=(p.x-x)*(p.x-x)+(p.y-y)*(p.y-y);if(d<b)b=d}return Math.sqrt(b)};
     for(let k=stands.length-1;k>=0;k--){const st=stands[k],c=Math.cos(st.h),s2=Math.sin(st.h);const pts=[[0,0],[st.w/2,0],[-st.w/2,0]].map(([u])=>({x:st.x+u*c,y:st.y+u*s2}));if(pts.some(q=>minD(q.x,q.y)<TW+26*U))stands.splice(k,1)}}
-  const boards=[];uniq.slice(0,4).forEach(r=>{for(let k=4;k<r.len-4;k+=10){const i=(r.s+k+M)%M;const o=-side;boards.push({...P(i,o*(TW+5*U)),h:heading[i],c:pick(["#E10600","#FFD400","#00A3E0","#FFFFFF","#00B140"])})}});
+  const boards=[];uniq.slice(0,4).forEach(r=>{for(let k=4;k<r.len-4;k+=10){const i=(r.s+k+M)%M;const o=-side;boards.push({...P(i,o*(TW+5*U)),h:heading[i],c:vpick(["#E10600","#FFD400","#00A3E0","#FFFFFF","#00B140"])})}});
   const gp=f=>{const pp=pitPosRaw(pit,f);return{pp,n:{x:-Math.sin(pp.h),y:Math.cos(pp.h)}}};
   const garages=[];for(let k=0;k<11;k++){const f=.3+k*.036;const{pp,n}=gp(f);garages.push({x:pp.x+n.x*side*20*U,y:pp.y+n.y*side*20*U,h:pp.h,f})}
   const building={pts:[0,1].map(k=>{const{pp,n}=gp(k?.72:.28);return{x:pp.x+n.x*side*40*U,y:pp.y+n.y*side*40*U,h:pp.h}})};
@@ -55,20 +55,19 @@ function pitPosRaw(P,f){const x=clamp(f,0,1)*(P.length-1),i=Math.floor(x),k=x-i,
 function lerpAng(a,b,k){let d=b-a;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return a+d*k}
 // distância lateral do muro/barreira (unidades do mundo) no ponto f, do lado indicado; null fora das áreas de escape
 function wallLatAt(f,sign){const g=TRACKGEO;if(g&&g.scn&&typeof sceneWallLat==="function")return sceneWallLat(f,sign);if(!g||!g.gravel)return null;const M=g.M;const i=Math.round(fr(f)*M)%M;for(const gr of g.gravel){if(gr.o!==sign||!gr.wl)continue;const k=((i-gr.i0)%M+M)%M;if(k<gr.wl.length)return gr.wl[k]}return null}
-function trackPos(f,lat){const g=TRACKGEO,M=g.M;f=fr(f);const x=f*M,i=Math.floor(x)%M,k=x-Math.floor(x),a=g.path[i],j=(i+1)%M,b=g.path[j];
-  const h=lerpAng(g.heading[i],g.heading[j],k);const p={x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k,h};if(lat){p.x+=-Math.sin(h)*lat;p.y+=Math.cos(h)*lat}return p}
+// posição na pista: o centro é uma curva contínua (Catmull-Rom) que passa pelos pontos do traçado; a direção e a normal vêm da
+// derivada dessa curva. Assim o desenho não tem quinas e a mesma curva dá à dinâmica (dynMetric) o comprimento e a curvatura exatos.
+function trackFrame(f){const g=TRACKGEO,M=g.M,P=g.path;f=fr(f);const x=f*M,i=Math.floor(x)%M,k=x-Math.floor(x),j=(i+1)%M,a=P[i],b=P[j],pa=P[(i-1+M)%M],pb=P[(j+1)%M];
+  const max=(b.x-pa.x)/2,may=(b.y-pa.y)/2,mbx=(pb.x-a.x)/2,mby=(pb.y-a.y)/2,k2=k*k,k3=k2*k;
+  const h00=2*k3-3*k2+1,h10=k3-2*k2+k,h01=-2*k3+3*k2,h11=k3-k2,d00=6*k2-6*k,d10=3*k2-4*k+1,d01=-6*k2+6*k,d11=3*k2-2*k,e00=12*k-6,e10=6*k-4,e01=6-12*k,e11=6*k-2;
+  return{x:h00*a.x+h10*max+h01*b.x+h11*mbx,y:h00*a.y+h10*may+h01*b.y+h11*mby,dx:d00*a.x+d10*max+d01*b.x+d11*mbx,dy:d00*a.y+d10*may+d01*b.y+d11*mby,ddx:e00*a.x+e10*max+e01*b.x+e11*mbx,ddy:e00*a.y+e10*may+e01*b.y+e11*mby}}
+function trackPos(f,lat){const F=trackFrame(f),h=Math.atan2(F.dy,F.dx);const p={x:F.x,y:F.y,h};if(lat){p.x+=-Math.sin(h)*lat;p.y+=Math.cos(h)*lat}return p}
 function pitPos(f){return pitPosRaw(TRACKGEO.pit,f)}
 function teamIdx(t){return Math.max(0,G.teams.findIndex(x=>x.id===t.id))}
 function lineAt(f){const g=TRACKGEO,M=g.M,x=fr(f)*M,i=Math.floor(x)%M,k=x-Math.floor(x);return g.line[i]+(g.line[(i+1)%M]-g.line[i])*k}
-function carWorld(c){// onde o carro está no mundo
-  const g=TRACKGEO;
-  if(c.pit){const PL=R.pitLane;const p=pitPos(clamp(c.pit.s/PL.D,0,1));c._stopped=c.pit.phase==="stop";c._lat=g.side*g.PIN;c._yaw=0;return p}
-  c._stopped=false;
-  // posição lateral vem da simulação (cada piloto escolhe sua linha); o carro aponta para onde está indo
-  let lat=(c.y!=null?c.y*WS:lineAt(c.prog)),ang=Math.atan2(c.vy||0,Math.max(6,c.v||0));
-  ang+=c.yaw||0;
-  if(c.vis&&!c.ex){const k=c.vis.t/c.vis.dur;if(c.vis.type==="spin"){ang+=c.vis.dir*Math.min(1,k*1.3)*Math.PI*2.2;lat+=c.vis.dir*5*WS*Math.sin(Math.min(1,k)*Math.PI)}else if(c.vis.type==="slide"){ang+=c.vis.dir*.42*Math.sin(Math.min(1,k)*Math.PI*3)*(1-k)}else if(c.vis.type==="off")lat+=c.vis.dir*14*WS*Math.sin(Math.min(1,k)*Math.PI);else if(c.vis.type==="wide")lat+=c.vis.dir*4.5*WS*Math.sin(Math.min(1,k)*Math.PI)}
-  const p=trackPos(c.prog,lat);p.h+=ang;return p}
+function carWorld(c){// onde o carro está no mundo: só lê o estado físico (dyn.js). Box, rodada e acidente usam o mesmo cálculo.
+  c._stopped=!!(c.pit&&c.pit.phase==="stop");c._yaw=c.yaw||0;
+  const p=trackPos(c.prog,(c.y||0)*WS);p.h+=c.psi!=null?c.psi:Math.atan2(c.vy||0,Math.max(6,c.v||0));return p}
 function scWorld(){if(R.scP==null)return null;const PL=R.pitLane;const f=fr(R.scP);
   if(R.sc&&R.sc.ending){const s=((f-PL.fe)+1)%1*R.geo.len;if(s<PL.D)return pitPos(s/PL.D)}
   return trackPos(R.scP,0)}
@@ -102,7 +101,7 @@ function shotTV(dt,cw,ch,c){const g=TRACKGEO,M=g.M;const p=c._w||carWorld(c);con
   camTo(dt,cx+ox,cy+oy,z,.06,.5)}
 function shotAll(dt,cw,ch){fitCamera(cw,ch);let tx=CAM.fx,ty=CAM.fy;if(CAM.pan){tx+=CAM.pan.x;ty+=CAM.pan.y}camTo(dt,tx,ty,CAM.fitZ*CAM.userZ,.15,.4)}
 // tremida: zebras, freadas fortes e batidas do carro em foco
-function camShake(dt,c){let a=0;if(c&&running(c)&&!c.pit){const g=TRACKGEO;const i=Math.floor(fr(c.prog)*g.M)%g.M;if(Math.abs((c.y||0)*WS)>TW-2.2*WS&&g.curv[i]>.07&&c.v>18)a+=1.4;if(c.acc<-28)a+=.9;if(c.vis&&(c.vis.type==="crash"||c.vis.type==="spin"))a+=4}
+function camShake(dt,c){let a=0;if(c&&running(c)&&!c.pit){const g=TRACKGEO;const i=Math.floor(fr(c.prog)*g.M)%g.M;if(Math.abs((c.y||0)*WS)>TW-2.2*WS&&g.curv[i]>.07&&c.v>18)a+=1.4;if(c.acc<-28)a+=.9;if(c.dyn&&(c.dyn.spin||(c.ex&&c.ex.type==="crash")))a+=4}
   CAM.shake+=(a-CAM.shake)*Math.min(1,dt*8);const t=performance.now()/1000;CAM.sx=Math.sin(t*61)*CAM.shake*.8+Math.sin(t*37)*CAM.shake*.5;CAM.sy=Math.cos(t*53)*CAM.shake*.7;CAM.flash=Math.max(0,CAM.flash-dt*4)}
 function onScreen(s,cw,ch,m){return s[0]>-m&&s[0]<cw+m&&s[1]>-m&&s[1]<ch+m}
 function poly(ctx,pts){ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath()}
@@ -166,10 +165,14 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     if(detail){const gl=g.geo.len;ctx.strokeStyle="#FFFFFFAA";ctx.lineWidth=Math.max(1,.5*WS*Z);for(let k=0;k<22;k++){const f=-(k*8+4-2.6)/gl,lat=(k%2?-2.6:2.6)*WS;const a=trackPos(f,lat-1.4*WS),b=trackPos(f,lat+1.4*WS);const A=toScreen(a.x,a.y,0,cw,ch),B=toScreen(b.x,b.y,0,cw,ch);if(onScreen(A,cw,ch,10)){ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke()}}}}
   // números das curvas
   if(detail)g.corners.forEach(c=>{const q=trackPos(c.i/g.M,c.dir*(TW+44*U));const s=toScreen(q.x,q.y,0,cw,ch);if(!onScreen(s,cw,ch,20))return;ctx.font="700 10px 'Titillium Web',sans-serif";ctx.textAlign="center";const tw=ctx.measureText(c.n).width+10;ctx.fillStyle="#0E1116D0";ctx.fillRect(s[0]-tw/2,s[1]-8,tw,15);ctx.fillStyle="#FFF";ctx.fillText(c.n,s[0],s[1]+3)});
+  // marcas de pneu: segmentos gravados pela dinâmica com a posição real de cada roda (dyn.js dynWheels); só desenho
+  if(R.marks&&R.marks.n){const M=R.marks,lim=typeof devLow==="function"&&devLow()?1200:M.n,TT=R.t;ctx.lineWidth=Math.max(1,.32*WS*Z);ctx.lineCap="round";
+    const bins=[[],[],[]];for(let k=0;k<Math.min(lim,M.n);k++){const i=(M.i-1-k+DYN.MARKS)%DYN.MARKS;const age=TT-M.t[i];if(age<0)continue;const a=M.a[i]*Math.max(.25,1-age/600);const A=toScreen(M.x1[i],M.y1[i],0,cw,ch);if(!onScreen(A,cw,ch,20))continue;const B=toScreen(M.x2[i],M.y2[i],0,cw,ch);bins[a>.66?2:a>.33?1:0].push(A,B)}
+    bins.forEach((b,j)=>{if(!b.length)return;ctx.strokeStyle=`rgba(18,18,18,${.18+j*.17})`;ctx.beginPath();for(let k=0;k<b.length;k+=2){ctx.moveTo(b[k][0],b[k][1]);ctx.lineTo(b[k+1][0],b[k+1][1])}ctx.stroke()});ctx.lineCap="butt"}
   // efeitos no chão
   const life=e=>e.type==="skid"?900:e.type==="debris"?60:e.type==="smoke"?40:e.type==="sparks"?1.8:e.type==="parts"?7:e.type==="puff"?1.6:e.type==="tyres"?40:4;if(!RS)R.fxq=R.fxq.filter(e=>T-e.t0<life(e));
   R.fxq.forEach(e=>{if(e.t0>T||T-e.t0>life(e))return;const q=trackPos(e.f,(e.lat||0)*WS);const s=toScreen(q.x,q.y,0,cw,ch);if(!onScreen(s,cw,ch,60*U))return;const age=T-e.t0;
-    if(e.type==="skid"){ctx.strokeStyle="rgba(15,15,15,.55)";ctx.lineWidth=Math.max(1,.8*WS*Z);for(const o of[-1.3,1.3]){const pts=[];for(let k=0;k<10;k++){const a=k/9*e.turn;pts.push(trackPos(e.f-24/g.geo.len+k*5/g.geo.len,((e.lat||0)+o+Math.sin(a)*6)*WS))}pathScreen(ctx,pts,cw,ch,false);ctx.stroke()}return}
+    if(e.type==="skid")return;// marca antiga desenhada por fórmula: substituída pelas marcas reais das rodas (R.marks)
     if(e.type==="sparks"){const k=age/1.8;for(let j=0;j<16;j++){const a=j*2.39+e.t0,r=(4+k*30*(.5+((j*7)%5)/5))*U*Z;ctx.strokeStyle=`rgba(255,${180+((j*37)%70)},60,${1-k})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(s[0]+Math.cos(a)*r*.6,s[1]-4*Z+Math.sin(a)*r*.35);ctx.lineTo(s[0]+Math.cos(a)*r,s[1]-4*Z+Math.sin(a)*r*.55-k*6*Z);ctx.stroke()}return}
     if(e.type==="parts"){// pedaços de asa voando e caindo na pista
       for(let j=0;j<8;j++){const a=j*2.13+e.t0*7,sp=(7+(j%3)*4)*WS,tt=Math.min(age,1.4),d=sp*tt,z=Math.max(0,(7*tt-4.9*tt*tt))*WS*.8;
@@ -217,12 +220,12 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
       if(c.smokeT&&c.smokeT>R.t)items.push({d:p.x+p.y-1.5,draw:()=>drawSmokeTrail(ctx,cw,ch,p,R.t)})}items.push({d:p.x+p.y+.5,draw:()=>drawCar(ctx,cw,ch,c,p,detail,opts)})});
   if(!RS&&typeof carFxAll==="function")carFxAll(items,ctx,cw,ch,WP,detail);
   // carcaças, fiscais e guindaste
-  R.wrecks.forEach(w=>{if(RS?(T<w.t0||T>=w.removeAt):w.removed)return;const age=T-w.t0,dur=w.removeAt-w.t0;const sk=clamp(age/(w.slide||.01),0,1),se=1-(1-sk)*(1-sk);const f0=w.f0??w.f,l0=w.lat0??w.lat;
-    if(w._lw==null){const wl=w.kind==="crash"?wallLatAt(w.f,Math.sign(w.lat)||1):null;w._lw=wl!=null?Math.sign(w.lat||1)*Math.max(TW/WS+2,wl/WS-1.4):w.lat}// a batida termina encostada na barreira
-    const base=trackPos(f0+(w.f-f0)*se,(l0+(w._lw-l0)*se)*WS);let lift=0,dx=0;
+  R.wrecks.forEach(w=>{if(RS?(T<w.t0||T>=w.removeAt):w.removed)return;const age=T-w.t0,dur=w.removeAt-w.t0;const se=1;
+    // o carro acidentado é o próprio carro, onde a física o deixou (sem segunda animação); no replay usa a pose gravada
+    const rp=RS&&w.c&&RS[w.c.id];const base=rp?{x:rp.x,y:rp.y,h:rp.h}:w.c?carWorld(w.c):trackPos(w.f,(w.lat||0)*WS);let lift=0,dx=0;
     const truckIn=Math.min(1,Math.max(0,(age-dur*.25)/(dur*.25)));const liftK=Math.max(0,(age-dur*.6)/(dur*.4));lift=Math.min(1,liftK)*24*U;
     const s=toScreen(base.x,base.y,0,cw,ch);if(!onScreen(s,cw,ch,200*U*Z+40))return;if(age<25)occl.push({x:s[0],y:s[1],d:base.x+base.y});
-    items.push({d:base.x+base.y,draw:()=>{drawCar(ctx,cw,ch,w.real&&w.c?w.c:{col:w.col,col2:w.col2,wreck:true,code:w.code},{x:base.x,y:base.y,h:w.ang+(w.spin||0)*(1-se)},detail,{z:lift});
+    items.push({d:base.x+base.y,draw:()=>{drawCar(ctx,cw,ch,w.c||{col:w.col,col2:w.col2,wreck:true,code:w.code},{x:base.x,y:base.y,h:base.h},detail,{z:lift});
       if(w.fire&&age>w.slide&&age<18)post.push(()=>{if(age<16)drawFire(ctx,cw,ch,base,age,Z,now);if(age>5)drawExt(ctx,cw,ch,base,age,Z,now)});if(w.kind==="beach"&&age<4){ctx.fillStyle=`rgba(217,197,144,${.5*(1-age/4)})`;const q=toScreen(base.x,base.y,4*U,cw,ch);ctx.beginPath();ctx.ellipse(q[0],q[1],(12+age*6)*U*Z,(6+age*3)*U*Z,0,0,7);ctx.fill()}
       if(age<dur*.9){for(let k=0;k<5;k++){const a=(age*1.3+k*1.7)%3;const q=toScreen(base.x,base.y,(8+a*14)*U,cw,ch);ctx.fillStyle=`rgba(90,90,90,${.35*(1-a/3)})`;ctx.beginPath();ctx.arc(q[0]+Math.sin(k+age)*6*U*Z,q[1],(4+a*5)*U*Z,0,7);ctx.fill()}}
       if(age>6&&detail){const m=U*Z;for(let k=0;k<3;k++){const q=toScreen(base.x+Math.cos(k*2.1)*16*U,base.y+Math.sin(k*2.1)*16*U,0,cw,ch);ctx.fillStyle="#FF8F00";ctx.fillRect(q[0]-1.5*m,q[1]-6*m,3*m,6*m);ctx.fillStyle="#F1C9A5";ctx.beginPath();ctx.arc(q[0],q[1]-7.5*m,1.6*m,0,7);ctx.fill()}}
@@ -245,7 +248,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     s=[s[0],s[1]];for(let k=0;k<4;k++){const hit=placed.find(q=>Math.abs(q[0]-s[0])<(q[2]+tw)/2&&Math.abs(q[1]-s[1])<16);if(!hit)break;s[1]=hit[1]-17}placed.push([s[0],s[1],tw]);LP[c.id]=[s[0],s[1]-14];
     const hu=c.hum&&!c.isP;ctx.fillStyle=c.isP?"#FFFFFF":hu?"#FFD400":"rgba(12,14,18,.82)";ctx.fillRect(s[0]-tw/2,s[1]-14,tw,15);ctx.fillStyle=c.col;ctx.fillRect(s[0]-tw/2,s[1]-14,3,15);ctx.fillStyle=c.isP||hu?"#0A0C10":"#FFF";ctx.fillText(lab,s[0]+1,s[1]-3);
     if(c.blue&&detail)drawFlag(ctx,[s[0]+tw/2+3,s[1]+2],"#1E88E5",Z,now);
-    if(c.vis&&c.vis.type==="spin"){ctx.fillStyle="#FFD400";ctx.font="700 10px 'Titillium Web',sans-serif";ctx.fillText("RODOU!",s[0],s[1]-18)}
+    if(c.dyn&&c.dyn.spin){ctx.fillStyle="#FFD400";ctx.font="700 10px 'Titillium Web',sans-serif";ctx.fillText("RODOU!",s[0],s[1]-18)}
     if(c._stopped){ctx.fillStyle="#FFD400";ctx.font="700 10px 'Titillium Web',sans-serif";ctx.fillText("PIT STOP",s[0],s[1]-18)}});
   if(HC.bubbles&&R.bubbles&&!RS&&!opts.pip)drawBubbles(ctx,cw,ch,WP,LP);
 }
@@ -260,37 +263,7 @@ function drawBubbles(ctx,cw,ch,WP,LP){const last={};for(const b of R.bubbles){if
     ctx.fillStyle=bg;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,6);else ctx.rect(x,y,w,h);ctx.fill();ctx.fillStyle=ac;ctx.fillRect(x,y+3,3,h-6);
     ctx.fillStyle=bg;ctx.beginPath();const tx=clamp(a[0],x+10,x+w-10);ctx.moveTo(tx-6,y+h-.5);ctx.lineTo(tx+6,y+h-.5);ctx.lineTo(tx,y+h+7);ctx.fill();
     ctx.fillStyle=fg;ctx.textAlign="left";lines.forEach((l,k)=>ctx.fillText(l,x+9,y+15+k*15));ctx.restore()}}
-const CSC=.82;function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=Math.sin(h),zb=(o&&o.z)||0;
-  const pt=(u,v,z)=>{u*=CSC;v*=CSC;return toScreen(p.x+u*co-v*si,p.y+u*si+v*co,z*CSC+zb,cw,ch)};
-  if(!detail||Z<.5){const s=pt(0,0,0);ctx.fillStyle=c.col;ctx.strokeStyle=c.isP?"#FFF":"#0A0C10";ctx.lineWidth=c.isP?2:1.2;ctx.beginPath();ctx.arc(s[0],s[1],c.isP?5:3.8,0,7);ctx.fill();ctx.stroke();return}
-  const col=c.col,dark=shade(col,.55),c2=c.col2||"#222";
-  ctx.fillStyle="rgba(0,0,0,.35)";poly(ctx,[pt(-12,-5.5,-zb),pt(12,-5.5,-zb),pt(12,5.5,-zb),pt(-12,5.5,-zb)]);ctx.fill();
-  // rodas
-  const wheel=(u,v)=>{ctx.fillStyle="#111";poly(ctx,[pt(u-2,v-1.4,0),pt(u+2,v-1.4,0),pt(u+2,v-1.4,3.2),pt(u-2,v-1.4,3.2)]);ctx.fill();poly(ctx,[pt(u-2,v-1.4,3.2),pt(u+2,v-1.4,3.2),pt(u+2,v+1.4,3.2),pt(u-2,v+1.4,3.2)]);ctx.fill();
-    if(c.tyre&&!c.wreck){ctx.strokeStyle=COMP[c.tyre.c].c;ctx.lineWidth=Math.max(.6,.7*Z);ctx.beginPath();const a=pt(u-1.2,v,3.25),b=pt(u+1.2,v,3.25);ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}};
-  const dm=c.dmg||{},pun=c.tyre&&c.tyre.punct;
-  wheel(-7,-4.8);wheel(-7,4.8);if(!c.wreck){if(pun){ctx.fillStyle="#2A1A1A";poly(ctx,[pt(5,-6,0),pt(9,-6,0),pt(9,-3.2,1.6),pt(5,-3.2,1.6)]);ctx.fill()}else wheel(7,-4.6)}wheel(7,4.6);
-  // assoalho e sidepods
-  ctx.fillStyle=dark;poly(ctx,[pt(-9,-3.6,1),pt(5,-3.6,1),pt(5,-3.6,2.6),pt(-9,-3.6,2.6)]);ctx.fill();
-  ctx.fillStyle=col;poly(ctx,[pt(-9,-3.6,2.6),pt(4,-3.8,2.6),pt(5,3.8,2.6),pt(-9,3.6,2.6)]);ctx.fill();
-  // bico
-  ctx.fillStyle=col;poly(ctx,[pt(4,-1.6,2.6),pt(12,-.6,1.8),pt(12,.6,1.8),pt(4,1.6,2.6)]);ctx.fill();
-  // asa dianteira e traseira
-  ctx.fillStyle=c2;if(dm.wing>=.5)poly(ctx,[pt(11,-.6,1),pt(12.6,-.6,1),pt(13.4,3.8,.4),pt(11.6,4.2,.4)]);else if(dm.wing>=.2)poly(ctx,[pt(11,-5.4,1),pt(13,-5.4,1),pt(13,2.4,1),pt(11,2.8,1)]);else poly(ctx,[pt(11,-5.4,1),pt(13,-5.4,1),pt(13,5.4,1),pt(11,5.4,1)]);ctx.fill();
-  ctx.fillStyle=dark;poly(ctx,[pt(-12,-4.4,3),pt(-12,4.4,3),pt(-12,4.4,dm.rwing>=.5?4.2:6.4),pt(-12,-4.4,6.4)]);ctx.fill();
-  ctx.fillStyle=c2;if(dm.rwing>=.5)poly(ctx,[pt(-13,-4.4,6.4),pt(-10.6,-4.4,6.4),pt(-10.2,3.6,4.2),pt(-12.6,3.6,4.2)]);else poly(ctx,[pt(-13,-4.4,6.4),pt(-10.6,-4.4,6.4),pt(-10.6,4.4,6.4),pt(-13,4.4,6.4)]);ctx.fill();
-  // cobertura do motor e faixa
-  ctx.fillStyle=shade(col,1.15);poly(ctx,[pt(-9,-1.4,4.4),pt(-1,-1.2,4.4),pt(-1,1.2,4.4),pt(-9,1.4,4.4)]);ctx.fill();
-  ctx.fillStyle=c2;poly(ctx,[pt(-1,-.5,2.7),pt(10,-.25,2.1),pt(10,.25,2.1),pt(-1,.5,2.7)]);ctx.fill();
-  // cockpit, capacete e halo
-  ctx.fillStyle="#0B0B0B";poly(ctx,[pt(-1,-1.3,2.8),pt(3,-1.1,2.8),pt(3,1.1,2.8),pt(-1,1.3,2.8)]);ctx.fill();
-  if(!c.sc){const hl=pt(.6,0,4.2);ctx.fillStyle=c.wreck?"#555":"#FFD400";ctx.beginPath();ctx.arc(hl[0],hl[1],Math.max(1,1.3*Z),0,7);ctx.fill();
-    ctx.strokeStyle="#111";ctx.lineWidth=Math.max(.8,.9*Z);ctx.beginPath();const a=pt(-1,-1.2,3),b=pt(1.5,0,5),d=pt(-1,1.2,3),e=pt(3.6,0,3);ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(d[0],d[1]);ctx.moveTo(b[0],b[1]);ctx.lineTo(e[0],e[1]);ctx.stroke()}
-  else{ctx.fillStyle="#1B1B1B";poly(ctx,[pt(-4,-3,5),pt(4,-3,5),pt(4,3,5),pt(-4,3,5)]);ctx.fill()}
-  if(c._brake&&!c.wreck){ctx.fillStyle="#FF2A2A";[-2.6,2.6].forEach(v=>{const q=pt(-12.6,v,3.2);ctx.fillRect(q[0]-1.3,q[1]-1.3,2.6,2.6)})}
-  if(c.isP&&!c.wreck){const s=pt(0,0,0);ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(s[0],s[1],15*CSC*Z,8*CSC*Z,0,0,7);ctx.stroke()}
-  if(c._stopped&&detail){for(let k=0;k<6;k++){const u=k<2?8:k<4?-8:0,v=k%2?7:-7;const q=pt(u*1.1,v*1.1,0);ctx.fillStyle=c.col;ctx.fillRect(q[0]-1.4*Z,q[1]-5*Z,2.8*Z,5*Z);ctx.fillStyle="#222";ctx.beginPath();ctx.arc(q[0],q[1]-6*Z,1.4*Z,0,7);ctx.fill()}}
-}
+const CSC=.82;// (o desenho do carro fica em cars.js; a cópia antiga que existia aqui era sobrescrita e foi removida)
 function drawSparks(ctx,cw,ch,p,v){const co=Math.cos(p.h),si=Math.sin(p.h),Z=CAM.z;const n=3+Math.floor(Math.random()*4);
   for(let j=0;j<n;j++){const u=-(10+Math.random()*6)*CSC,w=(Math.random()-.5)*6*CSC,len=(6+Math.random()*14)*CSC*Math.min(1.4,v/60);
     const a=toScreen(p.x+co*u-si*w,p.y+si*u+co*w,.6,cw,ch),b=toScreen(p.x+co*(u-len)-si*(w*1.6),p.y+si*(u-len)+co*(w*1.6),.4+Math.random()*2,cw,ch);
@@ -341,7 +314,7 @@ function drawPodium(ctx,cw,ch,t,top){// top: [{name,code,team,col,col2}]
   // champanhe e confete
   if(!drawPodium.parts||t<.05)drawPodium.parts=[];const P=drawPodium.parts;
   if(t>1.6&&t<6)for(let k=0;k<6;k++){const side=Math.random()<.5?-1:1;P.push({x:cx+side*110*sc,y:base-110*sc,vx:-side*(1+Math.random()*3)*sc,vy:-(2+Math.random()*3)*sc,c:"#FFF4C2",l:60})}
-  if(t>1&&Math.random()<.6)P.push({x:Math.random()*cw,y:-5,vx:(Math.random()-.5),vy:1+Math.random()*2,c:pick(["#E8333C","#F2C230","#2ECC71","#3A86FF","#FFFFFF"]),l:200,conf:1});
+  if(t>1&&Math.random()<.6)P.push({x:Math.random()*cw,y:-5,vx:(Math.random()-.5),vy:1+Math.random()*2,c:vpick(["#E8333C","#F2C230","#2ECC71","#3A86FF","#FFFFFF"]),l:200,conf:1});
   for(const q of P){q.x+=q.vx;q.y+=q.vy;q.vy+=q.conf?.01:.12;q.l--;ctx.fillStyle=q.c;ctx.fillRect(q.x,q.y,q.conf?4:2.5,q.conf?6:2.5)}
   drawPodium.parts=P.filter(q=>q.l>0&&q.y<ch+10);
 }

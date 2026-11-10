@@ -27,13 +27,15 @@ function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=M
   // assoalho
   solid([[-10.6,-3.9,.7],[5.6,-3.9,.7],[8.2,-1.2,.7],[8.2,1.2,.7],[5.6,3.9,.7],[-10.6,3.9,.7]],.35,"#17191C","#0E0F11");
   // rodas
-  const steer=(()=>{if(!R||!R.geo||c.wreck)return 0;const g=TRACKGEO;if(!g)return 0;const i=Math.floor(fr(c.prog||0)*g.M)%g.M;return clamp((g.scurv[i]||0)*5.5,-.32,.32)})();
+  const steer=(()=>{if(!R||!R.geo||c.wreck)return 0;if(c.dyn&&c.dyn.steer!=null&&!(typeof MP!=="undefined"&&MP.inRace&&MP.role!=="h"))return c.dyn.steer;/* volante real do núcleo de dinâmica */const g=TRACKGEO;if(!g)return 0;const i=Math.floor(fr(c.prog||0)*g.M)%g.M;return clamp((g.scurv[i]||0)*5.5,-.32,.32)})();
   const wheels=[{u:7.6,v:4.5,r:1.6,w:1.6,f:1,k:0},{u:7.6,v:-4.5,r:1.6,w:1.6,f:1,k:1},{u:-8.3,v:4.7,r:1.8,w:2,k:2},{u:-8.3,v:-4.7,r:1.8,w:2,k:3}].filter(w=>dm.off!==w.k);// roda arrancada some
   if(!wreck&&dm.wing>=.5)wheels.length=wheels.length;
   const comp=c.tyre&&COMP[c.tyre.c]?COMP[c.tyre.c].c:"#DDD",pun=c.tyre&&c.tyre.punct;
   const hot=c.mc?clamp(((c.mc.tBrk||300)-480)/520,0,1):0,glow=!wreck&&c._brake&&hot>0?hot:0;
-  const drawWheel=w=>{const a=w.f?steer:0,ca=Math.cos(a),sa=Math.sin(a);const L=(du,dv,z)=>pt(w.u+du*ca-dv*sa,w.v+du*sa+dv*ca,z);const r=w.r,hw=w.w/2,zc=r;
-    const flat=pun&&(c.tyre.pw!=null?w.k===c.tyre.pw:(w.f&&w.v<0));const zr=flat?r*.75:r;
+  const drawWheel=w=>{// roda torta (dano na suspensão daquele canto): convergência errada; suspensão quebrada: roda caída para dentro
+    const wd=(!wreck||c.dmg)&&dm.whl?(dm.whl[w.k]||0):0,toe=wd>.3?(wd-.3)*.6*(w.k%2?1:-1):0,broke=wd>.75||(w.f?0:(dm.susp||0)>.85&&w.k===3);
+    const a=(w.f?steer:0)+toe,ca=Math.cos(a),sa=Math.sin(a);const wv=broke?w.v*.84:w.v;const L=(du,dv,z)=>pt(w.u+du*ca-dv*sa,wv+du*sa+dv*ca,z);const r=w.r,hw=w.w/2,zc=r;
+    const flat=pun&&(c.tyre.pw!=null?w.k===c.tyre.pw:(w.f&&w.v<0));const zr=flat||broke?r*.74:r;
     const out=Math.sign(w.v);const ax=-(Math.sin(h+a))*out,ay=Math.cos(h+a)*out;const outVis=ax+ay>0;// eixo da roda apontando para fora
     if(!hi){// de longe: caixa simples
       const top=[[-r*.92,-hw],[r*.92,-hw],[r*.92,hw],[-r*.92,hw]];quad(top.map(q=>L(q[0],q[1],0)).concat([]),"#141518");
@@ -98,6 +100,8 @@ function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=M
   near.forEach(drawWheel);
   if(!frontNear)rearWing();else frontWing();
   // luz de freio
+  // faíscas do assoalho raspando (assoalho quebrado, roda arrancada ou andando no aro): só desenho, com ruído do relógio de tela
+  if(!wreck&&(c.v||0)>18&&((dm.floor||0)>.55||dm.off>=0||(c.tyre&&c.tyre.rim))){const now=performance.now()/1000,n=6;for(let j=0;j<n;j++){const ph=(now*7.3+j*.618)%1;const u=-11-ph*7*Math.min(1,(c.v||0)/60),sv=((j*37)%9-4)*.5;const A=pt(-10.5,sv*.6,.1),B=pt(u,sv*(1+ph),.1+ph*.6);ctx.strokeStyle=`rgba(255,${190+j*9},80,${.85*(1-ph)})`;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke()}}
   if(c._brake&&!wreck){ctx.fillStyle="#FF3030";[-2.4,2.4].forEach(v=>{const q=pt(-12.9,v,3.0);ctx.fillRect(q[0]-1.1,q[1]-1.1,2.2,2.2)})}
   if(wreck){ctx.fillStyle="rgba(20,20,20,.35)";poly(ctx,[pt(-12,-4,3),pt(12,-4,3),pt(12,4,3),pt(-12,4,3)]);ctx.fill()}
   if(c.isP&&!wreck){const s=pt(0,0,0);ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(s[0],s[1],15*CSC*Z,8*CSC*Z,0,0,7);ctx.stroke()}

@@ -8,7 +8,7 @@ function sk(c,k){const a=c.d.a;if(a[k]!=null)return a[k];
     case"ctrl":return a.wet*.35+a.mental*.3+a.cons*.35;case"craft":return a.ovt*.5+a.def*.5;default:return 75}}
 // corridas curtas concentram os acontecimentos de uma corrida inteira
 function riskK(){return clamp(1/Math.sqrt((G&&G.settings&&G.settings.dist)||.25),1,2)}
-function riskCheck(c,ev,i){if(!R.started||c.pit||c.parked||c.vis||c.ex||c.lose>.5||!running(c))return;const AI=R.geo.ai,a=c.d.a,T=TYRES[c.tyre.c],w=wetAt(c);
+function riskCheck(c,ev,i){if(!R.started||c.pit||c.parked||c.ex||(c.dyn&&c.dyn.cmd.length)||c.lose>.5||!running(c))return;const AI=R.geo.ai,a=c.d.a,T=TYRES[c.tyre.c],w=wetAt(c);
   let push={attack:1.7,normal:1,save:.55}[c.mode]||1;
   if(ev==="brake"&&c.att&&c.att.commit)push*=(c.att.side===AI.insN[i]?2.3:1.5)*(c.att.go?1.25:1);// mergulho
   if(ev==="brake"&&c.defend)push*=1.4;
@@ -47,23 +47,14 @@ function offLineK(c,ev,i){if(ev==="brake"||(R.marb||0)<.25)return 1;const off=Ma
 function crowdEv(f,a){if(!R)return;R.crowd=R.crowd||[];R.crowd.push({f:fr(f),t:R.t,a});if(R.crowd.length>30)R.crowd.shift()}
 function trackLimit(c){if(R.sc)return;c.warn=(c.warn||0)+1;if(c.warn===3&&c.hum)radio(c,"Terceira advertência por limite de pista. Mais uma e vem punição!",{pause:false});
   if(c.warn>=4){c.warn=0;c.pen+=5;rcMsg(`${c.code}: 5s de punição por limites de pista.`,"warn","limites");if(c.hum)radio(c,"Recebemos 5 segundos por limites de pista.",{k:"limites"})}}
-function errorOutcome(c,ev,kind,ro,fast,cn,saved){const f=fr(c.prog),out=sideAt(f),nm=cn?cn.n:"curva",pp=pos(c);const say=(t,o)=>{if(c.hum)radio(c,t,o||{})};const kk=1.6-(c.d.a.kerb||75)/100;
-  if(kind==="save"){bubble(c,"Segurou!","pass",2.4);c.vis={type:"slide",t:0,dur:1.3,dir:rnd()<.5?1:-1};R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:.8});c.lose+=rr(.4,1.1);say(pick([`A traseira escapou na ${nm}, mas eu segurei!`,`Quase rodei na ${nm}! Segurei o carro.`]),{me:1,k:"limite"});if(pp<=8||c.hum)crowdEv(f,.55);return}
-  if(kind==="minor"){
-    if(ev==="brake"){bubble(c,"Travou!","bad",2.5);c.vis={type:"slide",t:0,dur:.7,dir:rnd()<.5?1:-1};R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:.3});c.lose+=rr(.25,.7);
-      if(rnd()<.22&&!c.tyre.flat){c.tyre.flat=1;recalc(c);say(`Travei na ${nm} e marquei o pneu: está vibrando.`,{k:"rodada"})}else say(`Travei na ${nm}, perdi um pouco.`,{me:1})}
-    else if(ev==="apex"){bubble(c,"Alargou!","bad",2.5);exStart(c,"wide",{dir:out});if(rnd()<.3*kk)trackLimit(c);if(rnd()<.25*kk)kerbHit(c,.5);say(`Alarguei na ${nm}.`,{me:1})}
-    else{bubble(c,"Patinou!","bad",2.2);c.vis={type:"slide",t:0,dur:1,dir:rnd()<.5?1:-1};R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});c.lose+=rr(.2,.55);c.tyre.wear=Math.min(1,c.tyre.wear+.004);say(`A traseira escapou na saída da ${nm}.`,{me:1})}
-    if(pp<=6||c.hum)crowdEv(f,.35);return}
-  if(kind==="off"){
-    if(ro==="brita"){bubble(c,"Foi para a brita!","bad",3.5);exStart(c,"off",{dir:out,ro:"brita",fast});R.fxq.push({type:"dust",f,lat:out*12,t0:R.t});c.tyre.wear=Math.min(1,c.tyre.wear+.04);
-      if(fast>.5){c.dmg.floor=Math.min(1,(c.dmg.floor||0)+.15);recalc(c)}
-      addYellow(f,R.t+14);rcMsg(`${c.code} passou reto na ${nm} e foi para a brita.`,"warn","escape");say(`Fui para a brita na ${nm}! Voltei, mas perdi tempo.`,{k:"escape"})}
-    else{bubble(c,"Passou reto!","bad",3);exStart(c,"off",{dir:out,ro:"asfalto"});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:.6});if(ev==="brake"&&rnd()<.4*kk)trackLimit(c);say(saved?`A traseira escapou na ${nm}: segurei, mas passei reto pela área de escape.`:`Passei reto na ${nm} pela área de escape.`,{k:"escape"})}
-    if(pp<=8||c.hum){narr(`${c.code} passa reto na ${nm}!`,2);hlight("spin",[c],`${c.code} escapa na ${nm}`,2)}crowdEv(f,.6);return}
-  if(kind==="spin"){bubble(c,"Rodou!","bad",3.5);R.fxq.push({type:"puff",f,lat:c.y||0,t0:R.t});const d=rnd()<.5?1:-1;exStart(c,"spin",{dir:d});R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:d*4});
-    c.tyre.flat=1;c.tyre.wear=Math.min(1,c.tyre.wear+.06);recalc(c);addYellow(f,R.t+18);
-    const paint=R.w>.3&&ev!=="brake"&&rnd()<.4;if(paint&&c.hum)radio(c,`Pisei na faixa pintada molhada na ${nm} e a traseira foi embora.`,{me:1,k:"chuva"});
-    rcMsg(`${c.code} rodou na ${nm}${paint?" ao pisar na faixa pintada molhada":""}! Bandeira amarela no local.`,"warn","amarela");narr(pick([`${c.code} RODOU na ${nm}!`,`Rodada de ${c.code}! Perdeu muito tempo.`]),2);hlight("spin",[c],`${c.code} roda`,c.isP?3:2);say(saved?`Rodei na ${nm}, mas por pouco não bati! Pneus marcados.`:`Rodei na ${nm}! Pneus marcados.`,{k:"rodada",pause:true});crowdEv(f,.8);return}
-  // batida: o carro vai na direção do muro; a força do impacto decide se acaba ou se segue avariado
-  bubble(c,"Perdeu o carro!","bad",3.5);R.fxq.push({type:"skid",f,lat:c.y||0,t0:R.t,turn:out*2});exStart(c,"crash",{dir:out,ro,fast});say(`Perdi o carro na ${nm}!`,{k:"rodada"});crowdEv(f,.8)}
+function errorOutcome(c,ev,kind,ro,fast,cn,saved){const f=fr(c.prog),nm=cn?cn.n:"curva";const kk=1.6-(c.d.a.kerb||75)/100;
+  // O risco decidiu QUE o piloto erra. Aqui o erro vira um comando errado (frear tarde, entrar rápido, acelerar cedo, não corrigir a tempo).
+  // O resultado (travar, alargar, sair da pista, segurar, rodar, bater) sai dos pneus e do carro no núcleo de dinâmica (dyn.js),
+  // que também gera as mensagens. Assim o que é anunciado é o que de fato aconteceu.
+  if(!c.dyn)dynInit(c);c.dyn.errCtx={ev,kind,nm,t:R.t,ro};
+  if(kind==="save"){dynError(c,"gripLoss",{axle:"r",k:.6,t:.3});return}
+  if(kind==="minor"){if(ev==="brake")dynError(c,"lateBrake",{t:.16});else if(ev==="apex"){dynError(c,"overspeed",{k:.05,t:.7});if(rnd()<.25*kk)kerbHit(c,.5)}else dynError(c,"earlyThrottle",{t:.3});return}
+  if(kind==="off"){if(ev==="brake")dynError(c,"lateBrake",{t:.42+fast*.25});else dynError(c,"overspeed",{k:.1+fast*.06,t:1});return}
+  if(kind==="spin"){if(ev==="exit")dynError(c,"earlyThrottle",{t:.6});dynError(c,"gripLoss",{axle:"r",k:.45,t:.5});dynError(c,"noCorrect",{t:.3});return}
+  // perdeu o carro: entrou rápido demais, a traseira foi e a correção não veio
+  dynError(c,"overspeed",{k:.18+fast*.08,t:1.2});dynError(c,"gripLoss",{axle:"r",k:.5,t:.8});dynError(c,"noCorrect",{t:.6})}

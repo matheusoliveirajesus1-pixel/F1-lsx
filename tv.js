@@ -46,7 +46,7 @@ function tvEvents(){if(!R.started&&!R.form)return;const me=meCar();
 function tvSay(who,txt,pri){if(!txt)return;if(TVX.capQ.length>3)TVX.capQ.shift();TVX.capQ.push({who,txt,pri:pri||1});if(typeof ttsSay==="function")ttsSay(who,txt,pri||1)}
 function tvNarrTick(){// frases novas do narrador que valem destaque
   const fresh=[];for(const n of R.narr){if(n._tv)break;n._tv=1;fresh.push(n)}fresh.reverse().forEach(n=>{if((n.lvl||0)>=2)tvSay("narr",n.t,n.lvl)});
-  if(R.t>=TVX.comNext&&!TVX.cap&&!TVX.capQ.length){TVX.comNext=R.t+rr(28,46);const t=tvComment();if(t){tvSay("com",t,1);narr(`Comentário: ${t}`,0)}}}
+  if(R.t>=TVX.comNext&&!TVX.cap&&!TVX.capQ.length){TVX.comNext=R.t+vrr(28,46);const t=tvComment();if(t){tvSay("com",t,1);narr(`Comentário: ${t}`,0)}}}
 function tvCaption(ctx,cw,ch,now){if(!TVX.cap&&TVX.capQ.length){TVX.cap=TVX.capQ.shift();TVX.cap.t0=now;TVX.cap.dur=clamp(2.6+TVX.cap.txt.length*.045,3.2,7)}const c=TVX.cap;if(!c)return;const a=now-c.t0;if(a>c.dur){TVX.cap=null;return}
   const mob=cw<640;const k=Math.min(1,a/.2,(c.dur-a)/.25);ctx.save();ctx.globalAlpha=k;ctx.textAlign="left";ctx.textBaseline="alphabetic";const fs=mob?12.5:15;ctx.font=`600 ${fs}px ${TVF}`;
   const lab=c.who==="com"?"COMENTARISTA":"NARRADOR";const maxW=Math.min(cw-28,mob?cw-28:720);const lines=tvWrap(ctx,c.txt,maxW-24).slice(0,3);const lh=fs*1.3,h=lines.length*lh+30;
@@ -66,7 +66,7 @@ function tvComment(){const run=R.order.filter(c=>running(c));if(run.length<3)ret
   if(R.w>.15&&R.w<.45)ops.push("A pista está naquele ponto difícil: molhada demais para slick em alguns trechos e seca demais para intermediário em outros.");
   if(left===Math.round(L/2))ops.push(`Metade da corrida. ${A.code} lidera, e quem ainda não parou precisa decidir logo.`);
   if(R.C.ovt<.35&&lap>2)ops.push(`Em ${R.C.n} ultrapassar é muito difícil: a posição de pista vale ouro e a estratégia faz a diferença.`);
-  return ops.length?pick(ops):null}
+  return ops.length?vpick(ops):null}
 // ---------- rádio dos pilotos (personalidade: agressivo reclama, calmo analisa)
 function tvTemper(c){const p=c.d.pers||{aggr:50,disc:50};return p.aggr>66?"quente":p.disc>66?"frio":"normal"}
 const TV_RAD={
@@ -79,12 +79,12 @@ const TV_RAD={
   win:{quente:["VAMOS! QUE CORRIDA! É NOSSA!","SIIIIM! Obrigado, equipe! Vocês são demais!"],frio:["Obrigado, pessoal. Corrida perfeita. Grande trabalho.","Vitória. Estratégia certa, carro excelente. Obrigado."],normal:["Vencemos! Que domingo! Obrigado a todos!","É isso! Vitória! Obrigado, equipe!"]},
   lead:{quente:["Liderando! Agora ninguém me pega!"],frio:["Na liderança. Vou administrar."],normal:["Assumimos a ponta! Vamos manter."]}};
 function tvRadio(c,kind,pri){if(!c||c.hum||!c.t)return;if(R.t<TVX.radNext&&(pri||1)<3)return;const set=TV_RAD[kind];if(!set)return;const key=c.id+kind;if((TVX.radSaid[key]||-99)>R.t-60&&(pri||1)<3)return;
-  TVX.radSaid[key]=R.t;const txt=pick(set[tvTemper(c)]);TVX.rad={c,txt,t0:performance.now()/1000,dur:4.6};if(UI.sound&&typeof sndRadio==="function")sndRadio(1.2);if(typeof ttsSay==="function")ttsSay("radio",txt,1);TVX.radNext=R.t+rr(16,26);narr(`Rádio de ${c.code}: "${txt}"`,1)}
+  TVX.radSaid[key]=R.t;const txt=vpick(set[tvTemper(c)]);TVX.rad={c,txt,t0:performance.now()/1000,dur:4.6};if(UI.sound&&typeof sndRadio==="function")sndRadio(1.2);if(typeof ttsSay==="function")ttsSay("radio",txt,1);TVX.radNext=R.t+vrr(16,26);narr(`Rádio de ${c.code}: "${txt}"`,1)}
 function tvRadioEvent(h,cs){const c=cs[0];const top=x=>x&&pos(x)<=10;
-  if(h.type==="pass"&&cs[1]){if(top(cs[1])&&rnd()<.55)tvRadio(cs[1],"lost");else if(top(c)&&rnd()<.4)tvRadio(c,"gain")}
-  else if(h.type==="crash")tvRadio(c,"crash",2);else if(h.type==="spin"&&rnd()<.6)tvRadio(c,"spin");else if(h.type==="lead"&&R.lead>0&&rnd()<.5)tvRadio(c,"lead");else if(h.type==="finish")tvRadio(c,"win",3);
+  if(h.type==="pass"&&cs[1]){if(top(cs[1])&&vrnd()<.55)tvRadio(cs[1],"lost");else if(top(c)&&vrnd()<.4)tvRadio(c,"gain")}
+  else if(h.type==="crash")tvRadio(c,"crash",2);else if(h.type==="spin"&&vrnd()<.6)tvRadio(c,"spin");else if(h.type==="lead"&&R.lead>0&&vrnd()<.5)tvRadio(c,"lead");else if(h.type==="finish")tvRadio(c,"win",3);
   // pneus no fim: alguém do top 10 reclama de vez em quando
-  if(rnd()<.25){const w=R.order.slice(0,10).find(x=>running(x)&&!x.hum&&x.tyre.wear>.7&&!x.pitCall);if(w)tvRadio(w,"tyre")}}
+  if(vrnd()<.25){const w=R.order.slice(0,10).find(x=>running(x)&&!x.hum&&x.tyre.wear>.7&&!x.pitCall);if(w)tvRadio(w,"tyre")}}
 function tvRadioSC(){const c=R.order.slice(0,8).find(x=>running(x)&&!x.hum&&!x.pit);if(c)tvRadio(c,"sc",2)}
 function tvRadioCard(ctx,cw,ch,now){const r=TVX.rad;if(!r)return;const a=now-r.t0;if(a>r.dur){TVX.rad=null;return}const mob=cw<640;const k=Math.min(1,a/.25,(r.dur-a)/.3);
   ctx.save();ctx.globalAlpha=k;const fs=mob?12:14;ctx.font=`600 italic ${fs}px ${TVF}`;const lines=tvWrap(ctx,`“${r.txt}”`,mob?cw*.62:300).slice(0,3);const w=Math.max(170,Math.max(...lines.map(l=>ctx.measureText(l).width))+26),h=40+lines.length*fs*1.3;

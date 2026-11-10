@@ -21,7 +21,7 @@ function perfToggle(){PERF.on=!PERF.on;perfDraw();const b=document.getElementByI
 // ---------- fila de recálculo: em vez de recalcular vários carros no mesmo quadro, espalha pelos próximos quadros
 const RQ=new Set();
 function recalcQueueInstall(){if(typeof window==="undefined"||typeof recalc!=="function"||recalc._q)return;window.recalcNow=recalc;const q=function(c){if(!c||!c.prof||!R||!R.started||R.over){return window.recalcNow(c)}RQ.add(c)};q._q=1;window.recalc=q}
-function recalcFlush(){if(!RQ.size)return;let n=0;for(const c of RQ){RQ.delete(c);window.recalcNow(c);if(++n>=5&&!perfBudget(8))break}}
+function recalcFlush(){if(!RQ.size)return;let n=0;for(const c of RQ){RQ.delete(c);window.recalcNow(c);if(++n>=6)break}}// ordem de chegada, sem relógio: igual em qualquer aparelho
 if(typeof window!=="undefined"){recalcQueueInstall();perfWrap()}
 // ===================== CARREGAR SÓ QUANDO PRECISA =====================
 // O desenho da pista (cenário, carros, câmeras, transmissão, radar) só é baixado quando um fim de semana começa;

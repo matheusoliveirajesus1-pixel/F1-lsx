@@ -52,6 +52,8 @@ function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 let RNG=Math.random;function rnd(){return RNG()}
 function rr(a,b){return a+rnd()*(b-a)}function ri(a,b){return Math.floor(rr(a,b+1))}function pick(a){return a[Math.floor(rnd()*a.length)]}
 function gauss(){return(rnd()+rnd()+rnd()-1.5)}
+// sorteios só da apresentação (transmissão, câmera, comentários, efeitos, previsão do radar): nunca mexem no resultado da corrida
+let RNGV=Math.random;function vrnd(){return RNGV()}function vrr(a,b){return a+vrnd()*(b-a)}function vri(a,b){return Math.floor(vrr(a,b+1))}function vpick(a){return a[Math.floor(vrnd()*a.length)]}function vgauss(){return(vrnd()+vrnd()+vrnd()-1.5)}
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function hashS(s){let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0}
 const moneyS=v=>Math.abs(v)<1?(v<0?"-":"")+"$"+Math.round(Math.abs(v)*1000)+" mil":money(v);

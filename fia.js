@@ -12,9 +12,7 @@ function accFlag(c,imp){const f=fr(c.prog),ay=Math.abs(c.y||0),onT=ay<TRK_H+1,bl
   if(big){redFlag(`acidente de ${c.code}${c.crashFire?" com fogo":block?" bloqueando a pista":""}`);return}
   if(onT||imp>18||(R.C.street&&ay<TRK_H+3))triggerSC("sc");else if(ay<TRK_H+7||R.C.street)triggerSC("vsc");else addYellow(f,R.t+60,true)}
 // ---------- 2) o carro quebrado fica exatamente onde parou
-(function(){if(typeof makeWreck!=="function")return;const base=makeWreck;
-  globalThis.makeWreck=function(c,kind){if(kind==="stop"||kind==="pit")return base(c,kind);const f=fr(c.prog),s=sideAt(f);const w=makeWreckRaw(c,kind,f,s);
-    w.f=f;w.f0=f;w.lat=c.y||0;w.lat0=c.y||0;w._lw=c.y||0;w.slide=.01;w.ang=(c.yaw||0);w.spin=0;w.real=true;w.smoke=kind==="crash"||kind==="beach";w.smokeT=0;return w};
+(function(){/* a criação do acidente agora é única (race.js makeWreck): o próprio carro, onde parou */
   if(typeof updWrecks==="function"){const uw=updWrecks;globalThis.updWrecks=function(){uw();for(const w of R.wrecks){if(w.removed||!w.smoke)continue;const age=R.t-w.t0;if(age>50||R.t<w.smokeT)continue;w.smokeT=R.t+.7;R.fxq.push({type:"smoke",f:w.f,lat:w.lat,t0:R.t})}}}})();
 // ---------- 3) desvio: desvia se dá; se não, freia e desvia; se nem isso, freia tudo; bloqueado e parado: dá ré
 (function(){if(typeof hazardAvoid!=="function")return;const base=hazardAvoid;
@@ -25,7 +23,7 @@ function accFlag(c,imp){const f=fr(c.prog),ay=Math.abs(c.y||0),onT=ay<TRK_H+1,bl
     else if(r.cap!=null){c.emergT=R.t+1;c.blockT=c.blockT||R.t}
     if(r.yT!=null)c.blockT=0;return r}})();
 function revStep(c,dt,v1){if(!R.started||c.pit||c.ex||!running(c)||R.sc||R.red)return null;
-  if(c.rev){const a=R.t-c.rev.t0;if(a>2.2||fr(c.prog)<.004){c.rev=null;c.blockT=0;c.revCD=R.t+6;return null}c.y=clamp((c.y||0)+c.rev.dir*1.6*dt,-(YMAX+2),YMAX+2);return-1.6}
+  if(c.rev){const a=R.t-c.rev.t0;if(a>2.2||fr(c.prog)<.004){c.rev=null;c.blockT=0;c.revCD=R.t+6;return null}return-1.6}// o movimento da ré é feito pelo núcleo de dinâmica (dyn.js lê c.rev)
   if(!c.blockT||(c.v||0)>1||R.t<(c.revCD||0)||R.t-c.blockT<1.4)return null;
   let near=null,nd=99;for(const o of R.phys||[]){if(o===c)continue;let d=fr(o.prog)*R.geo.len-fr(c.prog)*R.geo.len;if(d<0)d+=R.geo.len;if(d<nd&&d<12&&Math.abs((o.y||0)-(c.y||0))<CARW+1.2){nd=d;near=o}}
   if(!near)return null;const free=(c.y||0)>(near.y||0)?1:-1;c.rev={t0:R.t,dir:free};if(c.hum)radio(c,"Pista bloqueada! Dando ré para contornar.",{k:"escape"});rcMsg(`${c.code} dá ré para contornar o carro parado.`,"","escape");return-1.6}
@@ -67,8 +65,10 @@ function fiaTick(){if(!R||!R.started)return;fiaInit();const F=R._fia;if(!F.stall
   // retardatários tiram a volta antes da relargada
   if(R.sc&&R.sc.type==="sc"&&!R.sc.unlap&&R.lead>=R.sc.start+R.sc.laps-1&&R.sc.laps>1){R.sc.unlap=1;const lead=R.order[0];if(lead){const run=R.order.filter(c=>running(c)&&!c.pit);
       const onLead=run.filter(c=>Math.floor(c.prog)>=Math.floor(lead.prog)-0);const tail=onLead[onLead.length-1];const lapped=run.filter(c=>Math.floor(c.prog)<Math.floor(lead.prog)&&c!==tail);
-      if(tail&&lapped.length){lapped.forEach((c,i)=>{const np=tail.prog-(i+1)*14/R.geo.len;if(np>c.prog){const dl=Math.floor(np)-Math.floor(c.prog);c.prog=np;c.lap+=dl;c.v=Math.min(c.v||0,tail.v||30)}});
+      // os retardatários andam de verdade: saem da fila pela esquerda, passam o pelotão e o safety car e dão a volta até o fim da fila (sem salto de posição)
+      if(tail&&lapped.length){R.sc.unlapOn=true;R.sc.tailId=tail.id;lapped.forEach(c=>{c.unlap=R.t});
         rcMsg(`Retardatários liberados: ${lapped.map(c=>c.code).join(", ")} passam o safety car e vão para o fim da fila.`,"","sc")}}}
+  if(R.sc&&R.sc.unlapOn){const tail=R.cars.find(x=>x.id===R.sc.tailId);let any=false;for(const c of R.cars){if(!c.unlap)continue;if(!running(c)||c.pit||!tail||!running(tail)||c.prog>=tail.prog-40/R.geo.len){c.unlap=null;continue}any=true}if(!any)R.sc.unlapOn=false}
   // bandeira preta e laranja ignorada vira bandeira preta (desclassificação)
   for(const c of R.cars){if(!running(c)||!c.bo)continue;F.bo[c.id]=F.bo[c.id]||c.lap;if(c.pit){c.bo=0;delete F.bo[c.id];continue}if(c.lap-F.bo[c.id]>=2){c.bo=0;c.status="dsq";c.why="bandeira preta (ignorou a preta e laranja)";rcMsg(`BANDEIRA PRETA para ${c.code}: não parou com a peça solta. Desclassificado.`,"bad","punicao");makeWreck(c,"stop")}}
   // detritos no radiador: o motor esquenta (encostar ao lado de outro carro ou ir ao box resolve)

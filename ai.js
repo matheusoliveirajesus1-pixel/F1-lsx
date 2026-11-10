@@ -63,7 +63,7 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   else if(c.blue){yT=-Math.sign(ideal||c.y||1)*4.6;m*=.975}
   else if(!neutral&&A&&dA<120){
     const lapped=A.prog<c.prog-.5,lapping=A.prog>c.prog+.5;
-    const slowA=!A.ex&&(lapped||A.lose>0||!!A.vis)||(A.pitCall&&pitDist(A)<330)||(A.pitExit&&R.t-A.pitExit<8)||A.yieldTo===c.id;
+    const slowA=!A.ex&&(lapped||A.lose>0)||(A.pitCall&&pitDist(A)<330)||(A.pitExit&&R.t-A.pitExit<8)||A.yieldTo===c.id;
     if(slowA){c.bypass=true;if(dA<85&&Math.abs(A.y-c.y)<3.4){const s=A.pitCall?-g.pitSide:A.blue?(-Math.sign(A.y)||1):sideRoom(A.y,c.y);yT=clamp(A.y+s*3.1,-YMAX,YMAX)}}
     else if(!lapping)battle(c,A,dA,ph,ins,nb);
   }else if(c.att)c.att=null;
@@ -158,33 +158,9 @@ function battle(c,A,dA,ph,ins,nb){const adv=(A.Ls??A.L)-(c.Ls??c.L);
 function lockUp(c,A){bubble(c,"Travou as rodas!","bad",3.5);R.fxq.push({type:"puff",f:fr(c.prog),lat:c.y||0,t0:R.t});c.att=null;c.cdAtt=6;const f=fr(c.prog);exStart(c,"off",{dir:sideAt(f),why:"travada"});R.fxq.push({type:"skid",f,lat:c.y,t0:R.t,turn:1});
   const p=pos(c);if(c.hum)radio(c,`Travei as rodas tentando passar o ${A.code}!`,{k:"escape"});else if(p<=8||A.isP)narr(`${c.code} trava as rodas no mergulho e passa reto! ${A.code} respira.`,2);c.tyre.wear=Math.min(1,c.tyre.wear+.02)}
 // ---------- movimento lateral (suave, com limite de velocidade lateral)
-function aiLateral(c,dt){if(c.ex)return;const em=!!c.emerg;const vyMax=em?6.2:c.coverY!=null?2.6:clamp(1.2+c.v*.045,1.2,4.8);const want=clamp((c.yT-c.y)*(em?3.2:2.4),-vyMax,vyMax);c.vy+=clamp(want-c.vy,-(em?22:9)*dt,(em?22:9)*dt);c.y+=c.vy*dt;
-  const lim=em?YMAX+2.6:usesWidth(c)?YATK:YMAX;if(Math.abs(c.y)>lim){if(Math.abs(c.y)>YMAX+3)c.y=Math.sign(c.y)*Math.max(lim,Math.abs(c.y)-dt*2.5);else{c.y=Math.sign(c.y)*lim;c.vy=0}}}
+// (o movimento lateral agora é do núcleo de dinâmica, dyn.js: a IA só escolhe a linha c.yT)
 // ---------- toques: só quando dois carros realmente se encostam
-function aiContacts(){const L=R.geo.len;R.touchCd=R.touchCd||{};
-  for(const c of R.phys){const o=c.along;if(!o||!running(c)||!running(o)||c.pit||o.pit)continue;let ds=o.fs-c.fs;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;
-    if(Math.abs(ds)<CARL*.9&&Math.abs(o.y-c.y)<CARW*.97){const key=c.id<o.id?c.id+"|"+o.id:o.id+"|"+c.id;if((R.touchCd[key]||0)>R.t)continue;R.touchCd[key]=R.t+8;
-      const vrel=(c.vy-o.vy)*Math.sign(o.y-c.y);let cul,vic;if(Math.abs(vrel)>.6){cul=vrel>0?c:o}else cul=ds>0?c:o;vic=cul===c?o:c;touch(cul,vic,Math.abs(vrel)<=.6)}}}
-function touch(B,A,rear){const f=fr(A.prog);R.nTouch=(R.nTouch||0)+1;const pre={vy:{[B.id]:B.vy||0,[A.id]:A.vy||0},att:{[B.id]:!!(B.att&&B.att.commit),[A.id]:!!(A.att&&A.att.commit)},cov:{[B.id]:B.coverY!=null,[A.id]:A.coverY!=null}};
-  const rv=rear?Math.max(0,(B.v||0)-(A.v||0)):Math.abs((B.vy||0)-(A.vy||0))*2.2;const sev=clamp(rv/14+rnd()*.35+(rnd()<.08+(R.lead<1?.1:0)+R.w*.08?rnd()*.8:0),0,1.6);
-  feudAdd(B.d.id,A.d.id,8+sev*14,rear?"toque na traseira":"roda com roda");stEv(A,"hit");stEv(B,"hitter");
-  R.fxq.push({type:"sparks",f,lat:(A.y+B.y)/2,t0:R.t});const s=Math.sign(A.y-B.y)||1;A.vy+=s*(1.2+sev*1.6);B.vy-=s*(1.2+sev*1.6);B.cdAtt=6;B.att=null;
-  if(R.sc||R.red||sev<1.05){A.lose+=.12+sev*.5;B.lose+=.08+sev*.4;const dm=[];
-    if(rear){B.dmg.wing=Math.min(1,(B.dmg.wing||0)+.25+sev*.55);dm.push([B,B.dmg.wing>=.6?"asa dianteira quebrada":"asa dianteira danificada"]);if(B.dmg.wing>=.6)R.fxq.push({type:"parts",f,lat:B.y||0,t0:R.t,col:B.col,col2:B.col2});
-      if(rnd()<.15+sev*.3){A.tyre.punct=true;dm.push([A,"pneu traseiro furado"]);if(!A.pitCall)A.pitCall=COMP[A.tyre.c].dry?pickDry(R.L-A.lap):A.tyre.c}else A.tyre.wear=Math.min(1,A.tyre.wear+.02+sev*.04);
-      if(rnd()<.3*sev){A.dmg.rwing=Math.min(1,(A.dmg.rwing||0)+.3+sev*.5);R.fxq.push({type:"parts",f,lat:A.y||0,t0:R.t,col:A.col,col2:A.col2});dm.push([A,"asa traseira danificada"])}}
-    else for(const v of[A,B]){v.tyre.wear=Math.min(1,v.tyre.wear+.008+sev*.03);
-      if(rnd()<sev*.06){v.tyre.punct=true;dm.push([v,"pneu furado"]);if(!v.pitCall)v.pitCall=COMP[v.tyre.c].dry?pickDry(R.L-v.lap):v.tyre.c}
-      else if(rnd()<.28*sev){v.dmg.susp=Math.min(1,(v.dmg.susp||0)+.2+sev*.35);dm.push([v,"suspensão desalinhada"])}
-      if(rnd()<.35*sev){v.dmg.body=Math.min(1,(v.dmg.body||0)+.2+sev*.3);dm.push([v,"lateral danificada"])}}
-    recalc(A);recalc(B);bubble(B,rear?`Bateu na traseira de ${A.code}!`:`Roda com roda com ${A.code}!`,"bad",3);
-    rcMsg(rear?`${B.code} tocou na traseira de ${A.code}.`:`Roda com roda entre ${B.code} e ${A.code}.`,"","toque");crowdEv(f,.5+sev*.3);
-    for(const[v,t]of dm)if(v.hum)radio(v,`Toque com ${v===A?B.code:A.code}: ${t}.`,{pause:t.includes("furado")||t.includes("quebrada"),k:"dano"});
-    if(!dm.length){if(A.hum)radio(A,`${B.code} encostou em mim!`);if(B.hum)radio(B,`Encostei no ${A.code}.`)}
-    if(A.isP||B.isP||pos(A)<=8){narr(rear?`${B.code} acerta a traseira de ${A.code}!`:`Roda com roda! ${B.code} e ${A.code} se tocam.`,2);hlight("contact",[B,A],`Toque entre ${B.code} e ${A.code}`,2)}
-    if((A.isP||B.isP)&&!R.mp&&(sev>.35||A.dmg.rwing||rear))noteIncident(B,A,"toque",{rear:!!rear,pre});return}
-  collision(B,A,{rear:!!rear,pre})}
-// ---------- ultrapassagens: detectadas quando a ordem muda de verdade na pista e se mantém
+// (contato antigo por sorteio removido: os toques são físicos em contact.js physContacts)
 function aiPasses(){const ord=R.order,rank=new Map();ord.forEach((c,i)=>rank.set(c,i));const pr=R.prevRank;
   const skip=x=>x.pit||(x.pitCall&&pitDist(x)<360)||x.lose>0||!!x.vis||!!x.ex||(x.pitExit&&R.t-x.pitExit<10)||x.parked;
   if(pr)for(const B of ord){if(!running(B)||B.pit)continue;const p0=pr.get(B),p1=rank.get(B);if(p0==null||p1>=p0)continue;

@@ -13,7 +13,7 @@ function tyreStep(c,dt,inc){if(!c.tyre||!running(c))return;const w4=tyreW4(c);co
   // furado: depois de ~1,2 km, roda no aro (faíscas, assoalho e suspensão sofrem)
   const t=c.tyre;if(t.punct&&!c.pit){t.rimD=(t.rimD||0)+v*dt;if(!c.pitCall&&!R.red)c.pitCall=COMP[t.c].dry?pickDry(Math.max(1,R.L-c.lap)):t.c;
     if(!t.rim&&t.rimD>1200){t.rim=true;if(c.hum||c.isP)radio(c,"A borracha saiu! Estou andando na roda!",{pause:!!c.isP});bubble(c,"Na roda! Faíscas!","bad",3)}
-    if(t.rim){if(v>38)c.v=v-(v-38)*Math.min(1,dt*1.6);c.dmg.floor=Math.min(1,(c.dmg.floor||0)+dt*.004);if(Math.random()<dt*6)R.fxq.push({type:"sparks",f:fr(c.prog),lat:c.y||0,t0:R.t});
+    if(t.rim){/* na roda: o piloto limita a velocidade (alvo em race.js), e o eixo perde aderência em axleK */c.dmg.floor=Math.min(1,(c.dmg.floor||0)+dt*.004);if(vrnd()<dt*6)R.fxq.push({type:"sparks",f:fr(c.prog),lat:c.y||0,t0:R.t});
       if(t.rimD>Math.max(8000,R.geo.len*1.6+2000)&&!c.parked&&rnd()<dt*.5){mechFail(c,`Suspensão quebrada (correu demais na roda)`);}}}}
 // fim de cada volta: a roda mais gasta pode estourar (em velocidade, pode tirar o carro da pista)
 function tyreBlowCheck(c){if(!c.tyre||c.tyre.punct||c.pit)return false;const w4=tyreW4(c);let j=0;for(let q=1;q<4;q++)if(w4[q]>w4[j])j=q;const mx=w4[j];

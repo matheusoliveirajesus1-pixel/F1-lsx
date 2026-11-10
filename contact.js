@@ -12,44 +12,7 @@ function dmgSync(c){const d=c.dmg;dmgInit(c);d.wing=Math.min(1,Math.max(d.wing||
 function wallM(c,sign){const f=fr(c.prog);let w=null;if(typeof sceneWallLat==="function"&&typeof TRACKGEO!=="undefined"&&TRACKGEO&&TRACKGEO.scn)w=sceneWallLat(f,sign);if(w!=null)return w/WS;
   const g=R.geo,i=Math.floor(f*g.N)%g.N;const cn=cornerAt(g,i);if(R.C.street)return TRK_H+2.4;if(cn&&(cn.ro==="muro"))return TRK_H+4;if(cn&&cn.ro==="brita")return TRK_H+16;return TRK_H+20}
 function surfAt(c){const ay=Math.abs(c.y||0);if(ay<=TRK_H)return"pista";const g=R.geo,i=Math.floor(fr(c.prog)*g.N)%g.N;const cn=cornerAt(g,i);if(R.C.street)return"asfalto";if(cn&&cn.ro==="brita"&&ay>TRK_H+2)return"brita";if(cn&&cn.ro==="asfalto")return"asfalto";return ay>TRK_H+3?"grama":"zebra"}
-// ---------- escapadas: rodada, passar reto, alargar e bater
-function exStart(c,type,o){if(c.ex||!running(c)||c.pit||c.parked)return false;o=o||{};const v=Math.max(0,c.v||0),dir=o.dir||(sideAt(fr(c.prog))||1);const wet=R.w>.3;
-  const ex={type,dir,t:0,t0:R.t,ph:"slide",yaw:0,yr:0,vy:(c.vy||0),dec:8,ro:o.ro||null,fast:o.fast||0,why:o.why||"",cause:o.cause||null,v0:v};
-  if(type==="spin"){ex.yr=dir*(3.2+v/25)*(o.k||1);ex.vy+=dir*(1.2+v*.05);ex.dec=wet?7:10}
-  else if(type==="off"){ex.yr=dir*.12;ex.vy+=dir*(.6+v*.012);ex.dec=wet?15:24}// travou ou errou a freada: continua freando forte (2,5 g), só sem conseguir fazer a curva
-  else if(type==="wide"){ex.yr=dir*.08;ex.vy+=dir*(1.6+v*.022);ex.dec=2.2}
-  else if(type==="crash"){ex.yr=dir*(.8+v/60);ex.vy+=dir*(5+v*.17);ex.dec=4}
-  if(type!=="wide"){ex.V=Math.hypot(v,ex.vy);ex.phi=Math.atan2(ex.vy,Math.max(.1,v))}c.ex=ex;c.vis=null;c.att=null;c.cdAtt=8;c.lose=0;R.exN=(R.exN||0)+1;if(type!=="wide")addYellow(fr(c.prog),R.t+(type==="crash"?30:16));return true}
-// sinal da curvatura: para que lado um carro que segue reto se afasta da pista (lado de fora da curva)
-function exKS(){if(R._kS)return R._kS;let s=1;try{const k=R.geo.kc||R.geo.k;let bi=0;for(let i=0;i<k.length;i++)if(Math.abs(k[i])>Math.abs(k[bi]))bi=i;const o=sideAt(bi/R.geo.N);s=(o||1)*Math.sign(k[bi]||1)}catch(e){}R._kS=s||1;return R._kS}
-// passo da escapada: devolve a velocidade e prepara a posição lateral
-function exStep(c,dt,vp){const ex=c.ex;ex.t+=dt;const sf=surfAt(c);let v=vp;const ay=Math.abs(c.y||0);
-  if(ex.ph==="slide"){const k=sf==="brita"?2.2:sf==="grama"?1.25:1;v=Math.max(0,vp-ex.dec*k*dt);
-    // INÉRCIA: o carro sem controle segue reto no mapa; a pista é que curva por baixo dele (sai pela tangente da curva)
-    if(ex.V!=null){const side=Math.abs(Math.sin(ex.yaw))>.55?1.45:1;ex.V=Math.max(0,ex.V-ex.dec*k*side*dt);const N=R.geo.N,i=Math.floor(fr(c.prog)*N)%N,kc=(R.geo.kc||R.geo.k)[i]||0;
-      let fk=1;if(ex.type==="off"){// passou reto: o carro só sai da curva pelo excesso de velocidade (subesterço); o piloto esterça com a aderência que sobra
-        const need=ex.V*ex.V*Math.abs(kc),have=Math.pow(speedAt(c,fr(c.prog)),2)*Math.abs(kc)*(sf==="pista"?.8:.55);fk=need>1e-6?clamp(1-have/need,0,1):0;if(fk<.05)ex.phi*=Math.exp(-dt*1.4)}
-      ex.phi=clamp(ex.phi+exKS()*kc*ex.V*Math.cos(ex.phi)*dt*fk,-1.45,1.45);v=Math.max(0,ex.V*Math.cos(ex.phi));ex.vyI=ex.V*Math.sin(ex.phi);
-      // passou reto com o carro sob controle: freia em linha reta e, quando a velocidade cai, volta a esterçar sem parar o carro
-      if(ex.type==="off"&&ex.t>.6&&ex.V<Math.max(9,speedAt(c,fr(c.prog))*(sf==="brita"?.3:.5))){ex.ph="rejoin";ex.wt=R.t;ex.vyI=null;ex.V=null;ex.yr=0}}
-    if(ex.type==="wide"){v=Math.max(v,speedAt(c,fr(c.prog))*.62);if(ex.t>.8||ay>TRK_H+2.6){ex.ph="rejoin";ex.wt=R.t}}
-    ex.yaw+=ex.yr*dt;ex.yr*=Math.exp(-dt*(ex.type==="spin"?(v<15?2.4:.8):2));
-    if(ex.vyI!=null)ex.vy=ex.vyI;else{const ld=(sf==="brita"?10:sf==="grama"?3.2:4.2)*(1-R.w*.35);const s0=Math.sign(ex.vy);ex.vy-=s0*Math.min(Math.abs(ex.vy),ld*dt)}// atrito lateral
-    if(ex.type!=="wide"&&(ex.V!=null?ex.V:v)<1.2){v=0;ex.ph="stop";const nerv=c.st?c.st.nerv:30;ex.until=R.t+(ex.type==="spin"?1.3+nerv*.012:.7);
-      if(sf==="brita"&&ay>TRK_H+7&&ex.v0>30&&rnd()<.45){exStuck(c);return 0}}}
-  else if(ex.ph==="stop"){v=0;ex.vy=0;ex.yr=0;ex.V=null;ex.vyI=null;if(R.t>=ex.until&&exSafe(c)){ex.ph="rejoin";ex.wt=R.t}}
-  else if(ex.ph==="rejoin"){// vira o carro de volta, sai do zero e volta para a beira da pista
-    let y0=((ex.yaw%(2*Math.PI))+3*Math.PI)%(2*Math.PI)-Math.PI;const turn=Math.sign(y0)*Math.min(Math.abs(y0),dt*(ex.type==="wide"?3:1.8));ex.yaw=y0-turn;
-    const lim=speedAt(c,fr(c.prog))*(ay>TRK_H?.55:.8);v=Math.abs(ex.yaw)>.7?Math.max(0,vp-6*dt):Math.min(lim,vp+(sf==="brita"?3:6.5)*dt);
-    const tgt=Math.sign(c.y||ex.dir)*(YMAX-.4);ex.vy=clamp((tgt-c.y)*1.4,-3.2,3.2);
-    // não entra em cima de um carro que está do lado: espera ele passar
-    {const sg=Math.sign(ex.vy),L=R.geo.len;if(sg)for(const o of c.alongs||[]){let ds=fr(o.prog)*L-fr(c.prog)*L;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;const dy=((o.y||0)-(c.y||0))*sg;if(Math.abs(ds)<CARL+1&&dy>0&&dy<CARW+1.2){ex.vy=0;break}}}if(ex.type==="off"&&Math.abs(c.y)>TRK_H+1)v=Math.max(v,Math.min(lim,vp));
-    if(Math.abs(c.y)<=YMAX+.05&&Math.abs(ex.yaw)<.08&&v>lim*.6){c.ex=null;c.yaw=0;c.vy=ex.vy*.4;return v}}
-  ex.ny=(c.y||0)+ex.vy*dt;
-  // muro ou barreira
-  const s=Math.sign(ex.ny)||ex.dir,wl=wallM(c,s);if(Math.abs(ex.ny)>=wl-CARW/2){const imp=Math.abs(ex.vy)+v*.07*Math.min(1,Math.abs(Math.sin(ex.yaw))+.3);ex.ny=s*(wl-CARW/2);ex.vy=-ex.vy*.25;if(ex.V!=null){ex.V*=.5;ex.phi=-ex.phi*.25;ex.vyI=ex.vy}exWall(c,imp,v);if(!running(c))return 0;v*=.55}
-  return v}
-function exApplyLat(c){if(!c.ex||c.ex.ny==null)return;c.y=c.ex.ny;c.vy=c.ex.vy;c.yaw=c.ex.yaw}
+// ---------- escapadas: o movimento é do núcleo de dinâmica (dyn.js). Aqui ficam só as regras de volta à pista, atolar e bater no muro.
 // só volta à pista quando não vem ninguém (piloto impaciente arrisca mais)
 function exSafe(c){const L=R.geo.len,wait=R.t-c.ex.until,disc=(c.d.pers||{}).disc??65;if(wait>(disc<45?3.5:7))return true;if(Math.abs(c.y||0)<TRK_H-1)return true;// parado no meio da pista: sai logo
   for(const o of R.cars){if(o===c||!running(o)||o.pit||o.ex||(o.v||0)<6)continue;let d=fr(c.prog)*L-fr(o.prog)*L;if(d<0)d+=L;if(d>0&&d<Math.max(40,(o.v||0)*2.3)&&Math.abs((o.y||0)-Math.sign(c.y||1)*YMAX)<4)return false}return true}
@@ -66,15 +29,16 @@ function exWall(c,imp,v){if(typeof sndHitAt==="function")sndHitAt(c,clamp(imp/22
   if(s>0)c.dmg.wingL=Math.min(1,c.dmg.wingL+(imp-2)*.09);else c.dmg.wingR=Math.min(1,c.dmg.wingR+(imp-2)*.09);c.dmg.side=Math.min(1,c.dmg.side+imp*.04);dmgSync(c);
   bubble(c,"Bateu no muro!","bad",3);if(c.hum)radio(c,`Encostei no muro ${nm}! ${c.dmg.whl[corner]>.5?"A suspensão sentiu.":"Acho que só arranhou."}`,{pause:imp>5,k:"dano"});if(imp>4)debrisAdd(c,f,c.y||0,1,true);wheelCheck(c)}
 // ---------- detritos na pista
-function debrisAdd(c,f,y,n,sharp){R.debris=R.debris||[];const L=R.geo.len;for(let k=0;k<n;k++)R.debris.push({fs:(fr(f)*L+k*2.5+L)%L,y:clamp(y+(k-n/2)*.9,-TRK_H,TRK_H),until:R.t+70+k*5,sharp:!!sharp,col:c?c.col:"#333",col2:c?c.col2:"#111"});if(R.debris.length>40)R.debris.splice(0,R.debris.length-40)}
-function debrisTick(dt){const D=R.debris;if(!D||!D.length)return;const L=R.geo.len;for(let k=D.length-1;k>=0;k--){if(R.t>D[k].until||(R.sc&&R.t>D[k].until-50))D.splice(k,1)}
+// peças soltas: saem do carro com a velocidade dele (mais um espalhamento fixo por peça, sem sorteio) e deslizam até parar
+function debrisAdd(c,f,y,n,sharp){R.debris=R.debris||[];const L=R.geo.len;const v0=c?(c.v||0):0,vy0=c?(c.vy||0):0;for(let k=0;k<n;k++){const sp=((k*7+(c?c.id*3:0))%11)/10-.5;R.debris.push({fs:(fr(f)*L+L)%L,y:clamp(y,-TRK_H-6,TRK_H+6),vs:v0*(.55+.3*((k*5)%7)/7),vy:vy0*.6+sp*6,until:R.t+70+k*5,sharp:!!sharp,col:c?c.col:"#333",col2:c?c.col2:"#111"})}if(R.debris.length>40)R.debris.splice(0,R.debris.length-40)}
+function debrisTick(dt){const D=R.debris;if(!D||!D.length)return;const L=R.geo.len;for(const d of D){if(!d.vs&&!d.vy)continue;const sp=Math.hypot(d.vs||0,d.vy||0),k=sp>0?Math.max(0,sp-7*dt)/sp:0;d.fs=(d.fs+(d.vs||0)*dt+L)%L;d.y+=(d.vy||0)*dt;d.vs*=k;d.vy*=k;const s=Math.sign(d.y)||1,wl=typeof wallM==="function"?wallM({prog:d.fs/L,y:d.y},s):TRK_H+8;if(Math.abs(d.y)>wl-.3){d.y=s*(wl-.3);d.vy=-d.vy*.3}if(sp<.3){d.vs=0;d.vy=0}}for(let k=D.length-1;k>=0;k--){if(R.t>D[k].until||(R.sc&&R.t>D[k].until-50))D.splice(k,1)}
   for(const c of R.phys||[]){if(c.ex||!running(c))continue;const fs=fr(c.prog)*L;for(const d of D){let dd=fs-d.fs;if(dd<0)dd+=L;if(dd>Math.max(1.5,c.v*dt+1))continue;if(Math.abs((c.y||0)-d.y)>1.0)continue;
       if(d.hit&&d.hit[c.id])continue;(d.hit=d.hit||{})[c.id]=1;if(d.sharp&&c.v>22&&!c.tyre.punct){c.tyre.punct=true;c.tyre.pw=WHEEL.FL+(Math.abs(c.y-d.y)<.5?0:1);recalc(c);bubble(c,"Furou nos destroços!","bad",3);rcMsg(`${c.code} passou por cima de destroços e furou o pneu.`,"warn","dano");if(c.hum)radio(c,"Passei por cima de um pedaço de carro! Pneu furado!",{pause:true,k:"dano"});if(!c.pitCall)c.pitCall=COMP[c.tyre.c].dry?pickDry(R.L-c.lap):c.tyre.c}
       else c.tyre.wear=Math.min(1,c.tyre.wear+.01)}}}
 // ---------- reflexo: perceber o perigo à frente e decidir desviar ou frear
 function reactTime(c){const s=c.st||{};const craft=clamp((sk(c,"craft")-55)/45,0,1);return(.17+(1-craft)*.2+(100-(s.foco??90))*.0025+(s.fat||0)*.0015)*(1+(c.spray||0)*1.4)}
 function hazardAvoid(c){if(!R.started||c.pit||c.ex)return null;const L=R.geo.len,fs=fr(c.prog)*L,look=Math.max(45,(c.v||0)*2.6);const hs=[];
-  for(const o of R.phys||[]){if(o===c)continue;const slow=o.ex||(R.started&&!R.sc&&(o.v||0)<Math.max(12,(c.v||0)*.55)&&!o.pit&&!o.parked&&o.lap>0)||(R.sc&&(o.v||0)<4&&!o.pit);if(!slow)continue;let d=fr(o.prog)*L-fs;if(d<0)d+=L;if(d>look||d<1)continue;
+  for(const o of R.phys||[]){if(o===c)continue;const slow=o.ex||(R.started&&!R.sc&&(o.v||0)<Math.max(12,(c.prof?c.prof.v[Math.floor(fr(o.prog)*R.geo.N)%R.geo.N]*(c.k||1):(c.v||0))*.55)/* lento para o lugar onde ele está (não um carro freando normalmente para a curva) */&&!o.pit&&!o.parked&&o.lap>0)||(R.sc&&(o.v||0)<4&&!o.pit);if(!slow)continue;let d=fr(o.prog)*L-fs;if(d<0)d+=L;if(d>look||d<1)continue;
     const oy=(o.y||0)+(o.ex?o.ex.vy*Math.min(1.2,d/Math.max(8,c.v)):0);if(Math.abs(oy-(c.y||0))>CARW+3.2&&Math.abs((o.y||0)-(c.y||0))>CARW+3.2)continue;hs.push({id:o.id,d,y:oy,y0:o.y||0,v:o.v||0,o})}
   if(R.debris)for(const b of R.debris){let d=b.fs-fs;if(d<0)d+=L;if(d>look||d<1)continue;if(Math.abs(b.y-(c.y||0))>CARW+1.5)continue;hs.push({id:"d"+b.fs.toFixed(0),d,y:b.y,v:0,small:true})}
   if(!hs.length){c.hzSeen=null;return null}
@@ -92,7 +56,8 @@ function hazardAvoid(c){if(!R.started||c.pit||c.ex)return null;const L=R.geo.len
   return{cap:capCar}}
 // ---------- contato físico entre carros (rodado a cada passo, depois do movimento)
 // depois de um choque, a escapada continua com a velocidade e a direção resultantes
-function exSync(c){const ex=c.ex;if(!ex||ex.V==null||ex.ph!=="slide")return;const v=Math.max(0,c.v||0),vy=c.vy||0;ex.V=Math.hypot(v,vy);ex.phi=clamp(Math.atan2(vy,Math.max(.1,v)),-1.45,1.45);ex.vyI=ex.V*Math.sin(ex.phi);ex.vy=ex.vyI}
+// depois de um toque: a velocidade e a direção resultantes passam para o núcleo de dinâmica (sem segunda física)
+function exSync(c){if(!c.dyn)return;const d=c.dyn,vl=Math.max(0,(c.v||0)*Math.cos(d.chi)),vt=c.vy||0;c.v=Math.hypot(vl,vt);d.chi=c.v>.3?clamp(Math.atan2(vt,Math.max(.1,vl)),-1.5,1.5):d.chi}
 function physContacts(){const P=R.phys;if(!P||P.length<2)return;const L=R.geo.len;R.cpair=R.cpair||{};
   for(const c of P)c.fsN=fr(c.prog)*L;
   const n=P.length;for(let a=0;a<n;a++){const c=P[a];if(!running(c)||c.pit)continue;
@@ -107,7 +72,8 @@ function physContacts(){const P=R.phys;if(!P||P.length<2)return;const L=R.geo.le
       else{// lado a lado
         const s=Math.sign(dy)||1;const push=oy/2+.02;if(!c.ex||!o.ex){c.y=(c.y||0)-s*push;o.y=(o.y||0)+s*push}
         const close=Math.max(0,((c.vy||0)-(o.vy||0))*s);if(close>0){const avg=((c.vy||0)+(o.vy||0))/2;c.vy=avg-s*close*.3;o.vy=avg+s*close*.3}
-        exSync(c);exSync(o);const dv=Math.abs((c.v||0)-(o.v||0));const slowBoth=(c.v||0)<8&&(o.v||0)<8;if(!was||(close>1.5&&!slowBoth)||close>4)contactEvent(rear,front,"lat",close+dv*.08,{ds:dsa,side:s,dy,pre,mover:((c.vy||0)*s>(-(o.vy||0)*s))?c:o})}}}}
+        exSync(c);exSync(o);// rotação pelo ponto do toque: o empurrão fora do centro gira os dois carros
+        if(close>0&&c.dyn&&o.dyn){const dr=-s*.55*close*clamp(ds/CARL,-1,1);c.dyn.r+=dr;o.dyn.r+=dr;c.dyn.beta+=dr*.05;o.dyn.beta+=dr*.05}const dv=Math.abs((c.v||0)-(o.v||0));const slowBoth=(c.v||0)<8&&(o.v||0)<8;if(!was||(close>1.5&&!slowBoth)||close>4)contactEvent(rear,front,"lat",close+dv*.08,{ds:dsa,side:s,dy,pre,mover:((c.vy||0)*s>(-(o.vy||0)*s))?c:o})}}}}
 // ---------- dano por peça a partir do impacto
 function contactEvent(rear,front,mode,E,g){R.nTouch=(R.nTouch||0)+1;if(typeof sndHitAt==="function")sndHitAt(front,clamp(E/3,.05,.8));dmgInit(rear);dmgInit(front);const f=fr(front.prog),out=[];const add=(car,t)=>out.push([car,t]);
   if(E<.35&&mode==="lat"){if(!rear._rub||R.t-rear._rub>4){rear._rub=R.t;R.fxq.push({type:"sparks",f,lat:((rear.y||0)+(front.y||0))/2,t0:R.t})}return}
@@ -152,7 +118,7 @@ function contactEvent(rear,front,mode,E,g){R.nTouch=(R.nTouch||0)+1;if(typeof sn
 function wheelCheck(c){if(!running(c))return;const w=c.dmg.whl;for(let i=0;i<4;i++){if(w[i]>=1&&c.dmg.off<0){c.dmg.off=i;const f=fr(c.prog);R.fxq.push({type:"parts",f,lat:c.y||0,t0:R.t,col:"#111",col2:"#333"});debrisAdd(c,f,c.y||0,2,true);
       rcMsg(`${c.code}: a suspensão ${WNAMEF[i]} quebrou; a roda ficou presa pelos cabos de segurança.`,"bad","dano");narr(`A SUSPENSÃO DE ${c.code} QUEBROU! A roda ficou pendurada pelos cabos. Ele está fora.`,3);hlight("crash",[c],`${c.code} perde uma roda`,3);c.ex=null;dnf(c,"Roda arrancada","stop");triggerSC("vsc");return}}}
 // falha escondida: a peça aguenta algumas voltas e quebra depois
-function latentFail(c,why,d){R.latN=(R.latN||0)+1;if(c.pendFail!=null||c._lat)return;c._lat=why;const laps=Math.max(1,Math.round(2+(1-d)*9));c.pendFail=c.prog+laps;c.pendWhy=why}
+function latentFail(c,why,d){R.latN=(R.latN||0)+1;if(c.pendFail!=null||c.latFail)return;c.latFail=why;/* campo próprio: antes usava c._lat, que o desenho do box sobrescrevia e bloqueava as falhas latentes */const laps=Math.max(1,Math.round(2+(1-d)*9));c.pendFail=c.prog+laps;c.pendWhy=why}
 // bandeira preta e laranja: peça solta obriga a ir ao box
 function looseTick(){for(const c of R.cars){if(!running(c)||!c.dmg||!c.dmg.loose||c.pit)continue;if(R.t-c.dmg.loose<15||c.bo)continue;c.bo=1;if(!c.pitCall)c.pitCall=COMP[c.tyre.c].dry?pickDry(R.L-c.lap):c.tyre.c;
     rcMsg(`Bandeira preta e laranja para ${c.code}: peça solta, obrigatório ir ao box.`,"warn","punicao");if(c.hum)radio(c,"Bandeira preta e laranja: a asa está solta, temos que parar nesta volta.",{pause:true,k:"dano"})}}

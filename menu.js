@@ -7,7 +7,7 @@ const Q_NAMES=[["auto","Automática","ajusta sozinha se o aparelho engasgar"],["
 // resumo da carreira salva, sem abrir o jogo
 function saveSummary(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");const g=s&&s.G;if(!g||!g.drivers)return null;const me=g.drivers[g.me];const t=g.teams.find(x=>x.id===me.team);
   const cid=g.calendar[Math.min(g.round,g.calendar.length-1)];const C=CIR[cid&&cid.id||cid];let pts=0;for(const r of g.results||[])if(r.season===g.season){const e=r.cls.find(x=>x.d===g.me);if(e)pts+=e.pts||0}
-  return{n:me.n,code:me.code,team:t?t.n:"",tc:t?t.c:"#888",year:g.year,round:g.round,total:g.calendar.length,next:C?C.gp:"",pts,h:g.helmet||{c1:"#FFD400",c2:"#1B998B"},over:!!g.gameOver}}catch(e){return null}}
+  return{n:me.n,code:me.code,team:t?((typeof TEAMS0!=="undefined"&&TEAMS0.find(x=>x.id===t.id))||t).n:"",tc:t?t.c:"#888",tl:t?{id:t.id,n:((typeof TEAMS0!=="undefined"&&TEAMS0.find(x=>x.id===t.id))||t).n,c:t.c,c2:t.c2}:null,year:g.year,round:g.round,total:g.calendar.length,next:C?C.gp:"",pts,h:g.helmet||{c1:"#FFD400",c2:"#1B998B"},over:!!g.gameOver}}catch(e){return null}}
 function titleScreen(){const sv=hasSave()?saveSummary():null;
   const item=(act,title,sub,cls)=>`<button class="mn-item${cls?" "+cls:""}" data-act="${act}"><b>${title}</b><small>${sub}</small><i aria-hidden="true">›</i></button>`;
   app.innerHTML=`<div class="mn"><div class="mn-stripes" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -18,7 +18,7 @@ function titleScreen(){const sv=hasSave()?saveSummary():null;
      ${item("mpOpen","Corrida online","Corra contra amigos, cada um no seu aparelho")}
      ${item("mnCfg","Configurações","Gráficos, som, narração e gráficos de TV")}
      ${item("mnHelp","Como jogar","O básico em um minuto")}</nav>
-    ${sv&&!sv.over?`<aside class="mn-card"><div class="row" style="flex-wrap:nowrap;gap:12px">${helmetSVG(sv.h.c1,sv.h.c2,52)}<div style="min-width:0"><div class="mn-k">SUA CARREIRA</div><b class="mn-n">${esc(sv.n)}</b><div class="muted"><span class="tc" style="background:${sv.tc}"></span>${esc(sv.team)}</div></div></div>
+    ${sv&&!sv.over?`<aside class="mn-card"><div class="row" style="flex-wrap:nowrap;gap:12px">${helmetSVG(sv.h.c1,sv.h.c2,52)}<div style="min-width:0"><div class="mn-k">SUA CARREIRA</div><b class="mn-n">${esc(sv.n)}</b><div class="muted">${sv.tl&&typeof teamLogo==="function"?teamLogo(sv.tl,"tc"):`<span class="tc" style="background:${sv.tc}"></span>`}${esc(sv.team)}</div></div></div>
       <div class="mn-stats"><div><small>Temporada</small><b class="num">${sv.year}</b></div><div><small>Pontos</small><b class="num">${sv.pts}</b></div><div><small>Próximo GP</small><b>${esc(sv.next)}</b></div></div></aside>`
      :`<aside class="mn-card"><div class="mn-k">O QUE TEM AQUI</div><ul class="mn-feat"><li>22 circuitos com traçado real</li><li>Motores 50% elétricos, aero ativa e modo de ultrapassagem</li><li>Pneus que esquentam, gastam por roda e estouram</li><li>Transmissão com narrador, replays e rádio dos pilotos</li><li>Contratos, mercado de pilotos, imprensa e patrocinadores</li></ul></aside>`}
     <footer class="mn-foot"><p>Equipes com os nomes reais do grid de 2026; pilotos, chefes e histórias são fictícios. Jogo de fã, sem ligação oficial com a Fórmula 1, a FIA ou as equipes.</p><p>Traçados dos circuitos: projeto f1-circuits, © 2019-2025 Tomislav Bacinger, licença MIT.</p></footer></div></div>`}

@@ -53,7 +53,7 @@ function smartDrawReplay(ctx,cw,ch,dt){const rep=SMART.rep;if(!rep)return false;
   ctx.fillStyle="#FFF";ctx.font="700 13px 'Titillium Web',sans-serif";ctx.textAlign="left";ctx.fillText(near?"REPLAY · LENTO":"REPLAY",bx+28,by+18);return true}
 // janela no canto: o seu carro (quando a câmera está em outro lugar) ou o lance (quando você está brigando)
 let PIP=null;
-function smartPip(ctx,cw,ch){if(typeof QL!=="undefined"&&QL.lvl===0)return;const me=meCar();let tgt=null,lab="",col="#FFFFFF";
+function smartPip(ctx,cw,ch){if(typeof QL!=="undefined"&&QL.lvl===0)return;if(cw<640&&((typeof BCX!=="undefined"&&BCX.tw)||(typeof TVX!=="undefined"&&TVX.ban)))return;/* celular: a torre aberta ocupa o canto */const me=meCar();let tgt=null,lab="",col="#FFFFFF";
   if(SMART.mode!=="me"&&me&&me._w&&running(me)){tgt=me._w;lab=`VOCÊ · P${pos(me)}`}
   else if(SMART.pip&&R.t<SMART.pip.until){const p=evPos(SMART.pip.ev);if(p){tgt=p;lab=smartLabel(SMART.pip.ev,true);col="#FFD400"}}else SMART.pip=null;
   if(!tgt)return;const mob=cw<640;const w=Math.round(mob?cw*.44:Math.min(300,cw*.27)),h=Math.round(w*.62),x=cw-w-10,y=mob?118:122;

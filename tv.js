@@ -10,8 +10,11 @@ function tvOn(){return typeof PREFS==="undefined"||PREFS.tv!==false}
 // ---------- chamado a cada quadro, depois de desenhar a pista
 function tvOverlay(ctx,cw,ch,dt){if(!R)return;if(!R.clips)R.clips=[];const now=performance.now()/1000;
   if(CAM.flash>TVX.lastFlash+.4){TVX.st=now;TVX.lastCut=R.t;const f=typeof SMART!=="undefined"&&SMART.mode==="me"?meCar():null;TVX.stCol=f&&f.t?f.t.c:"#E10600"}TVX.lastFlash=CAM.flash;CAM.flash=0;
-  tvEvents();tvClipTick();if(!tvOn()){tvStinger(ctx,cw,ch,now);return}
-  tvStinger(ctx,cw,ch,now);tvBanner(ctx,cw,ch,now);tvRadioCard(ctx,cw,ch,now);tvCaption(ctx,cw,ch,now)}
+  tvEvents();tvClipTick();
+  // gráficos de transmissão só na TV e no Diretor; nas outras câmeras a fila é descartada (nada fica acumulado para aparecer atrasado)
+  if(typeof bcOn==="function"&&!bcOn()){TVX.ban=null;TVX.banQ.length=0;TVX.cap=null;TVX.capQ.length=0;TVX.rad=null;if(typeof bcOff==="function")bcOff();return}
+  if(!tvOn()){tvStinger(ctx,cw,ch,now);return}
+  tvStinger(ctx,cw,ch,now);if(typeof tvOpening==="function"&&tvOpening(ctx,cw,ch,now))return;tvBanner(ctx,cw,ch,now);tvRadioCard(ctx,cw,ch,now);tvCaption(ctx,cw,ch,now);if(typeof tvCard==="function")tvCard(ctx,cw,ch,now)}
 // vinheta de troca de câmera: uma faixa diagonal passa pela tela em ~0,45 s (a câmera corta escondida atrás dela)
 function tvStinger(ctx,cw,ch,now){const k=(now-TVX.st)/.45;if(k<0||k>1)return;const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;const W=cw*.55,x=-W-ch*.5+(cw+W+ch)*e;
   ctx.save();ctx.globalAlpha=.94;ctx.fillStyle=TVX.stCol;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+W,0);ctx.lineTo(x+W-ch*.5,ch);ctx.lineTo(x-ch*.5,ch);ctx.fill();
@@ -20,7 +23,7 @@ function tvStinger(ctx,cw,ch,now){const k=(now-TVX.st)/.45;if(k<0||k>1)return;co
   ctx.globalAlpha=1;ctx.fillStyle="#FFFFFF";ctx.font=`900 italic ${Math.round(Math.min(cw,ch)*.07)}px ${TVF}`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("PADDOCK",x+W/2-ch*.25,ch/2);ctx.restore()}
 // ---------- avisos grandes (topo da tela)
 function tvBan(txt,sub,col,dur,pri){const b={txt,sub:sub||"",col:col||"#E10600",dur:dur||3.6,pri:pri||1};if(TVX.ban&&TVX.ban.pri<b.pri)TVX.ban=null;if(TVX.banQ.length<4)TVX.banQ.push(b)}
-function tvBanner(ctx,cw,ch,now){if(!TVX.ban&&TVX.banQ.length){TVX.banQ.sort((a,b)=>b.pri-a.pri);TVX.ban=TVX.banQ.shift();TVX.ban.t0=now}const b=TVX.ban;if(!b)return;const a=now-b.t0;if(a>b.dur){TVX.ban=null;return}
+function tvBanner(ctx,cw,ch,now){if(!TVX.ban&&TVX.banQ.length&&!(cw<640&&typeof BCX!=="undefined"&&BCX.tw)){TVX.banQ.sort((a,b)=>b.pri-a.pri);TVX.ban=TVX.banQ.shift();TVX.ban.t0=now}const b=TVX.ban;if(!b)return;const a=now-b.t0;if(a>b.dur){TVX.ban=null;return}
   const mob=cw<640;const inK=Math.min(1,a/.28),outK=Math.min(1,(b.dur-a)/.25);const k=Math.min(inK,outK);const ease=1-Math.pow(1-k,3);
   const fs=mob?17:24,ss=mob?11:13;ctx.save();ctx.font=`900 italic ${fs}px ${TVF}`;const tw=ctx.measureText(b.txt).width;ctx.font=`700 ${ss}px ${TVF}`;const sw=b.sub?ctx.measureText(b.sub).width:0;
   const w=Math.min(cw-20,Math.max(tw,sw)+70),h=b.sub?(mob?46:58):(mob?34:42);const x=(cw-w)/2,y=(mob?168:84)-(1-ease)*30;ctx.globalAlpha=ease;
@@ -47,7 +50,7 @@ function tvSay(who,txt,pri){if(!txt)return;if(TVX.capQ.length>3)TVX.capQ.shift()
 function tvNarrTick(){// frases novas do narrador que valem destaque
   const fresh=[];for(const n of R.narr){if(n._tv)break;n._tv=1;fresh.push(n)}fresh.reverse().forEach(n=>{if((n.lvl||0)>=2)tvSay("narr",n.t,n.lvl)});
   if(R.t>=TVX.comNext&&!TVX.cap&&!TVX.capQ.length){TVX.comNext=R.t+vrr(28,46);const t=tvComment();if(t){tvSay("com",t,1);narr(`Comentário: ${t}`,0)}}}
-function tvCaption(ctx,cw,ch,now){if(!TVX.cap&&TVX.capQ.length){TVX.cap=TVX.capQ.shift();TVX.cap.t0=now;TVX.cap.dur=clamp(2.6+TVX.cap.txt.length*.045,3.2,7)}const c=TVX.cap;if(!c)return;const a=now-c.t0;if(a>c.dur){TVX.cap=null;return}
+function tvCaption(ctx,cw,ch,now){if(!TVX.cap&&TVX.capQ.length&&!(cw<640&&typeof BCX!=="undefined"&&R&&(R.t-BCX.cardT<5.5||R.t-BCX.spdT<4.2))){TVX.cap=TVX.capQ.shift();TVX.cap.t0=now;TVX.cap.dur=clamp(2.6+TVX.cap.txt.length*.045,3.2,7)}const c=TVX.cap;if(!c)return;const a=now-c.t0;if(a>c.dur){TVX.cap=null;return}
   const mob=cw<640;const k=Math.min(1,a/.2,(c.dur-a)/.25);ctx.save();ctx.globalAlpha=k;ctx.textAlign="left";ctx.textBaseline="alphabetic";const fs=mob?12.5:15;ctx.font=`600 ${fs}px ${TVF}`;
   const lab=c.who==="com"?"COMENTARISTA":"NARRADOR";const maxW=Math.min(cw-28,mob?cw-28:720);const lines=tvWrap(ctx,c.txt,maxW-24).slice(0,3);const lh=fs*1.3,h=lines.length*lh+30;
   const w=Math.min(maxW,Math.max(...lines.map(l=>ctx.measureText(l).width))+28);const x=(cw-w)/2,y=ch-h-(mob?150:64);
@@ -86,7 +89,7 @@ function tvRadioEvent(h,cs){const c=cs[0];const top=x=>x&&pos(x)<=10;
   // pneus no fim: alguém do top 10 reclama de vez em quando
   if(vrnd()<.25){const w=R.order.slice(0,10).find(x=>running(x)&&!x.hum&&x.tyre.wear>.7&&!x.pitCall);if(w)tvRadio(w,"tyre")}}
 function tvRadioSC(){const c=R.order.slice(0,8).find(x=>running(x)&&!x.hum&&!x.pit);if(c)tvRadio(c,"sc",2)}
-function tvRadioCard(ctx,cw,ch,now){const r=TVX.rad;if(!r)return;const a=now-r.t0;if(a>r.dur){TVX.rad=null;return}const mob=cw<640;const k=Math.min(1,a/.25,(r.dur-a)/.3);
+function tvRadioCard(ctx,cw,ch,now){const r=TVX.rad;if(!r)return;if(typeof BCX!=="undefined"&&BCX.tw&&now-r.t0<.3){r.t0=now;return}/* torre aberta: o rádio espera */const a=now-r.t0;if(a>r.dur){TVX.rad=null;return}const mob=cw<640;const k=Math.min(1,a/.25,(r.dur-a)/.3);
   ctx.save();ctx.globalAlpha=k;const fs=mob?12:14;ctx.font=`600 italic ${fs}px ${TVF}`;const lines=tvWrap(ctx,`“${r.txt}”`,mob?cw*.62:300).slice(0,3);const w=Math.max(170,Math.max(...lines.map(l=>ctx.measureText(l).width))+26),h=40+lines.length*fs*1.3;
   const x=10-(1-k)*40,y=mob?ch*.42:ch*.36;ctx.fillStyle="rgba(8,10,14,.9)";ctx.fillRect(x,y,w,h);ctx.fillStyle=r.c.t.c;ctx.fillRect(x,y,5,h);
   ctx.fillStyle="#FFD400";ctx.font=`800 ${mob?10:11}px ${TVF}`;ctx.textAlign="left";ctx.fillText("RÁDIO DA EQUIPE",x+14,y+15);ctx.fillStyle="#FFFFFF";ctx.font=`900 ${mob?13:15}px ${TVF}`;ctx.fillText(`${r.c.code} · P${pos(r.c)}`,x+14,y+32);
@@ -94,9 +97,9 @@ function tvRadioCard(ctx,cw,ch,now){const r=TVX.rad;if(!r)return;const a=now-r.t
   ctx.fillStyle=r.c.t.c;for(let i=0;i<9;i++){const bh=3+Math.abs(Math.sin(now*11+i*1.7))*9;ctx.fillRect(x+w-70+i*6,y+20-bh/2,3,bh)}
   ctx.fillStyle="#E6E9EF";ctx.font=`600 italic ${fs}px ${TVF}`;lines.forEach((l,i)=>ctx.fillText(l,x+14,y+48+i*fs*1.3));ctx.restore()}
 // ---------- faixa com o nome do piloto (embaixo, à esquerda): aparece por alguns segundos depois de cada corte
-function tvLower(lw,foc){const lab=UI.cam==="director"?DIR.label:UI.cam==="auto"&&typeof SMART!=="undefined"?SMART.label:"";let html="",key="";
+function tvLower(lw,foc){if(typeof bcOn==="function"&&(!bcOn()||(typeof BCX!=="undefined"&&R&&(R.t-BCX.cardT<5.5||R.t-BCX.spdT<4.2)))){/* o cartão do piloto ocupa esse canto */if(!lw.hidden){lw.hidden=true;TVX.lowKey=""}return}const lab=UI.cam==="director"?DIR.label:UI.cam==="tv"&&typeof SMART!=="undefined"?SMART.label:"";let html="",key="";
   if(lab){key="L"+lab;html=`<span class="lt-ev">${esc(lab)}</span>`}
-  else if(tvOn()&&foc&&foc.t&&R.started&&R.t-TVX.lastCut<5.5&&running(foc)){const p=pos(foc);const A=R.order[p-2];const g=A?(A.prog-foc.prog)*foc.L:0;
+  else if(false&&tvOn()&&foc&&foc.t&&R.started&&R.t-TVX.lastCut<5.5&&running(foc)){/* o nome do piloto agora é o cartão desenhado (tvCard) */const p=pos(foc);const A=R.order[p-2];const g=A?(A.prog-foc.prog)*foc.L:0;
     key=`D${foc.id}${p}${Math.round(g*10)}`;html=`<i style="background:${foc.t.c}"></i><b class="lt-p">P${p}</b><span class="lt-n">${esc(foc.d.n)}</span><span class="lt-t">${esc(foc.t.n)}${A?` · ${g.toFixed(1).replace(".",",")} s atrás de ${esc(A.code)}`:" · lidera a corrida"}</span>`}
   if(key===TVX.lowKey)return;TVX.lowKey=key;lw.hidden=!html;lw.classList.toggle("lt",!!html&&!lab);if(html)lw.innerHTML=html}
 // ---------- melhores momentos: guarda os lances (posições de todos os carros) para o resumo no fim

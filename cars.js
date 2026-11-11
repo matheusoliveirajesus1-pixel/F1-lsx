@@ -9,7 +9,7 @@ function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=M
   {const s0=pt(0,0,0);if(s0[0]<-90||s0[0]>cw+90||s0[1]<-90||s0[1]>ch+90)return}// fora da tela: nada a desenhar
   if(!detail||Z<.5){const s=pt(0,0,0);ctx.fillStyle=c.col;ctx.strokeStyle=c.isP?"#FFF":"#0A0C10";ctx.lineWidth=c.isP?2:1.2;ctx.beginPath();ctx.arc(s[0],s[1],c.isP?5:3.8,0,7);ctx.fill();ctx.stroke();return}
   if(c.sc){drawSafetyCar(ctx,c,pt,co,si,Z);return}
-  const col=c.col,c2=c.col2||"#222",wreck=!!c.wreck,dm=c.dmg||{},night=R&&R.C&&R.C.night;
+  const col=c.col,c2=c.col2||"#222",wreck=!!c.wreck,dm=c.dmg||{},night=R&&R.C&&R.C.night;const SP=typeof carSponsors==="function"&&c.t?carSponsors(c.t):null;
   const hi=Z>1.05;// detalhes finos só de perto
   // luz: faces voltadas para +x ficam mais claras
   const lit=(nu,nv)=>{const nx=nu*co-nv*si,ny=nu*si+nv*co;return{vis:nx+ny>-.02,b:.7+.16*(nx-ny)/1.4142}};
@@ -67,7 +67,8 @@ function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=M
     for(const sv of[-4.3,4.3])quad([pt(-12.8,sv,1.3),pt(-10.0,sv,1.6),pt(-10.0,sv,ez),pt(-12.8,sv,ez)],shade(c2,.85));
     quad([pt(-12.0,-1.4,1.0),pt(-10.4,-1.2,1.0),pt(-10.4,-1.2,2.4),pt(-12.0,-1.4,2.4)],"#202226");// pilar
     if(broken){quad([pt(-13,-4.3,ez),pt(-10.6,-4.3,ez),pt(-10.2,3.6,ez-1.8),pt(-12.6,3.6,ez-1.8)],c2);return}
-    quad([pt(-12.7,-4.2,4.7),pt(-11.2,-4.2,5.0),pt(-11.2,4.2,5.0),pt(-12.7,4.2,4.7)],c2);// plano principal
+    quad([pt(-12.7,-4.2,4.7),pt(-11.2,-4.2,5.0),pt(-11.2,4.2,5.0),pt(-12.7,4.2,4.7)],SP&&!wreck?SP.m.c2:c2);// plano principal (com o patrocinador)
+    if(SP&&!wreck&&hi)carText(ctx,pt(-12.6,-3.9,4.72),pt(-12.6,3.9,4.72),pt(-11.3,-3.9,4.98),SP.m.n,SP.m.c);
     if(aero)quad([pt(-11.0,-4.2,5.9),pt(-10.4,-4.2,5.95),pt(-10.4,4.2,5.95),pt(-11.0,4.2,5.9)],col);// flap aberto (modo reta)
     else quad([pt(-11.1,-4.2,5.1),pt(-10.2,-4.2,5.75),pt(-10.2,4.2,5.75),pt(-11.1,4.2,5.1)],col);
     if(hi)quad([pt(-12.4,-3.6,2.3),pt(-11.4,-3.6,2.4),pt(-11.4,3.6,2.4),pt(-12.4,3.6,2.3)],"#26292E");// beam wing
@@ -81,7 +82,8 @@ function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=M
   const dark=shade(col,.55);
   for(const sv of[1,-1]){const sp=[[3.6,1.3*sv,2.3],[3.6,3.75*sv,2.15],[.5,4.0*sv,2.0],[-3.6,3.6*sv,1.6],[-7.4,2.1*sv,1.25],[-7.6,1.2*sv,1.4]];solid(sv>0?sp:sp.slice().reverse(),.7,col,col);
     const inl=[pt(3.62,1.6*sv,2.15),pt(3.62,3.5*sv,2.0),pt(3.62,3.4*sv,1.35),pt(3.62,1.7*sv,1.4)];quad(inl,"#0B0C0E");
-    if(hi){quad([pt(2.6,2.2*sv,2.24),pt(-2.2,2.5*sv,1.95),pt(-2.2,3.1*sv,1.85),pt(2.6,3.0*sv,2.15)],c2)}}
+    if(SP&&!wreck){quad([pt(2.6,2.15*sv,2.25),pt(-2.6,2.45*sv,1.92),pt(-2.6,3.2*sv,1.82),pt(2.6,3.05*sv,2.15)],SP.m.c);if(hi&&SP.s)carText(ctx,pt(2.4,2.2*sv,2.24),pt(-2.4,2.5*sv,1.94),pt(2.4,3.0*sv,2.16),SP.s.n,SP.m.c2)}
+    else if(hi){quad([pt(2.6,2.2*sv,2.24),pt(-2.2,2.5*sv,1.95),pt(-2.2,3.1*sv,1.85),pt(2.6,3.0*sv,2.15)],c2)}}
   // monocoque e bico
   solid([[-1.4,-1.45,2.9],[4.4,-1.35,2.75],[4.4,1.35,2.75],[-1.4,1.45,2.9]],.7,col,col);
   solid([[4.3,-1.25,2.7],[11.2,-.42,1.55],[11.2,.42,1.55],[4.3,1.25,2.7]],1.0,shade(col,1.08),col);
@@ -136,3 +138,11 @@ function drawDirty(ctx,cw,ch,p,pa,k,now){const Z=CAM.z;const dx=p.x-pa.x,dy=p.y-
 function drawSpeedLines(ctx,cw,ch,p,v,now){const Z=CAM.z,co=Math.cos(p.h),si=Math.sin(p.h);const k=clamp((v-70)/25,0,1);ctx.lineWidth=1;
   for(let j=0;j<2;j++){const side=j%2?1:-1,lat=side*6*CSC;const ph=((now*3+j*.37)%1);const u0=(6-ph*26)*CSC,u1=u0-8*CSC;
     const a=toScreen(p.x+co*u0-si*lat,p.y+si*u0+co*lat,2*CSC,cw,ch),b=toScreen(p.x+co*u1-si*lat,p.y+si*u1+co*lat,2*CSC,cw,ch);ctx.strokeStyle=`rgba(255,255,255,${.16*k*(1-ph)})`;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}}
+
+// texto pintado numa superfície do carro: origem O, fim do eixo do texto X, fim do eixo da altura Y (pontos de tela).
+// Escolhe o sentido que deixa o texto legível (nunca espelhado), e não desenha se ficar pequeno demais para ler.
+function carText(ctx,O,X,Y,txt,color){let bx=Y[0]-O[0],by=Y[1]-O[1],ox=O,xx=X;if(X[0]<O[0]){ox=X;xx=O}
+  const ax=xx[0]-ox[0],ay=xx[1]-ox[1];if(ax*by-ay*bx<0){ox=[ox[0]+bx,ox[1]+by];bx=-bx;by=-by}
+  const L=Math.hypot(ax,ay),Hh=Math.hypot(bx,by);if(L<14||Hh<2.2)return;const t=String(txt).toUpperCase();
+  ctx.save();ctx.transform(ax/100,ay/100,bx/20,by/20,ox[0],ox[1]);ctx.fillStyle=color;ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.font=`900 italic 17px 'Titillium Web',system-ui,sans-serif`;const w=ctx.measureText(t).width;const k=Math.min(1,92/w);ctx.translate(50,10.5);ctx.scale(k,1);ctx.fillText(t,0,0);ctx.restore()}

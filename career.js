@@ -36,7 +36,7 @@ function newGame(o){DID=0;
   for(const t of G.teams){const need=t.id==="cadillac"?1:2;for(let i=0;i<need;i++){const d=newDriver({pace:t.tier-6+(i?rr(-5,1):rr(-1,4)),team:t.id,age:ri(21,36)});G.drivers[d.id]=d;t.drivers.push(d.id)}if(t.id==="cadillac")t.drivers.unshift(me.id)}
   for(let i=0;i<10;i++){const d=newDriver({pace:rr(68,80),age:ri(19,33)});d.team=null;G.drivers[d.id]=d}
   {const used=new Set();Object.values(G.drivers).sort((x,y)=>(y.me?1:0)-(x.me?1:0)).forEach(d=>{let c=d.code;if(used.has(c)){const L=d.n.split(" ").pop().normalize("NFD").replace(/[^A-Za-z]/g,"").toUpperCase();const F=d.n[0].toUpperCase();const cands=[L[0]+L[1]+L[3],L[0]+L[2]+L[3],F+L[0]+L[1],L.slice(0,2)+F,L[0]+L[1]+"X"];c=cands.find(x=>x&&x.length===3&&!used.has(x))||c+DID;d.code=c}used.add(d.code)})}
-  if(typeof spRefresh==="function")spRefresh();G.rival=null;post("sys",`${me.n} é o novo piloto da Cadillac! Estreia na F1 em 2026.`,{likes:ri(800,2500)});
+  if(typeof spRefresh==="function")spRefresh();G.rival=null;post("sys",`${me.n} é o novo piloto da Cadilak! Estreia na F1 em 2026.`,{likes:ri(800,2500)});
   news(`Bem-vindo à Fórmula 1! Você assinou por 1 temporada com a ${teamOf("cadillac").n}, a equipe estreante do grid.`,"big");
   news(`Meta da equipe para você: terminar à frente do companheiro e marcar pontos. Chefe: ${teamOf("cadillac").boss}.`);
   save();return G}
@@ -122,7 +122,7 @@ function load(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(!s||!s
 // Cadillac (equipe estreante do modo carreira) com carro de meio de grid: era lenta demais em relação às outras
 const CAD_CAR={aero:86,chas:86,susp:86,brk:86,rel:86,eng:91};
 function cadBoost(g){if(!g||g.mp||g.cadBoost)return;const t=(g.teams||[]).find(x=>x.id==="cadillac");if(!t||!t.car)return;for(const k in CAD_CAR)t.car[k]=Math.max(t.car[k]||0,CAD_CAR[k]);t.tier=Math.max(t.tier||0,86);g.cadBoost=1}
-function migrateSave(g){cadBoost(g);if(g.teams&&g.teams.some(t=>OLD_TEAM_IDS[t.id])){let txt=JSON.stringify(g);for(const[o,n]of Object.entries(OLD_TEAM_IDS))txt=txt.split(`"${o}"`).join(`"${n}"`);g=JSON.parse(txt);
+function migrateSave(g){cadBoost(g);/* nomes das equipes sempre os atuais (troca dos nomes oficiais por nomes próprios) */if(g.teams)g.teams.forEach(t=>{const t0=TEAMS0.find(x=>x.id===t.id);if(t0)t.n=t0.n});if(g.teams&&g.teams.some(t=>OLD_TEAM_IDS[t.id])){let txt=JSON.stringify(g);for(const[o,n]of Object.entries(OLD_TEAM_IDS))txt=txt.split(`"${o}"`).join(`"${n}"`);g=JSON.parse(txt);
     g.teams.forEach(t=>{const t0=TEAMS0.find(x=>x.id===t.id);if(!t0)return;Object.assign(t,{n:t0.n,c:t0.c,c2:t0.c2,pu:t0.pu,boss:t0.boss,style:t0.style,rookieTeam:!!t0.rookieTeam})});g.migrated5=true}
   if(!Array.isArray(g.garage)||g.garage.length!==TEAMS0.length)g.garage=GARAGE0.slice();
   // etapa 6: atributos novos, personalidade e experiência

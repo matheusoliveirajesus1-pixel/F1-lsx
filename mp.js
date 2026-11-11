@@ -172,7 +172,7 @@ function mpGuestBegin(hp){const L=(hp.seats||[]).map(mpSeatObj).filter(Boolean);
   const mine=L.find(s=>s.peer===myPeer)||L.find(s=>s.uid&&s.uid===mpUid());const cfg=mpCleanCfg(hp.cfg);if(!cfg.sd)return;MP.curSd=cfg.sd;MP.spect=!mine;
   mpBuildWorld(cfg,L,mine?mine.peer:L[0].peer);const ids=new Set(Object.keys(G.drivers));const grid=(Array.isArray(hp.grid)?hp.grid:[]).filter(x=>ids.has(x));
   if(grid.length!==ids.size){mpRestoreCareer();MP.err="Não deu para acompanhar esta corrida: a sala está em outra versão do jogo.";mpRefresh();return}
-  W.grid=grid;W.step="race";startRace({});mpInitRace();R.msgs=[];R.radio=[];R.narr=[];R.hl=[];R.bubbles=[];R.fxq=[];R.mpGuest=true;R.spect=MP.spect;R.autoStart=false;R.form.phase="out";
+  W.grid=grid;W.step="race";startRace({});mpInitRace();R.msgs=[];R.radio=[];R.narr=[];R.hl=[];R.bubbles=[];R.fxq=[];R.mpGuest=true;R.spect=MP.spect;R.autoStart=true;R.form.phase="out";
   MP.snaps=[];MP.lastS=null;MP.lastLg=null;MP.lastSeq=0;MP.res=null;MP.askDone=null;MP.outAt=0;MP.hostMiss=0;MP.lost=false;MP.cfg=cfg;
   MP.cmd={sd:cfg.sd,m:"normal",e:"auto",b:null,bs:0};mpSet({cmd:MP.cmd,ans:null,go:null,quit:null});MP.inRace=true;UI.scr="mprace";CAM.init=0;render()}
 function mpGuestFrame(now){const h=mpHostPeer();const hp=h&&h.presence;
@@ -203,7 +203,7 @@ function mpApplySnap(A,B,k,T,now){const L=R.geo.len,dt=Math.max(.001,FDT||.016);
     const ty=+cb[5]||0;c.tyre.c=MP_TY[Math.floor(ty/1000)]||"M";c.tyre.wear=clamp((ty%1000)/999,0,1);
     const hd=Array.isArray(B.h)&&B.h.find(x=>Array.isArray(x)&&x[0]===i);if(hd)mpApplyDetail(c,hd.slice(1))});
   const me=R.cars.find(c=>c.isP);if(!me)return;
-  if(!wasStarted&&R.started){MP.outAt=now;if(!R.spect&&!me.tapped)me.hold=true}
+  if(!wasStarted&&R.started){MP.outAt=now;if(!R.spect&&!me.tapped){me.tapped=true;me.hold=false;const rt=+(.2+(1-clamp(((me.d&&me.d.a&&me.d.a.start)||75)/100,0,1))*.25).toFixed(3);mpSet({go:{sd:MP.cfg.sd,rt,j:0}})}}/* largada automática também no online */
   if(me.hold&&R.started&&MP.outAt&&now-MP.outAt>1400){me.hold=false;me.tapped=true;mpSet({go:{sd:MP.cfg.sd,rt:1.4,j:0}})}
   if(R.toast&&R.t-R.toast.t>7)R.toast=null;mpLapTrack(me);
   // pergunta do engenheiro para você

@@ -2,20 +2,20 @@
 const POINTS=[25,18,15,12,10,8,6,4,2,1];// desde 2025 não há ponto extra pela volta mais rápida
 const SPRINT_PTS=[8,7,6,5,4,3,2,1];
 const COMP=TYRES;
-const PU={mercedes:{n:"Mercedes",power:1.012},ferrari:{n:"Ferrari",power:1.008},rbford:{n:"Red Bull Ford",power:.998},honda:{n:"Honda",power:.982},audi:{n:"Audi",power:.986}};
+const PU={mercedes:{n:"Mercedez",power:1.012},ferrari:{n:"Fehari",power:1.008},rbford:{n:"Red Bison Fort",power:.998},honda:{n:"Hondo",power:.982},audi:{n:"Audy",power:.986}};
 // as 11 equipes do grid de 2026 com os nomes reais (pilotos e chefes são fictícios). A força inicial segue a classificação real de 2026.
 const TEAMS0=[
- {id:"mercedes",n:"Mercedes",c:"#27F4D2",c2:"#1A1A1A",tier:92,pu:"mercedes",rep:96,boss:"Karl Weidner",style:"frio"},
- {id:"ferrari",n:"Ferrari",c:"#E8002D",c2:"#FFE600",tier:91,pu:"ferrari",rep:97,boss:"Lorenzo Vietti",style:"agressivo"},
- {id:"redbull",n:"Red Bull Racing",c:"#3671C6",c2:"#DC0032",tier:90,pu:"rbford",rep:95,boss:"James Whitlock",style:"calculista"},
- {id:"mclaren",n:"McLaren",c:"#FF8000",c2:"#1A1A1A",tier:90,pu:"mercedes",rep:94,boss:"Andrew Hale",style:"exigente"},
- {id:"racingbulls",n:"Racing Bulls",c:"#6692FF",c2:"#F2F2F2",tier:85,pu:"rbford",rep:78,boss:"Mike Carrow",style:"paciente"},
- {id:"alpine",n:"Alpine",c:"#FF87BC",c2:"#0093CC",tier:84,pu:"mercedes",rep:76,boss:"Sophie Laurent",style:"calculista"},
- {id:"haas",n:"Haas",c:"#E6E6E6",c2:"#DA291C",tier:83,pu:"ferrari",rep:70,boss:"Greg Dalton",style:"exigente"},
- {id:"audi",n:"Audi",c:"#8A8D8F",c2:"#E2001A",tier:82,pu:"audi",rep:76,boss:"Matthias Kern",style:"frio"},
- {id:"williams",n:"Williams",c:"#64C4FF",c2:"#00205B",tier:82,pu:"mercedes",rep:74,boss:"Thomas Reeve",style:"paciente"},
- {id:"astonmartin",n:"Aston Martin",c:"#229971",c2:"#CEDC00",tier:81,pu:"honda",rep:82,boss:"Hugh Carlisle",style:"agressivo"},
- {id:"cadillac",n:"Cadillac",c:"#3A3A3A",c2:"#F2F2F2",tier:79,pu:"ferrari",rep:60,boss:"Renata Duarte",style:"paciente",rookieTeam:true}
+ {id:"mercedes",n:"Mercedez",c:"#27F4D2",c2:"#1A1A1A",tier:92,pu:"mercedes",rep:96,boss:"Karl Weidner",style:"frio"},
+ {id:"ferrari",n:"Fehari",c:"#E8002D",c2:"#FFE600",tier:91,pu:"ferrari",rep:97,boss:"Lorenzo Vietti",style:"agressivo"},
+ {id:"redbull",n:"Red Bison Racing",c:"#3671C6",c2:"#DC0032",tier:90,pu:"rbford",rep:95,boss:"James Whitlock",style:"calculista"},
+ {id:"mclaren",n:"McLarren",c:"#FF8000",c2:"#1A1A1A",tier:90,pu:"mercedes",rep:94,boss:"Andrew Hale",style:"exigente"},
+ {id:"racingbulls",n:"Racing Bisons",c:"#6692FF",c2:"#F2F2F2",tier:85,pu:"rbford",rep:78,boss:"Mike Carrow",style:"paciente"},
+ {id:"alpine",n:"Alpyne",c:"#FF87BC",c2:"#0093CC",tier:84,pu:"mercedes",rep:76,boss:"Sophie Laurent",style:"calculista"},
+ {id:"haas",n:"Hass",c:"#E6E6E6",c2:"#DA291C",tier:83,pu:"ferrari",rep:70,boss:"Greg Dalton",style:"exigente"},
+ {id:"audi",n:"Audy",c:"#8A8D8F",c2:"#E2001A",tier:82,pu:"audi",rep:76,boss:"Matthias Kern",style:"frio"},
+ {id:"williams",n:"Willians",c:"#64C4FF",c2:"#00205B",tier:82,pu:"mercedes",rep:74,boss:"Thomas Reeve",style:"paciente"},
+ {id:"astonmartin",n:"Aston Marten",c:"#229971",c2:"#CEDC00",tier:81,pu:"honda",rep:82,boss:"Hugh Carlisle",style:"agressivo"},
+ {id:"cadillac",n:"Cadilak",c:"#3A3A3A",c2:"#F2F2F2",tier:79,pu:"ferrari",rep:60,boss:"Renata Duarte",style:"paciente",rookieTeam:true}
 ];
 // garagens do pit lane: ordem do campeonato de construtores do ano anterior (2025); a equipe nova fica no fim
 const GARAGE0=["mclaren","mercedes","redbull","ferrari","williams","racingbulls","astonmartin","haas","audi","alpine","cadillac"];

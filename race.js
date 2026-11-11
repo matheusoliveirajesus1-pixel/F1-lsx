@@ -69,7 +69,7 @@ function startRace(pre){R0K=riskK();// pre: {plan, tyre, fuel} do seu carro (a e
       auto:!(me||d.hum),plan,planIdx:0,setup:W.setup[id]||.6,L:C.target+3,dirty:false,errs:0,laps:[],sect:[0,0,0],sectBest:[null,null,null],v:0,ph:carPhys(t,d),ovMode:false,batt:100,q:-1})});
   aiPrep(geo);pistaInit();R.cars.forEach((c,i)=>{aiInit(c,i);stInit(c);mcInit(c)});R.touchCd={};R.prevRank=null;R.wetLaps=0;
   R.secBest=[null,null,null];R.bubbles=[];
-  R.order=R.cars.slice();R.narr=[];R.hl=[];R.rec=[];R.recNext=0;R.asks=0;R.ask=null;R.leader=null;R.lastLapSaid=false;R.go=Infinity;R.started=false;R.form={phase:"out",t0:0};R.lightsStart=null;R.autoStart=typeof document==="undefined";R.incidents=[];R.rb=[];R.rbNext=0;R.riskK=R0K;R.errLog={minor:0,off:0,spin:0,crash:0,dnf:0,fire:0,beach:0};R.crowd=[];R.touchCd={};R.wrecks=[];R.yellows=[];R.fxq=[];R.greenT=0;
+  R.order=R.cars.slice();R.narr=[];R.hl=[];R.rec=[];R.recNext=0;R.asks=0;R.ask=null;R.leader=null;R.lastLapSaid=false;R.go=Infinity;R.started=false;R.form={phase:"out",t0:0};R.lightsStart=null;R.autoStart=true;/* largada automática: o tempo de reação do jogador vem da habilidade, como nos adversários */R.incidents=[];R.rb=[];R.rbNext=0;R.riskK=R0K;R.errLog={minor:0,off:0,spin:0,crash:0,dnf:0,fire:0,beach:0};R.crowd=[];R.touchCd={};R.wrecks=[];R.yellows=[];R.fxq=[];R.greenT=0;
   R.cars.forEach(c=>{c.slot=c.prog+1;c.v=0;recalc(c)});
   rcMsg(`Volta de apresentação em ${C.n}: os carros aquecem os pneus e voltam ao grid. Depois, cinco luzes vermelhas; quando apagarem, a corrida começa.`,"","largada");
   if(R.w>.3)rcMsg("Pista molhada na largada: todos com pneus para chuva.","","chuva");

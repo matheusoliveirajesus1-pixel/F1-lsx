@@ -62,7 +62,7 @@ function stEv(c,type,x){const s=c&&c.st;if(!s)return;
 // multiplicadores usados no risco e no ritmo
 function stateRisk(c){const s=c.st;if(!s)return 1;return(1+s.nerv*.005)*(s.conf<50?1+(50-s.conf)*.008:1-(s.conf-50)*.003)*(1+s.frus*.004)*(1+(100-s.foco)*.006)*(1+s.fat*.004)}
 function stateMu(c){const s=c.st;if(!s)return 1;return 1+(s.conf-50)*.00005-s.fat*.00004-(100-s.foco)*.00003}
-function aggrEff(c,A){const s=c.st;return clamp(c.aggr+(s?s.frus*.003:0)+(A?feud(c.d.id,A.d.id)*.004:0),.05,1)}
+function aggrEff(c,A){const s=c.st;return clamp(c.aggr+(s?s.frus*.003:0)+(A?feud(c.d.id,A.d.id)*.004:0)+(typeof intRiskK==="function"?intRiskK(c):0),.05,1)}
 // falas do piloto conforme o estado (sem repetir toda hora)
 function stRadio(c){const s=c.st,said=s.said,L=c.lap;const ok=(k,gap)=>!(said[k]!=null&&L-said[k]<gap);const say=(k,t,o)=>{said[k]=L;radio(c,t,Object.assign({me:1,k:"piloto"},o||{}))};
   const A=c.ahead;

@@ -45,7 +45,7 @@ function smartDrawReplay(ctx,cw,ch,dt){const rep=SMART.rep;if(!rep)return false;
   if(inv.length){m={x:inv.reduce((s,c)=>s+c.x,0)/inv.length,y:inv.reduce((s,c)=>s+c.y,0)/inv.length}}else{const p=evPos(ev);if(!p){smartBack();return false}m=p}
   let z=Math.min(cw,ch*1.3)/(WS*62);if(inv.length>1){let d=0;for(const a of inv)for(const b of inv){const[ax,ay]=iso(a.x,a.y),[bx,by]=iso(b.x,b.y);d=Math.max(d,Math.hypot(ax-bx,ay-by))}z=Math.min(z,Math.min(cw,ch)*.5/Math.max(1,d))}
   const[tx,ty]=iso(m.x,m.y);camTo(dt,tx,ty,Math.max(.3,z)*CAM.userZ,.18,.5);CAM.sx=0;CAM.sy=0;
-  const fx=R.fxq;R.fxq=rep.fx;try{drawScene(ctx,cw,ch,{S,T:rep.t,pip:true})}finally{R.fxq=fx}
+  const fx=R.fxq;R.fxq=rep.fx;try{drawScene(ctx,cw,ch,{S,T:rep.t,pip:true,foc:ev.cars})}finally{R.fxq=fx}
   for(const c of inv){const s=toScreen(c.x,c.y,0,cw,ch);ctx.strokeStyle="#FFD400";ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.ellipse(s[0],s[1],5.4*WS*CAM.z,2.9*WS*CAM.z,0,0,7);ctx.stroke();ctx.setLineDash([])}
   // faixas de replay
   ctx.fillStyle="rgba(0,0,0,.18)";ctx.fillRect(0,0,cw,ch);const near=Math.abs(rep.t-ev.t)<.7;

@@ -188,5 +188,5 @@ function cornerAt(geo,i){let best=null,bd=1e9;for(const c of geo.corners){let d=
 
 // ---------- estruturas especiais (fonte única para desenho, áudio e testes)
 // túnel de Mônaco: da saída de Portier até a "Saída do túnel" (sob o hotel), em fração da volta
-function tunnelRange(geo){if(!geo||geo.id!=="monaco")return null;if(geo._tun!==undefined)return geo._tun;const cs=geo.corners||[];const a=cs.find(c=>/Portier/.test(c.n)),b=cs.find(c=>/Saída do túnel/.test(c.n));
+function tunnelRange(geo){if(!geo)return null;if(geo._tun!==undefined)return geo._tun;if(typeof fichaOf!=="function")return null;const F=fichaOf(geo.id).tunel;if(!F)return geo._tun=null;const cs=geo.corners||[];const a=cs.find(c=>c.n===F.de),b=cs.find(c=>c.n===F.ate);
   geo._tun=a&&b&&b.i>a.i?{a:(a.i+12)/geo.N,b:(b.i+18)/geo.N}:null;return geo._tun}

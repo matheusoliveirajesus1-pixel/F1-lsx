@@ -41,4 +41,5 @@ function prepGeo(geo){const m=new Uint8Array(geo.N);geo.zones.forEach(([a,b])=>{
 function calibrate(geo){if(geo.gk)return geo.gk;prepGeo(geo);const car={pw:1.04,cd:.98,cl:1.06,mass:PH.mass+2};const mu=tyreMu("S",0,0,null);
   let lo=.6,hi=2.2;for(let it=0;it<28;it++){const mid=(lo+hi)/2;const t=speedProfile(geo,car,mu,4.2,mid).t;if(t>geo.C.target)lo=mid;else hi=mid}geo.gk=(lo+hi)/2;return geo.gk}
 function gearRpm(v){const kmh=v*3.6;let g=0;while(g<7&&kmh>PH.gears[g]*.985)g++;const rpm=Math.min(PH.ratioRpm,Math.max(4200,PH.ratioRpm*kmh/PH.gears[g]));return{gear:g+1,rpm}}
-function carPhys(team,driver){const c=team.car;return{pw:1+(c.eng-85)*.0045,cd:1-(c.aero-85)*.0012-(c.chas-85)*.0008,cl:1+(c.aero-85)*.0055+(c.chas-85)*.002,bk:1+((c.brk||85)-85)*.003,mass:PH.mass}}
+function carPhys(team,driver){const c=team.car;const ph={pw:1+(c.eng-85)*.0045,cd:1-(c.aero-85)*.0012-(c.chas-85)*.0008,cl:1+(c.aero-85)*.0055+(c.chas-85)*.002,bk:1+((c.brk||85)-85)*.003,mass:PH.mass};
+  /* ajustes finos da oficina (só a equipe do jogador, só na carreira) */const T=typeof tuneFor==="function"?tuneFor(team):null;return T?tuneApply(ph,T):ph}

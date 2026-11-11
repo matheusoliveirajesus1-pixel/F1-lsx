@@ -75,7 +75,7 @@ function afterRace(res){if(typeof marketRumors==="function")marketRumors();G.res
   if(e.pts>0&&!R.point){R.point=tag;news("Seus primeiros pontos na Fórmula 1!","big")}
   if(e.pos<=3&&e.status==="ok"&&!R.podium){R.podium=tag;news("Seu primeiro pódio na F1!","big")}
   if(e.pos===1&&e.status==="ok"&&!R.win){R.win=tag;news("SUA PRIMEIRA VITÓRIA NA FÓRMULA 1!","big")}
-  if(typeof devAfterRace==="function")devAfterRace();if(typeof spAfterRace==="function")spAfterRace(res,e);
+  if(typeof goalsPay==="function"&&!res.banned)res.goals=goalsPay();if(typeof shopEarn==="function")res.shopCr=shopEarn(e);if(typeof devAfterRace==="function")devAfterRace();if(typeof spAfterRace==="function")spAfterRace(res,e);
   aiDevelop();G.round++;
   if(G.round===Math.floor(G.calendar.length*.6))makeOffers(true);
   save()}
@@ -113,7 +113,7 @@ function endSeason(){const st=standings(),me=ME();const pos=st.drivers.findIndex
   {const mk=typeof aiMarket==="function"?aiMarket():[];if(mk.length)sum.push("Mercado de pilotos para "+(G.year+1)+": "+mk.slice(0,10).join(" ")+(mk.length>10?` E mais ${mk.length-10} mudanças.`:""))}
   // envelhecimento e evolução dos outros
   Object.values(G.drivers).forEach(d=>{d.age++;if(d.me||d.retired)return;const g=d.age<=25?rr(0,3):d.age<=32?rr(-1,1):rr(-3,0);for(const k in d.a)d.a[k]=clamp(Math.round(d.a[k]+g+rr(-1,1)),40,99)});
-  G.teams.forEach(t=>{for(const k of["aero","chas","susp","brk","rel"])t.car[k]=clamp(+(80+(t.car[k]-80)*.7+rr(-2,2)).toFixed(1),60,95)});
+  if(typeof shopSeason==="function")shopSeason(0);G.teams.forEach(t=>{for(const k of["aero","chas","susp","brk","rel"])t.car[k]=clamp(+(80+(t.car[k]-80)*.7+rr(-2,2)).toFixed(1),60,95)});if(typeof shopSeason==="function")shopSeason(1);
   G.year++;G.season++;G.round=0;G.h2h={q:[0,0],r:[0,0]};G.trust=clamp(G.trust,40,70);news(`Começa a temporada ${G.year}.`,"big");save();return sum}
 // ---------- salvar
 function save(){if(G&&G.mp)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({G,DID}))}catch(e){}}

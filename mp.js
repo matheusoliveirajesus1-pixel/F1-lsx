@@ -76,7 +76,13 @@ function mpBuildWorld(cfg,L,localPeer){if(!MP.saved)MP.saved={G,W,R};const CG=MP
   else L.forEach(s=>{const t=G.teams.find(x=>x.id===s.tm)||G.teams[0];const slot=t.drivers.findIndex(x=>!G.drivers[x].hum);if(slot<0)return;delete G.drivers[t.drivers[slot]];
     const d=mpHumanDriver(s,t.id,localPeer);G.drivers[d.id]=d;t.drivers[slot]=d.id;if(d.me)G.me=d.id});
   mpDedupeCodes();if(cfg.ss&&cfg.sw)RNG=mulberry(cfg.sd||1);
+  // regras do online: na corrida rápida todos os carros são iguais; o campeonato (temporada online) tem as regras dele
+  G.mpRules=Object.assign({},cfg.ss?MP_RULES_SSN:MP_RULES_QUICK,cfg.rules||{});if(G.mpRules.equalCars)mpEqualCars();
   mpWorldTrack(cfg,L)}
+// regras: equalCars = todos com o mesmo carro; shop = oficina e ajustes liberados (fica para as regras do campeonato)
+const MP_RULES_QUICK={equalCars:true,shop:false},MP_RULES_SSN={equalCars:false,shop:false};
+const MP_CAR={eng:88,aero:88,chas:88,susp:88,brk:88,rel:90};
+function mpEqualCars(){for(const t of G.teams)t.car=Object.assign({},MP_CAR)}
 function mpHumanDriver(s,tid,localPeer){const d=newDriver({n:s.nm,code:s.cd,nat:"BRA",pace:84,team:tid,num:s.num,age:24});for(const a in d.a)d.a[a]=84;d.trait=null;d.morale=75;d.pers={aggr:60,disc:70};d.exp={yrs:5,starts:100,wet:12,laps:{}};
   if(s.peer){d.hum=s.peer;d.me=s.peer===localPeer}d.uid=s.uid||"";d.helmet=[s.c1,s.c2];return d}
 // as 11 equipes reais com os pilotos da IA (mesma semente = mesmos pilotos em todos os aparelhos)
@@ -120,19 +126,14 @@ function mpHostTick(now){if(!R||!R.mpHost)return;const peers=mpPeers();
   for(const c of R.cars){if(!c.peer||c.isP)continue;let p=peers.find(x=>x.peer===c.peer);
     // quem caiu e voltou (página recarregada) é reconhecido pelo id fixo do jogador
     if((!p||c.gone)&&c.uid){const q=peers.find(x=>!x.sameTab&&x.presence.uid===c.uid&&x.presence.quit!==MP.cfg.sd&&x.presence.ph!=="spec");
-      if(q&&(q.peer!==c.peer||c.gone)){p=q;c.peer=q.peer;for(const k of["cmdM","cmdE","cmdTw","cmdGo","cmdAs","cmdPl","cmdBk","cmdDf","cmdBs","ansDone"])c[k]=undefined;
+      if(q&&(q.peer!==c.peer||c.gone)){p=q;c.peer=q.peer;for(const k of["cmdIp","cmdIr","cmdBs","ansDone"])c[k]=undefined;
         if(c.gone&&running(c)&&!c.quitT){c.gone=false;c.hum=true;c.auto=false;rcMsg(`${c.code} voltou para a corrida e assume o carro de novo.`,"good")}}}
     if(c.gone)continue;
     if(!p){if(now-c.lastSeen>9000){c.gone=true;c.hum=false;c.auto=true;c.rask=null;rcMsg(`${c.code} perdeu a conexão: a equipe pilota o carro até ele voltar.`,"warn")}continue}
     c.lastSeen=now;const P=p.presence||{},sd=MP.cfg.sd;
     if(P.quit===sd||P.rm!==MP.code){c.gone=true;c.quitT=P.quit===sd?1:0;c.hum=false;c.auto=true;c.rask=null;rcMsg(`${c.code} saiu da corrida: a equipe assume o carro até o fim.`,"warn");continue}
-    const cmd=P.cmd;if(cmd&&cmd.sd===sd){if(cmd.m!==c.cmdM){c.cmdM=cmd.m;if(cmd.m!==c.mode)cmdModeC(c,cmd.m)}if(cmd.e!==c.cmdE){c.cmdE=cmd.e;if(cmd.e!==c.ers)cmdErsC(c,cmd.e)}
-      if((cmd.tw||0)!==(c.cmdTw||0)){const first=c.cmdTw==null;c.cmdTw=cmd.tw||0;if(!first||cmd.tw>0)cmdTowC(c)}
-      if((cmd.go||0)!==(c.cmdGo||0)){const first=c.cmdGo==null;c.cmdGo=cmd.go||0;if(!first||cmd.go>0)cmdGoC(c)}
-      if((cmd.as||"auto")!==(c.cmdAs||"auto")){c.cmdAs=cmd.as||"auto";cmdStyleC(c,c.cmdAs)}
-      if((cmd.pl||"norm")!==(c.cmdPl||"norm")){c.cmdPl=cmd.pl||"norm";cmdPlanC(c,c.cmdPl)}
-      if((cmd.bk||0)!==(c.cmdBk||0)){const first=c.cmdBk==null;c.cmdBk=cmd.bk||0;if(!first||cmd.bk>0)cmdBackC(c)}
-      if((cmd.df||0)!==(c.cmdDf||0)){const first=c.cmdDf==null;c.cmdDf=cmd.df||0;if(!first||cmd.df>0)cmdDefC(c)}
+    // o convidado só manda intenções (Ritmo e Disputas) e o box; o resto é decisão do próprio piloto (brain.js)
+    const cmd=P.cmd;if(cmd&&cmd.sd===sd){if(cmd.ip&&cmd.ip!==c.cmdIp){c.cmdIp=cmd.ip;setIntentC(c,"pace",cmd.ip,true)}if(cmd.ir&&cmd.ir!==c.cmdIr){c.cmdIr=cmd.ir;setIntentC(c,"risk",cmd.ir,true)}
       if(cmd.bs!==c.cmdBs){const first=c.cmdBs==null;c.cmdBs=cmd.bs;if(!first||cmd.bs>0)cmdBoxC(c,cmd.b||null)}}
     const a=P.ans;if(Array.isArray(a)&&a[0]===sd&&a[1]!==c.ansDone){c.ansDone=a[1];answerRemote(c,a[1],a[2])}
     const g=P.go;if(g&&g.sd===sd&&R.started&&!c.goDone)remoteLaunch(c,g.rt,!!g.j)}
@@ -228,11 +229,7 @@ function mpApplyLog(lg){for(const e of lg){if(!Array.isArray(e)||!(e[0]>MP.lastS
 // comandos do convidado: o estado vai no presence e o anfitrião aplica no seu carro
 function mpCmd(patch){if(!R||!R.mpGuest||R.spect)return;const me=R.cars.find(c=>c.isP);if(!me||!running(me))return;
   if("b" in patch){MP.cmd.b=patch.b||null;MP.cmd.bs=(MP.cmd.bs||0)+1;me.pitCall=patch.b||null}
-  if(patch.tw){MP.cmd.tw=(MP.cmd.tw||0)+1;me.towReq=true}
-  if(patch.go){MP.cmd.go=(MP.cmd.go||0)+1;me.goReq=true}
-  if(patch.as){MP.cmd.as=patch.as;me.atkStyle=patch.as}if(patch.pl){MP.cmd.pl=patch.pl;me.ersPlan=patch.pl}if(patch.df){MP.cmd.df=(MP.cmd.df||0)+1;me.defOrd=!me.defOrd}
-  if(patch.bk){MP.cmd.bk=(MP.cmd.bk||0)+1}
-  if(patch.m){MP.cmd.m=patch.m;me.mode=patch.m}if(patch.e){MP.cmd.e=patch.e;me.ers=patch.e}MP.cmd.sd=MP.cfg.sd;mpSet({cmd:{...MP.cmd}})}
+  if(patch.ip){MP.cmd.ip=patch.ip}if(patch.ir){MP.cmd.ir=patch.ir}MP.cmd.sd=MP.cfg.sd;mpSet({cmd:{...MP.cmd}})}
 function mpAnswer(k){const a=R.ask;if(!a||!R.mpGuest)return;MP.askDone=a.id;R.ask=null;radio(a.c,(a.opts.find(o=>o[0]===k)||[,""])[1],{me:1});mpSet({ans:[MP.cfg.sd,a.id,k]})}
 function mpTap(){const me=R.cars.find(c=>c.isP);if(!me||R.spect||me.tapped||R.form.phase!=="lights")return;me.tapped=true;
   if(!R.started){if(R.lightsStart!=null&&R.t>=R.lightsStart){mpSet({go:{sd:MP.cfg.sd,j:1,rt:0}});radio(me,"Queimei a largada!",{me:1})}else me.tapped=false;return}

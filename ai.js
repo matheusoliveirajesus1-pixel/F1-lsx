@@ -76,7 +76,7 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   if(!neutral&&B&&c.dB<34&&c.dB>CARL+4&&ph===0&&nb<280&&nb>60&&!c.coverDone&&!(c.att&&c.att.commit)){c.coverDone=true;const cy=clamp(ins*4.7,-YATK,YATK);if(Math.abs(B.y-cy)>2.4&&wantsDefend(c,B))c.coverY=cy}
   if(!neutral&&ph===0&&B&&c.dB<48&&c.dB>CARL+3&&nb>300&&!c.coverDone&&c.towY==null&&(B.tow||0)>.55&&(B.v||0)>(c.v||0)+1&&!(c.att&&c.att.commit)&&running(B)&&!B.pit){
     if(c.towSeen==null||c.towSeenId!==B.id){c.towSeen=R.t;c.towSeenId=B.id}const defK=clamp(((c.d.a.def||75)-50)/45,0,1);const rt=.5+(1-defK)*1.3+(1-clamp(c.aggr,0,1))*.6;
-    const want=c.towReq||(!c.hum&&c.t!==B.t&&R.t-c.towSeen>rt&&(defK>.25||c.aggr>.55||rivals(c,B)));
+    const want=c.towReq||(c.t!==B.t&&R.t-c.towSeen>rt&&(defK>.25||c.aggr>.55||rivals(c,B)));
     if(want){c.towReq=false;c.coverDone=true;const s=Math.sign((c.y||0)-(B.y||0))||(rnd()<.5?1:-1);let ty=(c.y||0)+s*3.6;if(Math.abs(ty)>YATK-.3)ty=(c.y||0)-s*3.6;c.towY=clamp(ty,-YATK+.3,YATK-.3);c.towT=R.t;
       bubble(c,"Quebrou o vácuo!","",2.5);if(B.hum)radio(B,`${c.code} mudou de linha e quebrou o nosso vácuo.`,{k:"vacuo"});if(c.hum)radio(c,`Mudei de linha: ${B.code} saiu do vácuo.`,{me:1,k:"vacuo"})}}
   if(c.towY!=null){if(ph!==0||R.t-c.towT>7)c.towY=null;else yT=c.towY}
@@ -147,7 +147,7 @@ function battle(c,A,dA,ph,ins,nb){const adv=(A.Ls??A.L)-(c.Ls??c.L);
       // oportunidade real: vale a pena pela vantagem e pela personalidade, e só se houver espaço do lado escolhido
       let side=atkSide(c,A,ins);const room=sd=>{const y=(A.y||0)+sd*2.8;if(Math.abs(y)>YATK)return false;return!(A.alongs||[]).some(o=>o!==c&&Math.abs((o.y||0)-y)<CARW+.2)};if(!room(side)&&room(-side))side=-side;
       const take=(c.backOff||0)<R.t&&room(side)&&p>=.42-(aggrEff(c,A)-.5)*.3+c.decN;c.att={id:A.id,commit:take,side,t:R.t,y:null,go:take&&go};if(!take)c.cdAtt=rr(2.5,6);
-      if(go&&!take&&c.hum){c.goReq=false;radio(c,`Sem espaço para atacar o ${A.code} agora.`,{me:1,k:"duelo"})}
+      if(go&&!take)c.goReq=false;
       if(take&&go){c.goReq=false;c.goT=R.t;R.goN=(R.goN||0)+1;bubble(c,"Vai pra cima!","pass",2.5);if(c.hum)radio(c,`Vou pra cima do ${A.code}!`,{me:1,k:"duelo"})}}
     else return}
   const a=c.att;if(!a.commit){if(c.cdAtt<=0&&ph===0)c.att=null;return}
@@ -171,22 +171,7 @@ function aiPasses(){const ord=R.order,rank=new Map();ord.forEach((c,i)=>rank.set
       B.cands=B.cands||[];if(!B.cands.some(x=>x.A===A))B.cands.push({A,t:R.t})}}
   for(const B of ord){if(!B.cands||!B.cands.length)continue;B.cands=B.cands.filter(x=>{if(!running(B)||!running(x.A)||rank.get(B)>rank.get(x.A)||R.t-x.t>12)return false;const lead=(B.prog-x.A.prog)*R.geo.len;if(lead<CARL+4){x.t2=null;return true}x.t2=x.t2||R.t;if(R.t-x.t2>=1.2){completePass(B,x.A);return false}return true})}
   R.prevRank=rank}
-// ---------- ritmo: cada piloto decide quando atacar e quando poupar
-function aiPace(c){if(c.hum||!running(c)||c.pit)return;const left=R.L-c.lap;const i=R.order.indexOf(c),A=R.order[i-1],B=R.order[i+1];
-  const gA=A&&running(A)?(A.prog-c.prog)*c.L:99,gB=B&&running(B)?(c.prog-B.prog)*c.L:99;const st=c.plan&&c.plan.stops[c.planIdx];
-  const stintLeft=COMP[c.tyre.c].dry?(st?Math.max(1,st.lap-c.lap):left):left;const wr=wearRate(c);const proj=c.tyre.wear+wr*stintLeft;
-  let mode="normal";const adv=A?(A.Ls??A.L)-(c.Ls??c.L):0;
-  if(proj>.8)mode="save";
-  else if(gA<1.3&&adv>.15&&c.tyre.wear<.6&&rnd()<.45+c.aggr*.4)mode="attack";// ritmo melhor e colado: pressiona
-  else if(gB<1&&c.aggr>.72&&left<=6&&c.tyre.wear<.7)mode="attack";// agressivo defende acelerando no fim
-  if(c.inLap||(c.pitExit&&R.t-c.pitExit<c.L*1.1))mode="attack";// volta de entrada/saída do box
-  if(left<=3&&gA<2&&c.tyre.wear<.85&&mode!=="save")mode="attack";
-  if(gA>4&&gB>4&&proj<.75&&(c.d.trait==="pneus"||c.d.trait==="cuidadoso"||rnd()<.3))mode="save";
-  if(c.brakeHot)mode="normal";
-  if(c.mc&&(c.mc.tEng>126||c.mc.hEng<.42||c.mc.hGbx<.3))mode="save";// a equipe protege o motor e o câmbio
-  // energia: mapa automático na maior parte do tempo; recarrega se a bateria cair muito
-  c.ers=c.batt<14&&gB>1.2?"save":"auto";
-  if(mode!==c.mode){c.mode=mode;recalc(c)}}
+// ---------- ritmo e energia de cada piloto: brain.js (driverBrain), igual para a IA e para os jogadores
 // ---------- estrategistas: reagem às paradas dos rivais
 function aiReact(c){if(c.hum||c.pitCall||c.pit||!running(c))return;const left=R.L-c.lap;if(left<4||R.w>.2||!COMP[c.tyre.c].dry)return;const skill=(70+c.t.rep/4)/100;
   const threat=R.cars.find(x=>x!==c&&running(x)&&x.pitRival===c.id&&x.pitGap<3.2&&x.pitT>R.t-c.L*1.05&&!x.reactDone);

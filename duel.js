@@ -58,15 +58,10 @@ function advGain(B,A,why){if(B.gb||R.sc||R.red||!running(B)||!running(A))return;
   R.nAdv=(R.nAdv||0)+1;rcMsg(`Direção de prova: ${B.code} ${msg} sobre ${A.code} e deve devolver a posição.`,"warn","vantagem");
   B.gb={to:A.id,why,t:R.t,mode:null,deadline:R.t+32};bubble(B,"Precisa devolver!","order",3);
   if(A.hum)radio(A,`${B.code} ${msg}. Ele tem que devolver a posição.`,{k:"vantagem"});
-  if(B.hum){const eng=G.engineer||"Engenheiro";pushAsk({c:B,A,kind:"giveback",q:`${eng}: "Você ${msg} sobre ${A.code}. A direção de prova quer a posição de volta. O que fazemos?"`,
-    opts:[["gb_now","Devolver já"],["gb_line","Devolver perto da linha (pego o modo de ultrapassagem)"],["gb_keep","Segurar e abrir 5 s"]],def:"gb_now",dur:12})}
-  else gbDecide(B,A,aiGbChoice(B,A))}
-// decisão da IA: disciplina, ritmo e voltas que faltam
-function aiGbChoice(B,A){const disc=(B.d.pers||{}).disc??65;const left=R.L-B.lap,faster=(A.L-B.L);
-  if(faster*left>7&&disc<72&&rnd()<.7)return"gb_keep";if(disc<30&&rnd()<.3)return"gb_keep";
-  return(B.d.a.craft||75)>=78&&fr(B.prog)<.75&&rnd()<.6?"gb_line":"gb_now"}
+  // o próprio piloto decide como devolver (brain.js: disciplina, ritmo, voltas restantes e a intenção "Disputas")
+  {const k=gbBrain(B,A);if(B.hum)radio(B,k==="gb_keep"?`Vou segurar e abrir mais de 5 s do ${A.code}.`:k==="gb_line"?`Devolvo a posição perto da linha e uso o modo de ultrapassagem.`:`Devolvendo a posição ao ${A.code}.`,{me:1,k:"vantagem"});gbDecide(B,A,k)}}
 function gbDecide(B,A,k){const g=B.gb;if(!g)return;g.mode=k==="gb_keep"?"keep":k==="gb_line"?"line":"now";
-  if(g.mode==="keep"){stewAdd({kind:"adv",cul:B.id,vic:A.id,why:g.why,at:R.t+rr(14,24)});if(B.hum)radio(B,"Copiado: vamos segurar e abrir mais de 5 segundos. Ataque total!",{me:1,k:"vantagem"});if(!B.hum)B.mode="attack";B.gb=null;return}
+  if(g.mode==="keep"){stewAdd({kind:"adv",cul:B.id,vic:A.id,why:g.why,at:R.t+rr(14,24)});if(!B.hum)B.mode="attack";B.gb=null;return}
   if(g.mode==="now")B.yieldTo=A.id;
   if(B.hum)radio(B,g.mode==="line"?`Copiado: devolvo a posição perto da linha para pegar o modo de ultrapassagem.`:`Copiado, devolvendo a posição para ${A.code}.`,{me:1,k:"vantagem"})}
 // depois de passar por fora da pista: se terminou na frente de quem disputava, ganhou vantagem
@@ -97,8 +92,4 @@ function penalize(c,secs,why,lic){if(c.status!=="run"&&c.status!=="fin")return;c
   for(const o of R.cars){if(!o.hum||o===c||!running(o))continue;const gap=(c.prog-o.prog)*o.L;if(gap>0&&gap<secs+3)radio(o,`${c.code} levou ${secs} s de punição. Se você terminar a menos de ${secs} s dele, fica na frente.`,{k:"punicao"})}}
 
 // ---------- comandos de rádio: estilo de ataque e ordem de defesa
-function cmdStyle(s){cmdStyleC(R.cars.find(x=>x.isP),s)}
-function cmdStyleC(c,s){if(!c||!running(c)||!ASTYLE[s])return;stEv(c,"radio");c.atkStyle=s;radio(c,{auto:"Deixa comigo: eu escolho onde e como atacar.",in:"Vou atacar por dentro, na freada.",out:"Vou tentar por fora, levando velocidade na curva.",wait:"Paciência: vou esperar o lugar certo e poupar pneus e bateria."}[s],{me:1,k:"duelo"})}
-function cmdDef(){cmdDefC(R.cars.find(x=>x.isP))}
-function cmdDefC(c,on){if(!c||!running(c))return;stEv(c,"radio");c.defOrd=on==null?!c.defOrd:!!on;c.defT=R.t;radio(c,c.defOrd?"Entendido: vou segurar a posição. Fecho a porta e freio mais tarde, custa pneu.":"Ok, volto a defender só quando valer a pena.",{me:1,k:"defesa"})}
 function defTick(c){if(c.defOrd&&R.t-(c.defT||0)>150){c.defOrd=false;if(c.hum)radio(c,"Deixei de segurar a posição a todo custo: os pneus estavam sofrendo.",{me:1,k:"defesa"})}}

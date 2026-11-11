@@ -103,7 +103,7 @@ const TTS={on:false,q:0};
 function ttsOn(){return!!(typeof PREFS!=="undefined"&&PREFS.tts)&&typeof speechSynthesis!=="undefined"}
 function ttsSay(who,txt,pri){if(!ttsOn()||!SND.on)return;try{const ss=speechSynthesis;if(ss.speaking&&(pri||1)<2)return;if(ss.speaking)ss.cancel();
   const u=new SpeechSynthesisUtterance(String(txt).replace(/[“”"]/g,""));u.lang="pt-BR";const vs=ss.getVoices().filter(v=>/^pt/i.test(v.lang));if(vs.length)u.voice=vs[who==="com"&&vs[1]?1:0];
-  u.rate=who==="narr"?1.12:1.02;u.pitch=who==="com"?.9:1.05;u.volume=sndVols().voice*sndVols().master;SND.duckT=performance.now()+Math.min(6000,txt.length*70);ss.speak(u)}catch(e){}}
+  u.rate=who==="narr"?1.12:who==="me"?1.08:1.02;u.pitch=who==="com"?.9:who==="eng"?.85:1.05;if(who==="eng"&&vs[1])u.voice=vs[1];u.volume=sndVols().voice*sndVols().master;SND.duckT=performance.now()+Math.min(6000,txt.length*70);ss.speak(u)}catch(e){}}
 // ---------- música original (menus e resultados): sintetizada na hora, acordes + baixo + batida leve
 const MUS={on:false,timer:0,step:0,next:0};
 const MUS_PROG=[[57,60,64,67],[53,57,60,64],[55,59,62,65],[52,55,59,64]];// Lá menor, Fá, Sol, Mi menor (com sétimas)

@@ -260,6 +260,23 @@ details.gl{border-bottom:1px solid var(--line);padding:6px 0}details.gl summary{
 .h-bars{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.h-bars i{height:6px;border-radius:2px;background:#2A2F38}
 .h-bars i.p{background:#B65CFF}.h-bars i.g{background:#21C55D}.h-bars i.y{background:#FFD400}.h-bars i.cur{background:#8C96A3;animation:hpulse 1s ease-in-out infinite alternate}
 @keyframes hpulse{from{opacity:.35}to{opacity:1}}
+.h-now{font:700 11.5px var(--f-ui,system-ui);color:#FFD66B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:14px}
+.h-res{display:grid;grid-template-columns:44px 1fr 46px;white-space:nowrap;align-items:center;gap:5px;color:var(--muted)}.h-res b{font:700 11.5px var(--f-num);color:#EEF1F5;text-align:right}
+.h-bar{height:6px;border-radius:3px;background:#FFFFFF1F;overflow:hidden}.h-bar i{display:block;height:100%;width:0;border-radius:3px}
+.h-det{display:flex;flex-direction:column;gap:4px}
+.goal{display:grid;grid-template-columns:22px 1fr auto;gap:6px;align-items:center;padding:4px 0;font-size:13.5px}.goal b{color:#FFD400}.goal.no{opacity:.6}.goal.no b{color:var(--muted)}.goal.ok b{color:#2BD46E}
+.mmcap{margin-top:8px;font-weight:800;font-size:16px;min-height:22px}
+.part{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line,#ffffff14)}.part:first-of-type{border-top:0}
+.part.rec{background:linear-gradient(90deg,#FFD40014,transparent);border-radius:8px;padding-left:6px}.part .pi{font-size:22px;text-align:center}.part .pt{min-width:0}.part .pt .muted{font-size:12.5px}
+.part .pb .btn{min-width:96px;line-height:1.25;text-align:center}.part .pb .btn[disabled]{opacity:.45}
+.tagrec{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:9px;background:#FFD400;color:#111;font-size:12px;font-weight:800;vertical-align:1px}
+.part.rec{outline:1px solid #FFD40055}
+.pls{display:flex;gap:4px;align-items:center;margin:5px 0 2px}.pls i{width:18px;height:6px;border-radius:3px;background:#FFFFFF22}.pls i.on{background:#FFD400}.pls span{margin-left:6px;font-size:12px}
+.pfx{font-size:11.5px!important}.crd{font-size:15px}.crd b{font-size:26px;margin-right:4px}.up{color:#2BD46E;font-size:11px;font-weight:700}
+.tune{padding:8px 0;border-top:1px solid var(--line,#ffffff14)}.tsl{display:grid;grid-template-columns:1fr 2fr 1fr;gap:8px;align-items:center;font-size:12px}.tsl span:last-child{text-align:right}.tsl input{width:100%}
+.card.intro{border:1px solid #FFD40066}
+@media(max-width:560px){.part{grid-template-columns:28px 1fr}.part .pb{grid-column:2}.tsl{grid-template-columns:1fr;text-align:left}.tsl span:last-child{text-align:left}}
+.brnow{font-weight:700;color:var(--accent,#FFD66B);font-size:14px;min-height:18px}
 .h-line{display:flex;justify-content:space-between;color:var(--muted)}.h-line b{font:700 12px var(--f-num);color:#EEF1F5}.h-line b.neg{color:#21C55D}.h-line b.pos{color:#FF6B6B}
 .h-wx{font-size:11px;color:var(--muted);border-top:1px solid #FFFFFF14;padding-top:4px}
 .rhud .h-map{left:8px;top:auto;bottom:8px;width:150px;height:105px;pointer-events:auto;border-radius:6px}
@@ -275,7 +292,7 @@ details.gl{border-bottom:1px solid var(--line);padding:6px 0}details.gl summary{
 .stage .flag{z-index:2}
 @media (max-width:640px){
  .h-tower{width:150px;font-size:11px}.h-head{padding:3px 7px;font-size:10px}.h-row{grid-template-columns:16px 12px minmax(0,1fr) 13px 50px;gap:4px;padding:0 6px;height:17px}.h-row .hg{font-size:10px}.h-row .ty{width:13px;height:13px;font-size:8px}
- .h-sec{width:122px;padding:5px 7px;font-size:10px;gap:3px}.h-pos b{font-size:15px}.h-lapt{font-size:12px}.h-line b{font-size:10.5px}.h-wx{display:none}
+ .h-sec{width:122px;padding:5px 7px;font-size:10px;gap:3px}.h-now{font-size:10px}.h-res{grid-template-columns:34px 1fr 36px;gap:3px}.h-res b{font-size:9.5px}.h-pos b{font-size:15px}.h-lapt{font-size:12px}.h-line b{font-size:10.5px}.h-wx{display:none}
  .rhud .h-map{width:100px;height:70px}.h-car{width:80px;padding:3px 2px 2px}.h-car canvas{width:74px;height:89px}.h-car span{display:none}
  .h-wheel{gap:6px;padding:4px 8px;bottom:8px}.hw-spd b{font-size:16px}.hw-gear{font-size:20px}.hw-bat{width:58px}.hw-lamps .lamp:not(#hwOT){display:none}.hw-ers{display:none}
  .lower{bottom:86px;font-size:11px}.stage .flag{top:122px;font-size:12px}.toast{top:auto;bottom:100px;font-size:13px}
@@ -371,12 +388,16 @@ select.txt{appearance:auto;color-scheme:dark}
 <script src="career.js"></script>
 <script src="media.js"></script>
 <script src="team.js"></script>
+<script src="shop.js"></script>
 <script src="market.js"></script>
 <script src="race.js"></script>
 <script src="ai.js"></script>
 <script src="risk.js"></script>
 <script src="pilot.js"></script>
 <script src="duel.js"></script>
+<script src="brain.js"></script>
+<script src="voice.js"></script>
+<script src="goals.js"></script>
 <script src="pista.js"></script>
 <script src="mech.js"></script>
 <script src="contact.js"></script>

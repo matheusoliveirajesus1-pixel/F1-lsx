@@ -10,7 +10,7 @@ function tvOn(){return typeof PREFS==="undefined"||PREFS.tv!==false}
 // ---------- chamado a cada quadro, depois de desenhar a pista
 function tvOverlay(ctx,cw,ch,dt){if(!R)return;if(!R.clips)R.clips=[];const now=performance.now()/1000;
   if(CAM.flash>TVX.lastFlash+.4){TVX.st=now;TVX.lastCut=R.t;const f=typeof SMART!=="undefined"&&SMART.mode==="me"?meCar():null;TVX.stCol=f&&f.t?f.t.c:"#E10600"}TVX.lastFlash=CAM.flash;CAM.flash=0;
-  tvEvents();tvClipTick();
+  tvEvents();/* os lances agora são gravados dentro da corrida, com qualquer câmera (clipMark/clipTick em goals.js) */
   // gráficos de transmissão só na TV e no Diretor; nas outras câmeras a fila é descartada (nada fica acumulado para aparecer atrasado)
   if(typeof bcOn==="function"&&!bcOn()){TVX.ban=null;TVX.banQ.length=0;TVX.cap=null;TVX.capQ.length=0;TVX.rad=null;if(typeof bcOff==="function")bcOff();return}
   if(!tvOn()){tvStinger(ctx,cw,ch,now);return}
@@ -36,7 +36,7 @@ function tvEvents(){if(!R.started&&!R.form)return;const me=meCar();
     if(h.type==="lead"&&c&&R.lead>0)tvBan("NOVO LÍDER",`${c.d.n.toUpperCase()} · ${c.t.n}`,c.t.c,3.8,3);
     if(h.type==="finish"&&c)tvBan("BANDEIRA QUADRICULADA",`${c.d.n} vence o ${R.C.gp}`,c.t.c,5,4);
     if(h.type==="crash"&&c)tvBan("ACIDENTE",h.txt,"#FF4D4D",3.4,2);
-    if((h.imp||1)>=2&&["crash","spin","contact","pass","lead","finish","start"].includes(h.type))tvClipAdd(h);
+
     if(c)tvRadioEvent(h,cs)}
   const sc=R.sc?R.sc.type:null;if(sc!==TVX.sc){if(sc==="sc")tvBan("SAFETY CAR","Carro de segurança na pista: proibido ultrapassar","#FFD400",4.2,4);else if(sc==="vsc")tvBan("SAFETY CAR VIRTUAL","Todos reduzem o ritmo: proibido ultrapassar","#FFD400",4,4);
     else if(TVX.sc)tvBan("PISTA LIVRE","Bandeira verde: a corrida recomeça","#21C55D",3.4,3);TVX.sc=sc;if(sc)tvRadioSC()}
@@ -73,16 +73,18 @@ function tvComment(){const run=R.order.filter(c=>running(c));if(run.length<3)ret
 // ---------- rádio dos pilotos (personalidade: agressivo reclama, calmo analisa)
 function tvTemper(c){const p=c.d.pers||{aggr:50,disc:50};return p.aggr>66?"quente":p.disc>66?"frio":"normal"}
 const TV_RAD={
-  lost:{quente:["Ele me jogou pra fora! Isso tem que ser investigado!","Não acredito, ele fechou a porta na freada!","Estou perdendo tempo demais aqui, façam alguma coisa!"],frio:["Ele estava mais rápido, não tinha o que fazer.","Ok, perdi a posição. Qual é o ritmo dele?","Entendido. Vou proteger os pneus e esperar."],normal:["Perdi a posição, ele veio com muito vácuo.","Ele passou. Preciso de mais tração na saída.","Droga! Vou tentar de volta na próxima volta."]},
-  gain:{quente:["Isso! Vamos pra cima do próximo!","Passei! Me dá o gap do próximo!","Toma essa! Agora é ataque total!"],frio:["Ok, passei. Mantendo o ritmo.","Posição ganha. Pneus ainda bons.","Feito. Qual é a distância para o próximo?"],normal:["Boa! Ganhamos uma posição.","Passei por fora, que manobra!","Ultrapassagem feita. Seguimos."]},
-  crash:{quente:["Não acredito! Alguém me acertou?","Acabou. Que corrida jogada fora!","Sem freio, sem nada! O que aconteceu?"],frio:["Desculpem, pessoal. Perdi a traseira.","Estou bem. Erro meu, desculpem.","Acabou para nós. Estou bem."],normal:["Bati! Estou bem, mas o carro acabou.","Perdi o carro na freada. Desculpem.","Fim de corrida. Que pena."]},
-  spin:{quente:["Rodei! Esse carro está impossível!","Que pista escorregadia! Voltando!"],frio:["Rodei, tudo bem. Voltando com cuidado.","Pequena rodada, sem danos aparentes."],normal:["Rodei, rodei! Voltando para a pista.","Perdi a traseira, mas voltei."]},
-  tyre:{quente:["Esses pneus acabaram! Me chamem para o box!","Não tenho mais aderência nenhuma!"],frio:["Os pneus estão caindo. Quantas voltas faltam para a janela?","Estou perdendo meio segundo por volta com esses pneus."],normal:["Os pneus estão no fim, pessoal.","Muito desgaste atrás. Box logo?"]},
+  lost:{quente:["Porra! Ele me jogou pra fora!","Que merda foi essa? Ele fechou na freada!","Ele me jogou pra fora! Isso tem que ser investigado!","Não acredito, ele fechou a porta na freada!","Estou perdendo tempo demais aqui, façam alguma coisa!"],frio:["Ele estava mais rápido, não tinha o que fazer.","Ok, perdi a posição. Qual é o ritmo dele?","Entendido. Vou proteger os pneus e esperar."],normal:["Perdi a posição, ele veio com muito vácuo.","Ele passou. Preciso de mais tração na saída.","Droga! Vou tentar de volta na próxima volta."]},
+  gain:{quente:["Engole essa! Próximo!","Por dentro, sem chance! Vamos!","Isso! Vamos pra cima do próximo!","Passei! Me dá o gap do próximo!","Toma essa! Agora é ataque total!"],frio:["Ok, passei. Mantendo o ritmo.","Posição ganha. Pneus ainda bons.","Feito. Qual é a distância para o próximo?"],normal:["Boa! Ganhamos uma posição.","Passei por fora, que manobra!","Ultrapassagem feita. Seguimos."]},
+  crash:{quente:["Caralho! Acabou tudo!","Porra! Alguém me acertou!","Não acredito! Alguém me acertou?","Acabou. Que corrida jogada fora!","Sem freio, sem nada! O que aconteceu?"],frio:["Desculpem, pessoal. Perdi a traseira.","Estou bem. Erro meu, desculpem.","Acabou para nós. Estou bem."],normal:["Bati! Estou bem, mas o carro acabou.","Perdi o carro na freada. Desculpem.","Fim de corrida. Que pena."]},
+  spin:{quente:["Merda, rodei!","Rodei! Esse carro está impossível!","Que pista escorregadia! Voltando!"],frio:["Rodei, tudo bem. Voltando com cuidado.","Pequena rodada, sem danos aparentes."],normal:["Rodei, rodei! Voltando para a pista.","Perdi a traseira, mas voltei."]},
+  tyre:{quente:["Os pneus morreram, porra! Box!","Esses pneus acabaram! Me chamem para o box!","Não tenho mais aderência nenhuma!"],frio:["Os pneus estão caindo. Quantas voltas faltam para a janela?","Estou perdendo meio segundo por volta com esses pneus."],normal:["Os pneus estão no fim, pessoal.","Muito desgaste atrás. Box logo?"]},
   sc:{quente:["Safety car! Box, box, agora!","Vamos aproveitar! Para dentro!"],frio:["Safety car. Qual é o plano: paramos ou ficamos?","Entendido, safety car. Aguardo instruções."],normal:["Safety car na pista. Vamos parar?","Bandeira amarela geral. Box?"]},
   win:{quente:["VAMOS! QUE CORRIDA! É NOSSA!","SIIIIM! Obrigado, equipe! Vocês são demais!"],frio:["Obrigado, pessoal. Corrida perfeita. Grande trabalho.","Vitória. Estratégia certa, carro excelente. Obrigado."],normal:["Vencemos! Que domingo! Obrigado a todos!","É isso! Vitória! Obrigado, equipe!"]},
   lead:{quente:["Liderando! Agora ninguém me pega!"],frio:["Na liderança. Vou administrar."],normal:["Assumimos a ponta! Vamos manter."]}};
 function tvRadio(c,kind,pri){if(!c||c.hum||!c.t)return;if(R.t<TVX.radNext&&(pri||1)<3)return;const set=TV_RAD[kind];if(!set)return;const key=c.id+kind;if((TVX.radSaid[key]||-99)>R.t-60&&(pri||1)<3)return;
-  TVX.radSaid[key]=R.t;const txt=vpick(set[tvTemper(c)]);TVX.rad={c,txt,t0:performance.now()/1000,dur:4.6};if(UI.sound&&typeof sndRadio==="function")sndRadio(1.2);if(typeof ttsSay==="function")ttsSay("radio",txt,1);TVX.radNext=R.t+vrr(16,26);narr(`Rádio de ${c.code}: "${txt}"`,1)}
+  TVX.radSaid[key]=R.t;const txt=vpick(set[tvTemper(c)]);TVX.rad={c,txt,t0:performance.now()/1000,dur:4.6};if(UI.sound&&typeof sndRadio==="function")sndRadio(1.2);if(typeof ttsSay==="function")ttsSay("radio",txt,1);TVX.radNext=R.t+vrr(11,19);narr(`Rádio de ${c.code}: "${txt}"`,1)}
+// rádio de um piloto escolhido pelo rádio vivo (voice.js), por exemplo o seu companheiro: cartão na transmissão + narração
+function tvRadioSay(c,txt){if(!c||!c.t)return;TVX.rad={c,txt,t0:performance.now()/1000,dur:4.8};if(UI.sound&&typeof sndRadio==="function")sndRadio(1.2);if(typeof ttsSay==="function")ttsSay("radio",txt,1);TVX.radNext=R.t+vrr(10,16);narr(`Rádio de ${c.code}: "${txt}"`,1)}
 function tvRadioEvent(h,cs){const c=cs[0];const top=x=>x&&pos(x)<=10;
   if(h.type==="pass"&&cs[1]){if(top(cs[1])&&vrnd()<.55)tvRadio(cs[1],"lost");else if(top(c)&&vrnd()<.4)tvRadio(c,"gain")}
   else if(h.type==="crash")tvRadio(c,"crash",2);else if(h.type==="spin"&&vrnd()<.6)tvRadio(c,"spin");else if(h.type==="lead"&&R.lead>0&&vrnd()<.5)tvRadio(c,"lead");else if(h.type==="finish")tvRadio(c,"win",3);

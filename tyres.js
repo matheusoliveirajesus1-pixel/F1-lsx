@@ -50,9 +50,6 @@ function drawCarStatus(c){const cv=$("#hCarCv");if(!cv||!c)return;const ctx=cv.g
 const PX_WING=[[-2,"−2"],[-1,"−1"],[0,"0"],[1,"+1"],[2,"+2"]];
 function pxOpt(c){if(!c.pitOpt)c.pitOpt={nose:"auto",wing:0};return c.pitOpt}
 function noseNeeded(c){const d=c.dmg||{};return(d.wing||0)>=.3||(d.nose||0)>=.25||(d.wingL||0)>=.35||(d.wingR||0)>=.35}
-function pxCard(){return`<div class="pitopt"><div class="row"><span class="muted" style="font-size:12.5px;min-width:64px">Bico</span><div class="seg">${[["auto","Trocar se quebrado"],["no","Manter"]].map(([v,n])=>`<button data-act="pxNose" data-k="${v}" id="pxn_${v}">${n}</button>`).join("")}</div></div>
-  <div class="row"><span class="muted" style="font-size:12.5px;min-width:64px">Asa</span><div class="seg">${PX_WING.map(([v,n])=>`<button data-act="pxWing" data-k="${v}" id="pxw_${v}">${n}</button>`).join("")}</div></div>
-  <div class="row"><button class="btn sm" data-act="pxDbl" id="pxd">Parada dupla: chamar o companheiro também</button><span class="muted" id="pxinfo" style="font-size:12.5px"></span></div></div>`}
 function pxAction(a,k){const me=R&&R.cars.find(c=>c.isP);if(!me)return;const o=pxOpt(me);
   if(a==="pxNose"){o.nose=k==="no"?"no":"auto";radio(me,o.nose==="no"?"Se pararmos, não troquem o bico: só pneus.":"Se o bico estiver quebrado, troquem na parada.",{me:1})}
   if(a==="pxWing"){o.wing=clamp(+k||0,-2,2);radio(me,o.wing?`Na parada, ${o.wing>0?"mais":"menos"} asa: ${o.wing>0?"+":""}${o.wing}.`:"Asa como está.",{me:1})}

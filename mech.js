@@ -85,8 +85,6 @@ function riskLabel(v){return v<1.35?["Baixo","#21C55D"]:v<2.3?["Médio","#F5A524
 
 // ---------- plano de energia
 const EPLAN={norm:"Normal",main:"Na reta principal",end:"Tudo no fim"};
-function cmdPlanC(c,p){if(!c||!running(c)||!EPLAN[p])return;stEv(c,"radio");c.ersPlan=p;radio(c,{norm:"Energia distribuída ao longo da volta.",main:"Vou concentrar a bateria na reta principal: mais velocidade onde dá para ultrapassar.",end:"Guardando bateria cheia para as duas últimas voltas: aí vai tudo."}[p],{me:1,k:"ers"})}
-function cmdPlan(p){cmdPlanC(R.cars.find(x=>x.isP),p)}
 // multiplica a taxa de uso da bateria conforme o plano
 function planK(c){const p=c.ersPlan;if(!p||p==="norm")return 1;const left=R.L-c.lap;
   if(p==="end")return left<=2?1.3:.9;

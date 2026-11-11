@@ -155,5 +155,3 @@ function stewVerdict(s){const c=R.cars.find(x=>x.id===s.cul),v=R.cars.find(x=>x.
     if(!running(c)&&c.d){c.d.gridPen=(c.d.gridPen||0)+3;rcMsg(`${c.code} perde 3 posições no grid da próxima corrida.`,"warn","punicao");s.verdict+=" + 3 posições no grid"}}
   R.stewLog.push(s)}
 // ---------- comando: recuar (desiste do ataque e volta para trás do carro da frente)
-function cmdBackC(c){if(!c||!running(c))return;c.backOff=R.t+6;c.att=null;c.cdAtt=8;c.goReq=false;if(c.hum)radio(c,"Entendido, tiro o pé e fico atrás. Não vale o risco.",{me:1,k:"duelo"})}
-function cmdBack(){cmdBackC(R.cars.find(c=>c.isP))}

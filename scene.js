@@ -3,13 +3,20 @@
 // muros e alambrados contínuos nos circuitos de rua, zebras só onde existem e pontos famosos de cada lugar.
 // Posições: c = número da curva (na ordem da volta), f = fração da volta, u/v = posição no mapa (0 a 1, norte em cima),
 // d = metros para fora (ou para dentro com in:1) da pista.
+// FICHA DO CIRCUITO: cada entrada abaixo é a única fonte do que existe em volta da pista daquele lugar.
+//   g/pal/tr/td   chão, paleta, tipo e densidade de árvores (td 0 a 1; no máximo ~300 árvores)
+//   city/water/lm/hills  moldura de cidade, água, pontos famosos e morros
+//   tunel:{de,ate} trecho coberto, da curva "de" à curva "ate" (nomes das curvas do circuito); vale para desenho e som
+//   ponte:1       o cruzamento do traçado é uma ponte
+//   tapetes:n     quantos tapetes de patrocinadora pintados no chão (padrão 10; 0 = nenhum)
+//   faixas:0      sem faixas de patrocinadora no alambrado (circuitos de rua; padrão: com faixas)
 const SCN={
   melbourne:{g:"park",tr:"broad",td:.45,water:[{inl:.74}],lm:[{k:"skyline",half:"N",d:650,n:18,h:[60,200]}]},
   shanghai:{g:"park2",tr:"broad",td:.22,cityFar:.3,lm:[{k:"wings",f:.0,d:60}]},
-  suzuka:{g:"park",tr:"mixed",td:.6,hills:1,lm:[{k:"wheel",f:.03,stand:1,d:330,r:40}]},
+  suzuka:{ponte:1,g:"park",tr:"mixed",td:.6,hills:1,lm:[{k:"wheel",f:.03,stand:1,d:330,r:40}]},
   miami:{g:"tropic",tr:"palm",td:.28,water:[{e:[.2,.52,.06,.04]},{e:[.46,.86,.05,.035]}],lm:[{k:"stadium",u:.72,v:.42,r:105}]},
   montreal:{g:"park",tr:"broad",td:.5,island:165},
-  monaco:{g:"urban",pal:"riviera",tr:"palm",td:.1,city:{dens:.95,h:[14,62]},water:[{seg:[7,13],d:22}],lm:[{k:"yachts",c:12,d:80,n:16},{k:"yachts",c:9,d:120,n:8}]},
+  monaco:{tunel:{de:"Portier",ate:"Saída do túnel"},g:"urban",pal:"riviera",tr:"palm",td:.1,city:{dens:.95,h:[14,62]},water:[{seg:[7,13],d:22}],lm:[{k:"yachts",c:12,d:80,n:16},{k:"yachts",c:9,d:120,n:8}]},
   barcelona:{g:"dry",tr:"pine",td:.25,hills:1},
   spielberg:{g:"alpine",tr:"pine",td:.4,mountains:1},
   silverstone:{g:"park",tr:"broad",td:.12},
@@ -158,6 +165,10 @@ function sceneBuild(TG){const id=TG.id,th=Object.assign({g:"park",tr:"broad",td:
   {const kept=[];for(const k of kerbs){let a0=k.a,ok=true;const flush=b=>{if(b-a0>=3)kept.push({a:a0,b,s:k.s})};
       for(let q=k.a;q<k.b;q++){const i=((q%M)+M)%M,p=P[i],n=nrm(i);const x=p.x+n.x*k.s*TW,y=p.y+n.y*k.s*TW;if(dOther(x,y,i,30)<TW+m(1)){if(ok)flush(q);ok=false}else if(!ok){ok=true;a0=q}}if(ok)flush(k.b)}
     kept.sort((x,y)=>x.s-y.s||x.a-y.a);kerbs.length=0;for(const k of kept){const l=kerbs[kerbs.length-1];if(l&&l.s===k.s&&k.a<=l.b)l.b=Math.max(l.b,k.b);else kerbs.push(k)}}
+  // sem zebras da pista de baixo debaixo da ponte (Suzuka)
+  if(th.ponte&&typeof bridgeCross==="function"){const B=bridgeCross(TG);if(B){const sg0=Math.max(1e-6,Math.hypot(P[1].x-P[0].x,P[1].y-P[0].y));/* pista de baixo: 34 m para cada lado; trecho de cima: onde a mureta ainda está alta (~28 m) */
+    for(const[c0,mm]of[[B.lo,34],[B.hi,28]]){const w=Math.ceil(m(mm)/sg0),ta=c0-w,tb=c0+w,out=[];
+    for(const k of kerbs){if(k.b<=ta||k.a>=tb){out.push(k);continue}if(k.a<ta-2)out.push({a:k.a,b:ta,s:k.s});if(k.b>tb+2)out.push({a:tb,b:k.b,s:k.s})}kerbs.length=0;kerbs.push(...out)}}}
   // sem zebras dentro do túnel (Mônaco): a pista coberta vai de muro a muro
   {const T=typeof tunnelRange==="function"&&tunnelRange({id:id,corners:TG.corners,N:M});if(T){const ta=Math.round(T.a*M)+2,tb=Math.round(T.b*M)-2,out=[];for(const k of kerbs){if(k.b<=ta||k.a>=tb){out.push(k);continue}if(k.a<ta-2)out.push({a:k.a,b:ta,s:k.s});if(k.b>tb+2)out.push({a:tb,b:k.b,s:k.s})}kerbs.length=0;kerbs.push(...out)}}
   // postes de luz nas corridas noturnas
@@ -168,19 +179,20 @@ function sceneBuild(TG){const id=TG.id,th=Object.assign({g:"park",tr:"broad",td:
   // tapetes de patrocinador pintados no chão: por dentro da curva (grama) ou na saída por fora, só onde não pega pista,
   // brita, água, box, muro ou outro objeto. Até 10 por circuito, nas curvas mais fortes.
   const mats=[];if(typeof SPONSOR_CAT!=="undefined"){const SC=SPONSOR_CAT;let hs=0;for(const ch of id)hs=(hs*131+ch.charCodeAt(0))>>>0;
-    const Lm=m(40),Wm=m(9);const inG=(x,y)=>(TG.gravel||[]).some(gr=>gr.pts&&inPoly(x,y,gr.pts));const pitP=(TG.pit||[]).filter((_,k)=>k%3===0);
-    const ok=(x,y,h,lat,i)=>{const c=Math.cos(h),sn=Math.sin(h);for(const[u,v]of[[0,0],[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]]){const px=x+c*u*Lm-sn*v*Wm,py=y+sn*u*Lm+c*v*Wm;const dt=dTrack(px,py,m(40));
+    const Lm=m(40),Wm=m(9),nMat=th.tapetes??10;const inG=(x,y)=>(TG.gravel||[]).some(gr=>gr.pts&&inPoly(x,y,gr.pts));const pitP=(TG.pit||[]).filter((_,k)=>k%3===0);
+    const TunM=tunnelRange({id:id,corners:TG.corners,N:M});const ok=(x,y,h,lat,i)=>{if(TunM&&i>=TunM.a*M-40&&i<=TunM.b*M+40)return false;const c=Math.cos(h),sn=Math.sin(h);for(const[u,v]of[[0,0],[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]]){const px=x+c*u*Lm-sn*v*Wm,py=y+sn*u*Lm+c*v*Wm;const dt=dTrack(px,py,m(40));
         if(dt<TW+m(3))return false;if(isWater(px,py,dt)||inG(px,py))return false;if(pitP.some(q=>Math.hypot(q.x-px,q.y-py)<m(14)))return false}
-      const sg=lat>0?1:-1,W=wl[sg]&&wl[sg][i];if(W!=null&&Math.abs(lat)+Wm/2>W-m(1.5))return false;if(nearExtra(x,y,m(14)))return false;
+      const sg=lat>0?1:-1,W=wl[sg]&&wl[sg][i],ac=Math.abs(Math.sin(h-TG.heading[i]))>.5?Lm/2:Wm/2;if(W!=null&&Math.abs(lat)+ac>W-m(1.5))return false;if(nearExtra(x,y,m(14)))return false;
       if(mats.some(o=>Math.hypot(o.x-x,o.y-y)<m(90)))return false;if((TG.stands||[]).some(o=>Math.hypot(o.x-x,o.y-y)<m(34)))return false;return true};
     const cs=TG.corners.filter(c=>(c.sev||0)>=.12).slice().sort((a,b)=>(b.sev||0)-(a.sev||0));
-    for(const c of cs){if(mats.length>=10)break;const sp=clamp(Math.round((c.r||60)/DS*.3),5,20);
+    for(const c of cs){if(mats.length>=nMat)break;const sp=clamp(Math.round((c.r||60)/DS*.3),5,20);
       for(const[di,lat]of[[0,c.dir*(TW+m(14))],[Math.round(sp*1.6),-c.dir*(TW+m(13))],[-Math.round(sp*1.8),-c.dir*(TW+m(13))],[Math.round(sp*3),c.dir*(TW+m(14))]]){const i=((c.i+di)%M+M)%M,h=TG.heading[i];
-        const x=P[i].x-Math.sin(h)*lat,y=P[i].y+Math.cos(h)*lat;if(ok(x,y,h,lat,i)){mats.push({x,y,h,L:Lm,sp:SC[(hs+mats.length*5)%SC.length].id});break}}}}
+        const x=P[i].x-Math.sin(h)*lat,y=P[i].y+Math.cos(h)*lat;/* texto sempre deitado na tela: se a pista corre "para baixo", o tapete gira 90° */const ex=(Math.cos(h)-Math.sin(h))*ISO_C,ey=(Math.cos(h)+Math.sin(h))*ISO_S,hm=Math.abs(ey)>Math.abs(ex)*.9?h+Math.PI/2:h;if(ok(x,y,hm,lat,i)){mats.push({x,y,h:hm,L:Lm,sp:SC[(hs+mats.length*5)%SC.length].id});break}}}}
   // circuito de rua: faixas de patrocinador no alambrado dos muros (só nas faces viradas para a câmera, em trechos retos)
   const banners=[];
-  if(typeof SPONSOR_CAT!=="undefined"){const SC=SPONSOR_CAT;let hs=7;for(const ch of id)hs=(hs*37+ch.charCodeAt(0))>>>0;const span=Math.max(3,Math.round(18/DS)),gap=Math.max(span+2,Math.round(85/DS));
-    for(const sg of[1,-1]){const a=wl[sg];if(!a)continue;for(let i=0;i<M;i+=2){const j=(i+span)%M,h=TG.heading[i];if(Math.abs(a[i]-a[j])>m(.8)||a[i]>TW+m(7))continue;
+  if(typeof SPONSOR_CAT!=="undefined"&&th.faixas!==0){const SC=SPONSOR_CAT;let hs=7;for(const ch of id)hs=(hs*37+ch.charCodeAt(0))>>>0;const span=Math.max(3,Math.round(18/DS)),gap=Math.max(span+2,Math.round(85/DS));
+    const TunB=tunnelRange({id:id,corners:TG.corners,N:M});
+    for(const sg of[1,-1]){const a=wl[sg];if(!a)continue;for(let i=0;i<M;i+=2){const j=(i+span)%M,h=TG.heading[i];if(TunB&&i+span>=TunB.a*M-6&&i<=TunB.b*M+6)continue;if(Math.abs(a[i]-a[j])>m(.8)||a[i]>TW+m(7))continue;
       const nx=Math.sin(h)*sg,ny=-Math.cos(h)*sg;if(nx+ny<.6)continue;/* normal do muro (aponta para a pista) precisa olhar para a câmera */
       let dh=TG.heading[j]-h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));if(Math.abs(dh)>.12)continue;
       banners.push({i,j,sg,sp:SC[(hs+banners.length*3)%SC.length].id});i+=gap}}}
@@ -399,3 +411,6 @@ function lmItems(o,items,post,ctx,cw,ch,night,now,vis){const Z=CAM.z,m=v=>v*WS,L
       ctx.strokeStyle=night?`hsla(${(hue+90)%360},90%,70%,.35)`:"rgba(150,165,180,.35)";ctx.stroke()});break}
   }}
 function anchorAt(i){const g=TRACKGEO;const p=g.path[i];return{x:p.x,y:p.y,h:g.heading[i]}}
+
+// ficha de um circuito (para os outros arquivos)
+function fichaOf(id){return SCN[id]||{}}

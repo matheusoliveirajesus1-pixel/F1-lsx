@@ -69,7 +69,7 @@ function startRace(pre){R0K=riskK();// pre: {plan, tyre, fuel} do seu carro (a e
       auto:!(me||d.hum),plan,planIdx:0,setup:W.setup[id]||.6,L:C.target+3,dirty:false,errs:0,laps:[],sect:[0,0,0],sectBest:[null,null,null],v:0,ph:carPhys(t,d),ovMode:false,batt:100,q:-1})});
   aiPrep(geo);pistaInit();R.cars.forEach((c,i)=>{aiInit(c,i);stInit(c);mcInit(c)});R.touchCd={};R.prevRank=null;R.wetLaps=0;
   R.secBest=[null,null,null];R.bubbles=[];
-  R.order=R.cars.slice();R.narr=[];R.hl=[];R.rec=[];R.recNext=0;R.asks=0;R.ask=null;R.leader=null;R.lastLapSaid=false;R.go=Infinity;R.started=false;R.form={phase:"out",t0:0};R.lightsStart=null;R.autoStart=true;/* largada automática: o tempo de reação do jogador vem da habilidade, como nos adversários */R.incidents=[];R.rb=[];R.rbNext=0;R.riskK=R0K;R.errLog={minor:0,off:0,spin:0,crash:0,dnf:0,fire:0,beach:0};R.crowd=[];R.touchCd={};R.wrecks=[];R.yellows=[];R.fxq=[];R.greenT=0;
+  R.order=R.cars.slice();R.narr=[];R.hl=[];if(typeof voxInit==="function")voxInit();R.clips=[];R.clipQ=[];R.goals=(typeof goalsFor==="function"&&!W.mp&&!G.mp)?(goalsFor()||[]).map(g=>({...g})):null;R.rec=[];R.recNext=0;R.asks=0;R.ask=null;R.leader=null;R.lastLapSaid=false;R.go=Infinity;R.started=false;R.form={phase:"out",t0:0};R.lightsStart=null;R.autoStart=true;/* largada automática: o tempo de reação do jogador vem da habilidade, como nos adversários */R.incidents=[];R.rb=[];R.rbNext=0;R.riskK=R0K;R.errLog={minor:0,off:0,spin:0,crash:0,dnf:0,fire:0,beach:0};R.crowd=[];R.touchCd={};R.wrecks=[];R.yellows=[];R.fxq=[];R.greenT=0;
   R.cars.forEach(c=>{c.slot=c.prog+1;c.v=0;recalc(c)});
   rcMsg(`Volta de apresentação em ${C.n}: os carros aquecem os pneus e voltam ao grid. Depois, cinco luzes vermelhas; quando apagarem, a corrida começa.`,"","largada");
   if(R.w>.3)rcMsg("Pista molhada na largada: todos com pneus para chuva.","","chuva");
@@ -105,7 +105,7 @@ function launch(){R.started=true;R.cars.forEach(c=>{c.lapStart=R.go;c.secStart=R
   rcMsg(`Luzes apagadas! Começou o ${R.C.gp}: ${R.L} voltas.`,"big","largada");narr("E APAGARAM AS LUZES! Começa a corrida!",3);hlight("start",[R.cars[0]],"Largada",2);
 }// os toques da primeira volta agora nascem da disputa de verdade (risk.js)
 function narr(t,lvl){R.narr.unshift({lap:Math.max(1,R.lead+1),t,lvl:lvl||0,rt:R.t});if(R.narr.length>70)R.narr.pop()}
-function hlight(type,cars,txt,imp){R.hl.push({t:R.t,type,cars:cars.map(c=>c.id),txt,imp:imp||1,lap:Math.max(1,R.lead+1)})}
+function hlight(type,cars,txt,imp){R.hl.push({t:R.t,type,cars:cars.map(c=>c.id),txt,imp:imp||1,lap:Math.max(1,R.lead+1)});if(typeof voxHl==="function")voxHl(type,cars);if(typeof clipMark==="function")clipMark(type,cars,txt,imp||1)}
 function passLine(B,A,drs,pa){return pick([`${B.code} ${B.passWhy==="ov"?"aciona o modo de ultrapassagem e ":drs?"aproveita o vácuo na reta e ":""}mergulha por dentro de ${A.code}`,`${B.code} vem por fora, lado a lado com ${A.code}... e passa`,`Que manobra de ${B.code} em cima de ${A.code}`,`${A.code} não consegue segurar ${B.code}`])+(pa<=3?`: ${B.code} agora é o ${pa}º!`:"!")}
 function record(){if(typeof carWorld!=="function"||typeof TRACKGEO==="undefined"||!TRACKGEO)return;const N=R.cars.length,a=new Float32Array(N*4+4);
   R.cars.forEach((c,i)=>{if(c.status==="dnf"||c.status==="dsq"){a[i*4+3]=0;return}const w=c._w||carWorld(c);a[i*4]=w.x;a[i*4+1]=w.y;a[i*4+2]=w.h;a[i*4+3]=1+(c._stopped?2:0)});
@@ -118,9 +118,9 @@ function askTick(){for(const c of R.cars){const a=c.rask;if(a&&R.t>a.until){c.ra
   if(!R.ask&&R.askQ.length){const a=R.askQ.shift();if(R.t-a.t0<25){a.until=R.t+a.dur;R.ask=a}}}
 function askDriver(c){const loc=c.isP;if((loc?R.ask:c.rask)||(loc?R.asks:(c.asksN||0))>=4||R.lead<2||R.finishing||R.sc||R.red)return;const i=R.order.indexOf(c),A=R.order[i-1],B=R.order[i+1];const mt=R.cars.find(x=>x!==c&&x.t===c.t&&!x.hum);const eng=G.engineer||"Engenheiro";
   if(mt&&B===mt&&running(mt)&&mt.L<c.L-.25&&(c.prog-mt.prog)*mt.L<1.2&&c.lap>R.L*.3)pushAsk({c,mate:mt,kind:"order",q:`${eng}: "${mt.code} está mais rápido atrás de você. A equipe pede: deixe ele passar."`,opts:[["let","Entendido, vou abrir"],["defend","Negativo, vou defender"],["race","Deixem a gente correr"]],def:"let"});
-  else if(A&&running(A)&&!A.pit&&(A.prog-c.prog)*c.L<1.6&&c.L<A.L-.15&&c.mode!=="attack")pushAsk({c,A,kind:"push",q:`${eng}: "Você está ${(A.L-c.L).toFixed(1)}s por volta mais rápido que ${A.code}. Quer atacar agora ou guardar pneus?"`,opts:[["attack","Vou atacar"],["hold","Guardo para o fim"]],def:"hold"});
+  else if(A&&running(A)&&!A.pit&&(A.prog-c.prog)*c.L<1.6&&c.L<A.L-.15&&intentOf(c).pace!=="push")pushAsk({c,A,kind:"push",q:`${eng}: "Você está ${(A.L-c.L).toFixed(1)}s por volta mais rápido que ${A.code}. Quer atacar agora ou guardar pneus?"`,opts:[["attack","Vou atacar"],["hold","Guardo para o fim"]],def:"hold"});
   else if(COMP[c.tyre.c].dry&&c.tyre.wear>.58&&!c.pitCall&&R.L-c.lap>3){const pp=pitPredict(c);pushAsk({c,kind:"feel",q:`${eng}: "Pneus em ${Math.round(c.tyre.wear*100)}%. Se pararmos agora você volta em ${pp?pp.pos:"?"}º. Como estão sentindo?"`,opts:[["box","Box, box! Não aguento mais"],["stay","Ainda tem borracha, vamos estender"]],def:"stay"})}
-  else if(c.lap>R.L*.5&&c.fuel-c.fuel0/R.L*(R.L-c.lap)<1.6)pushAsk({c,kind:"fuel",q:`${eng}: "Combustível apertado. Precisamos de lift and coast nas freadas: tire o pé antes das curvas."`,opts:[["save","Copiado, vou economizar"],["ignore","Vou manter o ritmo"]],def:"save"});
+  // combustível apertado: o próprio piloto passa a tirar o pé antes das freadas (brain.js), sem perguntar
   else return;if(loc)R.asks++;else c.asksN=(c.asksN||0)+1}
 function answerAsk(k,auto){const a=R.ask;if(!a)return;R.ask=null;answerAskObj(a,k,auto)}
 // resposta de outro jogador (multiplayer): só vale para a pergunta que ainda está aberta
@@ -130,24 +130,16 @@ function answerAskObj(a,k,auto){const c=a.c;const boss=c.t.boss;
   const said=a.opts.find(o=>o[0]===k);if(said&&!auto)radio(c,said[1],{me:1});
   if(k&&k.startsWith("pit:")){if(running(c)&&!c.pit){c.pitCall=k.slice(4);if(a.kind==="plan")c.planIdx++;radio(c,`${G.engineer||"Engenheiro"}: "Copiado. Box nesta volta, ${COMP[c.pitCall].n.toLowerCase()} pronto."`)}return}
   if(k==="stay"&&(a.kind==="plan"||a.kind==="wear"||a.kind==="rain"||a.kind==="dry"||a.kind==="sc"||a.kind==="dmg"||a.kind==="comp")){c.lastAskLap=c.lap;return}
-  if(k==="attack"){c.mode="attack";c.ers="attack";recalc(c)}
-  else if(k==="hold"){c.mode="save";recalc(c);G.trust=clamp(G.trust+1,0,100)}
+  if(k==="attack"){setIntentC(c,"pace","push",true)}
+  else if(k==="hold"){setIntentC(c,"pace","tyres",true);G.trust=clamp(G.trust+1,0,100)}
   else if(k==="box"){c.pitCall=COMP[c.tyre.c].dry?pickDry(R.L-c.lap):c.tyre.c}
-  else if(k==="stay"){c.mode="save";recalc(c)}
-  else if(k==="save"){c.mode="save";c.ers="save";recalc(c);G.trust=clamp(G.trust+1,0,100)}
+  else if(k==="stay"){setIntentC(c,"pace","tyres",true)}
+  else if(k==="save"){setIntentC(c,"pace","tyres",true);G.trust=clamp(G.trust+1,0,100)}
   else if(k==="ignore"){G.trust=clamp(G.trust-1,0,100)}
   else if(k==="let"){c.yieldTo=a.mate.id;G.trust=clamp(G.trust+5,0,100);c.d.morale=clamp(c.d.morale-4,0,100);R.teamOrder={obeyed:true,mate:a.mate.code,lap:c.lap}}
   else if(k==="defend"||k==="race"){G.trust=clamp(G.trust-(k==="defend"?8:4),0,100);c.d.morale=clamp(c.d.morale+3,0,100);R.teamOrder={obeyed:false,mate:a.mate.code,lap:c.lap,soft:k==="race"};rcMsg(`${c.code} ignorou uma ordem de equipe pelo rádio!`,"warn");
     radio(c,`${boss}: "Conversamos depois da corrida."`,{})}}
 // comandos de rádio do jogador
-function cmdMode(m){cmdModeC(R.cars.find(x=>x.isP),m)}
-function cmdModeC(c,m){if(!c||!running(c)||!{attack:1,normal:1,save:1}[m])return;stEv(c,"radio");c.mode=m;recalc(c);radio(c,{attack:"Vou forçar tudo agora.",normal:"Ritmo normal.",save:"Poupando pneus e combustível."}[m],{me:1})}
-function cmdErs(m){cmdErsC(R.cars.find(x=>x.isP),m)}
-function cmdErsC(c,m){if(!c||!running(c)||!{auto:1,attack:1,defend:1,save:1}[m])return;stEv(c,"radio");c.ers=m;ersK(c);radio(c,{auto:"Energia no automático.",attack:"Mapa de ataque: liberando toda a bateria.",defend:"Bateria guardada para defender.",save:"Recarregando a bateria."}[m],{me:1})}
-function cmdGo(){cmdGoC(R.cars.find(x=>x.isP))}
-function cmdGoC(c){if(!c||!running(c))return;stEv(c,"radio");if(R.sc||R.red||!R.started){radio(c,"Agora não dá: só depois da bandeira verde.",{me:1});return}c.goReq=true;c.goReqT=R.t;radio(c,"Entendido: vou tentar a ultrapassagem na próxima chance. Vou arriscar mais na freada.",{me:1,k:"duelo"})}
-function cmdTow(){cmdTowC(R.cars.find(x=>x.isP))}
-function cmdTowC(c){if(!c||!running(c))return;stEv(c,"radio");c.towReq=true;c.towReqT=R.t;radio(c,"Se alguém pegar o meu vácuo na próxima reta, eu mudo de linha.",{me:1,k:"vacuo"})}
 function cmdBox(comp){cmdBoxC(R.cars.find(x=>x.isP),comp)}
 function cmdBoxC(c,comp){if(!c||!running(c)||(comp&&!COMP[comp]))return;stEv(c,"radio");if(c.pit){radio(c,"Já estamos no pit lane.",{me:1});return}if(!comp){c.pitCall=null;radio(c,"Ficamos na pista.",{me:1});return}c.pitCall=comp;radio(c,`Box, box! Quero o ${COMP[comp].n.toLowerCase()}.`,{me:1});
   const d=pitDist(c);radio(c,`${G.engineer||"Engenheiro"}: "Copiado. ${d<150?"Já passou da entrada, box na próxima volta.":"Entrada do box em "+Math.round(d)+" metros."}"`)}
@@ -191,7 +183,7 @@ function recalc(c){const w=R.w,ty=c.tyre;let mu=tyreMu(ty.c,w,ty.wear,ty.temp)*d
 function ersK(c){c.k=c.prof.t/c.base;c.L=c.base}
 function lapTime(c){return c.L}
 function wearRate(c){const C=R.C,ty=c.tyre,T=TYRES[ty.c],w=R.w;
-  let r=1/(.85*R.L)*T.wear*C.wear*{attack:1.35,normal:1,save:.72}[c.mode]*(1.32-c.t.car.susp/250)*(1.22-c.d.a.tyre/320)*(c.dirty?1.15:1)*(c.d.trait==='pneus'?.9:c.d.trait==='cuidadoso'?.94:1)*(1+Math.max(0,ty.temp-T.opt-8)*.02)*(1+(c.dmg.susp||0)*.6+(c.dmg.floor||0)*.25)*(ty.flat?1.1:1);
+  let r=1/(.85*R.L)*T.wear*C.wear*{attack:1.35,normal:1,save:.72}[c.mode]*(1.32-c.t.car.susp/250)*(typeof tuneWearK==="function"?tuneWearK(c):1)*(1.22-c.d.a.tyre/320)*(c.dirty?1.15:1)*(c.d.trait==='pneus'?.9:c.d.trait==='cuidadoso'?.94:1)*(1+Math.max(0,ty.temp-T.opt-8)*.02)*(1+(c.dmg.susp||0)*.6+(c.dmg.floor||0)*.25)*(ty.flat?1.1:1);
   if(!T.dry&&w<.25)r*=ty.c==="I"?2.6:3.4;if(T.dry&&w>.2)r*=.6;if(R.sc)r*=.35;r*=1+((c.dmg&&c.dmg.susp)||0)*.6;return r}
 // velocidade instantânea (m/s) no ponto da volta
 function speedAt(c,f){const geo=R.geo,N=geo.N;const x=f*N,i=Math.floor(x)%N,k=x-Math.floor(x);const v=c.prof.v[i]+(c.prof.v[(i+1)%N]-c.prof.v[i])*k;return v}
@@ -241,21 +233,34 @@ function exitPit(c){c.pit=null;c.pitExit=R.t;c.lineN=0;c.att=null;recalc(c);// a
   // (a velocidade de entrada na pista já foi ajustada ao carro da frente ainda dentro do pit lane, em pitMove)
   if(c.hum)radio(c,"Saindo do pit lane. Cuidado com os pneus frios na primeira volta.")}
 // movimento dentro do pit lane
+// afastamento (m) a partir do centro do pit lane: rua de passagem −3 m (rampa de 40 m na entrada e na saída do pit lane), vaga +2,6 m (lado das garagens)
+const PIT_FAST=3,PIT_WORK=2.6;
+function pitLaneOff(c,P,PL){const sd=(TRACKGEO&&TRACKGEO.side)||1,ramp=clamp(Math.min(P.s,PL.D-P.s)/40,0,1),fast=-sd*PIT_FAST*ramp,work=sd*PIT_WORK,sm=t=>t*t*(3-2*t);
+  if(P.phase==="in"){const dg=P.gar-P.s;return fast+(work-fast)*sm(clamp((45-dg)/35,0,1))}
+  if(P.phase==="stop")return work;
+  if((P.phase==="out"||P.phase==="release")&&P.served){return work+(fast-work)*sm(clamp((P.s-P.gar-2)/30,0,1))}
+  return fast}
 function pitMove(c,dt){const P=c.pit,PL=R.pitLane;let v=c.v||0,vT=0,amax=16;
   if(P.phase==="in"){const d=P.gar-P.s;vT=Math.min(PIT_LIM,Math.sqrt(2*11*Math.max(0,d))+.4);if(d<=.25){P.phase="stop";pitArrive(c);vT=0}}
-  else if(P.phase==="stop"){vT=0;P.stopT+=dt;if(P.stopT>=P.stop){const h=P.relChk?0:(P.relChk=1,pitRelease(c));if(h>0)P.stop+=h;else{P.phase="out";pitService(c)}}}
+  else if(P.phase==="stop"){vT=0;P.stopT+=dt;if(P.stopT>=P.stop){const h=P.relChk?0:(P.relChk=1,pitRelease(c));if(h>0)P.stop+=h;else{P.phase="out";P.served=true;pitService(c)}}}
   else if(P.phase==="queue"){const d=P.slot-P.s;vT=d>0?Math.min(PIT_LIM,Math.sqrt(2*8*d)+.3):0;if(d<=.25){vT=0;if(!c.parked&&v<.3){c.parked=true;c.parkIdx=R.red?R.red.n:0}}}
   else{vT=PIT_LIM;amax=8;if(R.red&&R.red.phase==="return"&&P.phase==="out"){P.phase="queue";P.red=true;P.slot=Math.max(P.s+1,PL.D*.93-(R.red.n++)*13)}
     // fim do pit lane: se há carro logo à frente na pista (fila do safety car, por exemplo), o piloto já chega na velocidade dele (freando no pit lane, sem corte de velocidade na saída)
     else if(PL.D-P.s<120){const L=R.geo.len,fs=fr(c.prog)*L+(PL.D-P.s);let best=null,bd=1e9;for(const o of R.cars){if(o===c||!running(o)||o.pit||o.parked)continue;let d=fr(o.prog)*L-fs;while(d<-L/2)d+=L;while(d>L/2)d-=L;if(d>-CARL&&d<bd&&d<90&&Math.abs(o.y||0)<TRK_H+1&&Math.abs((o.y||0)-(pitLatAt(fr(c.prog)+(PL.D-P.s)/L)??c.y))<4.6){bd=d;best=o}}
       if(best){const gap=bd+(PL.D-P.s)-CARL-2;const allow=gap<=0?Math.max(0,(best.v||0)-3):Math.sqrt(Math.max(0,(best.v||0)*(best.v||0)+2*20*gap));vT=Math.min(vT,Math.max(best.v||0,allow)*(gap<=0?.9:1))}}}
   // o carro anda pelo pit lane no mesmo sistema da pista: a linha lateral é a do próprio desenho do pit lane (TRACKGEO.pit)
-  const f=fr(c.prog),yl=pitLatAt(f),yl2=pitLatAt(f+2/R.geo.len),slope=yl!=null&&yl2!=null?(yl2-yl)/2:0;
-  const before=Math.floor(c.prog),pb0=c.prog;dynStep(c,dt,vT,true,false,yl!=null?yl:c.y,{pit:true,amax,dmax:24,slope});
+  const f=fr(c.prog),yl0=pitLatAt(f),yl2=pitLatAt(f+2/R.geo.len),slope=yl0!=null&&yl2!=null?(yl2-yl0)/2:0;
+  // duas faixas: a rua de passagem (lado da pista) e a vaga de trabalho em frente às garagens. O carro anda pela rua,
+  // entra de lado na vaga da equipe, para alinhado em frente à garagem e volta para a rua depois da troca.
+  const yl=yl0!=null?yl0+pitLaneOff(c,P,PL):null;if(yl!=null)P.yl=yl;
+  // perto do fim do pit lane, quem está fora da linha do pit (fila da bandeira vermelha, por exemplo) reduz e volta para ela antes de sair
+  const off=Math.abs((c.y||0)-(yl??P.yl??c.y));/* (P.yl já inclui a faixa) */if((P.phase==="out"||P.phase==="release")&&PL.D-P.s<80&&off>1.5)vT=Math.min(vT,6);
+  const before=Math.floor(c.prog),pb0=c.prog;dynStep(c,dt,vT,true,false,yl!=null?yl:(P.yl??c.y),{pit:true,amax,dmax:24,slope});
   P.s=(c.prog-P.p0)*R.geo.len;c._cross=R.t;secCheck(c,pb0);const ds=(c.prog-pb0)*R.geo.len;
   c.tyre.temp+=((P.phase==="stop"?TYRES[c.tyre.c].opt-20:TYRES[c.tyre.c].opt-12)-c.tyre.temp)*dt/30;c.fuel-=ds/R.geo.len*c.fuel0/R.L*.4;
   if(Math.floor(c.prog)>before&&Math.floor(c.prog)>=1)onLap(c);
-  if(c.pit&&P.s>=PL.D&&(P.phase==="out"||P.phase==="release"))exitPit(c)}
+  // só sai do pit lane alinhado com a saída (até 60 m depois do fim, para não ficar preso)
+  if(c.pit&&P.s>=PL.D&&(P.phase==="out"||P.phase==="release")&&(Math.abs((c.y||0)-(P.yl??c.y))<1.5||P.s>=PL.D+60))exitPit(c)}
 
 function autoStrategy(c){// decidido ao cruzar a linha
   if(c.pitCall)return;const left=R.L-c.lap,w=R.w,ty=c.tyre,dry=COMP[ty.c].dry;
@@ -325,7 +330,7 @@ function onLap(c){// cruzou a linha de chegada
   const pe=(1+c.press*(1.25-c.d.a.mental/100)*1.1)*(c.d.trait==='agressivo'?1.3:c.d.trait==='cuidadoso'?.7:1)*.0026*{attack:2.1,normal:1,save:.6}[c.mode]*(1+(dryT?w*28:0)+w*2.2)*(1.4-c.d.a.cons/100)*(1.25-c.d.a.mental/400)*(c.d.morale<40?1.4:1)*(c.tyre.wear>.85?2:1)*(R.sc?.3:1);
   // os erros de pilotagem agora acontecem no lugar e na hora (risk.js): freada, curva e saída
   if((c.dmg.susp||0)>.8&&rnd()<.18){dnf(c,"Suspensão quebrada","stop");rcMsg(`${c.code} abandona: a suspensão danificada no toque quebrou.`,"bad","dano");return}
-  const pm=.0011*(1.55-c.t.car.rel/100)*(c.mode==="attack"?1.3:1);
+  const pm=.0011*(1.55-c.t.car.rel/100)*(c.mode==="attack"?1.3:1)*(typeof tuneRelK==="function"?tuneRelK(c):1);
   mcLap(c);// quebras agora vêm do uso (mech.js); só a parte elétrica ainda falha sem aviso
   // limites de pista: só quando o piloto alarga ou passa reto de verdade (risk.js)
   leaderLap(c);
@@ -334,7 +339,7 @@ function onLap(c){// cruzou a linha de chegada
   if(c.hum)playerStrategy(c);
   // undercut de rival
   if(c.hum){const ahead=R.order[pos(c)-2];if(ahead&&ahead.pit&&ahead.pit.phase==="in")radio(c,`${ahead.code}, logo à frente, entrou nos boxes. Podemos responder com undercut ou overcut.`,{k:"undercut"})}
-  if(c.auto){autoStrategy(c);if(c.pitCall&&!c.inLap)c.inLap=true;aiReact(c);aiPace(c);aiTeamOrders(c)}
+  if(c.auto){autoStrategy(c);if(c.pitCall&&!c.inLap)c.inLap=true;aiReact(c);aiTeamOrders(c)}// ritmo e energia: brainTick (brain.js), 1 vez por segundo
 }
 function cornerF(){const cs=R.geo.corners,N=R.geo.N;if(!cs.length)return rr(.1,.9);let tot=0;const w=cs.map(c=>{const x=1/Math.max(25,c.r);tot+=x;return x});let r=rnd()*tot;for(let i=0;i<cs.length;i++){r-=w[i];if(r<=0)return((cs[i].i-5+N)%N)/N}return cs[0].i/N}
 function mechFail(c,why){c.smokeT=R.t+10;if(why){dnf(c,why,"stop");rcMsg(`${c.code} abandona: ${why==="Motor"?"o motor":"o câmbio"} quebrou.`,"bad");if(c.hum)radio(c,why==="Motor"?"O motor foi embora. Acabou para nós.":"Câmbio travado. Tenho que parar.",{pause:true,k:why==="Motor"?"motor":"cambio"});narr(`${c.code} para com ${why==="Motor"?"o motor quebrado":"o câmbio quebrado"}!`,2);if(rnd()<.4)triggerSC("vsc");return}if(rnd()<.55){dnf(c,pick(["Hidráulica","Elétrica","Pressão de combustível"]),"stop");rcMsg(`${c.code} abandona com problema mecânico.`,"bad");if(rnd()<.4)triggerSC("vsc")}
@@ -367,7 +372,7 @@ function step(dt){
   if(R.over)return;
   R.t+=dt;R.ticks++;
   if(!R.started){if(R.form&&R.form.phase==="out"){formationStep(dt);return}if(R.t>=R.go)launch();else return}
-  updWrecks();askTick();for(const c of R.cars){if(c.towReq&&R.t-(c.towReqT||0)>25)c.towReq=false;if(c.goReq&&(R.t-(c.goReqT||0)>30||R.sc||R.red)){c.goReq=false;if(c.hum&&running(c))radio(c,"Não apareceu chance de ataque. Sigo no ritmo.",{me:1,k:"duelo"})}}if(R.toast&&R.t-R.toast.t>7)R.toast=null;
+  updWrecks();askTick();if(typeof brainTick==="function")brainTick();if(typeof voxTick==="function")voxTick();if(typeof goalsTick==="function")goalsTick();if(typeof clipTick==="function")clipTick();for(const c of R.cars){if(c.towReq&&R.t-(c.towReqT||0)>25)c.towReq=false;if(c.goReq&&(R.t-(c.goReqT||0)>30||R.sc||R.red)){c.goReq=false}}if(R.toast&&R.t-R.toast.t>7)R.toast=null;
   if(R.red&&R.red.phase==="stopped")return;
   // clima
   const tgt=R.rain===2?.97:R.rain===1?.62:0;R.w+=(tgt-R.w)*dt/(tgt>R.w?110:R.w>.3?260:420);R.w=clamp(R.w,0,1);

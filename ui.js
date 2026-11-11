@@ -42,9 +42,9 @@ function topbar(){const me=ME(),t=myTeam();const st=standings();const pos=st.dri
   return`<div class="topbar"><div class="brand">${helmetSVG(G.helmet.c1,G.helmet.c2,40)}<div><div class="logo">${esc(me.n)} <span>#${me.num}</span></div><div class="teamchip"><span class="livery"></span>${t.n}</div></div></div>
   <div class="stats"><div><span class="muted">Temporada</span><b>${G.year} · ${Math.min(G.round+1,G.calendar.length)}/${G.calendar.length}</b></div><div><span class="muted">Campeonato</span><b>${pos?pos+"º":"—"} · ${myStats().points} pts</b></div>
   <div><span class="muted">Seguidores</span><b>${fmtK(G.fame.followers)}</b></div><div><span class="muted">Confiança ${ib("confianca")}</span><b>${Math.round(G.trust)}%</b></div></div></div>`}
-function hub(){const tabs=[["home","Início"],["social","Redes"],["press","Imprensa"],["champ","Campeonato"],["career","Carreira"],["learn","Aprender"],["online","🌐 Online"]];
+function hub(){const tabs=[["home","Início"],["shop","🔧 Oficina"],["social","Redes"],["press","Imprensa"],["champ","Campeonato"],["career","Carreira"],["learn","Aprender"],["online","🌐 Online"]];
   app.innerHTML=topbar()+`<div class="tabs" role="tablist">${tabs.map(([k,n])=>`<button class="tab${UI.tab===k?" on":""}" data-act="tab" data-k="${k}" role="tab">${n}</button>`).join("")}</div><div id="body"></div>`;
-  ({home:homeTab,social:socialTab,press:pressTab,champ:champTab,career:careerTab,learn:learnTab,online:onlineTab})[UI.tab]()}
+  ({home:homeTab,shop:shopTab,social:socialTab,press:pressTab,champ:champTab,career:careerTab,learn:learnTab,online:onlineTab})[UI.tab]()}
 function onlineTab(){$("#body").innerHTML=`<div class="grid2" style="margin-top:12px"><div class="card"><h3>Corrida online com amigos</h3><p>Crie uma sala, mande o código e corram juntos na mesma pista. Cada um pilota o próprio carro pelo rádio e larga no toque, contra o grid inteiro.</p>
    <p class="muted" style="font-size:13.5px">Modos: equipes diferentes (até 4 pilotos) ou mesma equipe (dois companheiros). A corrida online não mexe na sua carreira.</p><button class="btn go" data-act="mpOpen">Abrir o modo online</button></div>
    <div class="card"><h3>Antes de começar</h3><p>Compartilhe esta página com o seu amigo pelo menu <b>Compartilhar</b> do Claude. Quem cria a sala roda a corrida no próprio aparelho e precisa deixar o jogo aberto até o fim.</p></div></div>`}
@@ -57,7 +57,7 @@ function homeTab(){const C=nextC();const me=ME();const m=mate();const rv=G.rival
       <div>Desgaste<b>${C.wear>1.15?"Alto":C.wear<.9?"Baixo":"Médio"}</b></div><div>Ultrapassar<b>${C.ovt>.65?"Fácil":C.ovt<.35?"Difícil":"Médio"}</b></div><div>Chuva<b>${Math.round(C.rain*100)}%</b></div></div>
     <button class="btn go" data-act="goWeekend">Ir para o paddock</button></div>
    <div style="display:flex;flex-direction:column;gap:12px">
-    ${devCard()}
+    ${typeof shopCard==="function"?shopCard():""}
     <div class="card"><h3>Sua imagem ${ib("fama")}</h3>
       <div class="meter"><span>Popularidade</span>${bar(G.fame.pop,0,100,"#F15BB5")}<b class="num">${Math.round(G.fame.pop)}</b></div>
       <div class="meter"><span>Respeito</span>${bar(G.fame.rep,0,100,"#6EC1FF")}<b class="num">${Math.round(G.fame.rep)}</b></div>
@@ -147,11 +147,11 @@ function sponsorsCard(){spInit();const A=G.sponsors,O=G.spOffers;const B=id=>SPO
 function learnTab(){$("#body").innerHTML=`<div class="grid2" style="margin-top:12px">${GLOSS_CATS.map(([k,n])=>`<div class="card"><h3>${n}</h3>${Object.entries(GLOSS).filter(([,g])=>g.c===k).map(([,g])=>`<details class="gl"><summary>${g.t}</summary><p>${g.d}</p></details>`).join("")}</div>`).join("")}</div>`}
 
 // ---------- fim de semana
-const WSTEPS=[["press","Coletiva"],["practice","Treino livre"],["quali","Classificação"],["sprint","Sprint"],["prerace","Estratégia"],["race","Corrida"],["stewards","Comissários"],["results","Resultado"],["mixed","Zona mista"]];
-function weekendScreen(){const C=W.C;const steps=W.mp?[["race","Corrida online"],["mpres","Resultado"]]:W.banned?[["banned","Suspensão"]]:WSTEPS.filter(s=>(s[0]!=="sprint"||W.sprint)&&(s[0]!=="stewards"||W.hadInc));const cur=steps.findIndex(s=>s[0]===W.step);
+const WSTEPS=[["press","Coletiva"],["practice","Treino livre"],["quali","Classificação"],["sprint","Sprint"],["prerace","Estratégia"],["race","Corrida"],["stewards","Comissários"],["momentos","Melhores momentos"],["results","Resultado"],["mixed","Zona mista"]];
+function weekendScreen(){const C=W.C;const steps=W.mp?[["race","Corrida online"],["mpres","Resultado"]]:W.banned?[["banned","Suspensão"]]:WSTEPS.filter(s=>(s[0]!=="sprint"||W.sprint)&&(s[0]!=="stewards"||W.hadInc)&&(s[0]!=="momentos"||W.hasClips));const cur=steps.findIndex(s=>s[0]===W.step);
   app.innerHTML=(W.step==="race"||W.mp?"":topbar())+`<div class="row" style="justify-content:space-between"><h2>${C.gp} <span class="muted" style="font-weight:600;font-size:15px">${C.n}</span></h2>${W.step==="race"||W.step==="stewards"||W.mp?"":`<button class="btn sm" data-act="toHub">Paddock</button>`}</div>
   <div class="steps">${steps.map((s,i)=>`<span class="${i===cur?"on":i<cur?"done":""}">${s[1]}</span>`).join("")}</div><div id="wk"></div>`;
-  ({press:pressStep,practice:practiceStep,quali:qualiStep,sprint:sprintStep,prerace:preStep,race:raceStep,stewards:stewardsStep,banned:bannedStep,results:resultsStep,mixed:mixedStep,mpres:()=>mpResultsStep()})[W.step]()}
+  ({press:pressStep,practice:practiceStep,quali:qualiStep,sprint:sprintStep,prerace:preStep,race:raceStep,stewards:stewardsStep,banned:bannedStep,results:resultsStep,momentos:()=>momentosStep(),mixed:mixedStep,mpres:()=>mpResultsStep()})[W.step]()}
 function interviewHTML(title){const I=G.interview;const q=I.qs[I.i];const o=OUTLETS.find(x=>x.id===q.j.o);
   return`<div class="card press"><h3>${title} · pergunta ${I.i+1} de ${I.qs.length} ${ib("entrevista")}</h3><div class="mic">${av(journoAuthor(q.j))}<div style="min-width:0"><b>${esc(q.j.n)}</b> <span class="muted">${esc(o.n)} · estilo ${esc(o.tone)}</span><div class="qbub">${esc(q.q)}</div></div></div>
   <div class="ansl">${q.opts.map((a,i)=>`<button class="ans" data-act="answer" data-k="${i}"><span class="tone" style="background:${TONES[a.tone].c}">${TONES[a.tone].n}</span><span>"${esc(a.t)}"</span></button>`).join("")}</div></div>`}
@@ -186,6 +186,7 @@ function preStep(){const el=$("#wk");const plans=strategyPlans();UI.pre=UI.pre||
    <h3>Pneu de largada ${ib("compostos")}</h3><div class="row">${["S","M","H"].map(c=>`<button class="btn sm${(P.tyre||plans.find(p=>p.id===P.plan).start)===c?" on":""}" data-act="preTyre" data-k="${c}">${tyreBadge(c)} ${COMP[c].n}</button>`).join("")}</div>
    ${wet?`<p class="pill warn">Pista molhada na largada: todos largam com pneus de chuva.</p>`:""}
    <h3>Combustível ${ib("combustivel")}</h3><div class="choice">${[["light","Leve","Mais rápido no início, pode exigir economia"],["normal","Normal","Margem segura"],["heavy","Cheio","Ataque livre, mais lento no começo"]].map(([k,a,b])=>`<button class="chip${P.fuel===k?" on":""}" data-act="preFuel" data-k="${k}"><b>${a}</b><span>${b}</span></button>`).join("")}</div></div>
+   ${(()=>{const gs=typeof goalsFor==="function"?goalsFor():null;return gs&&gs.length?`<div class="card"><h3>Metas da equipe</h3><p class="muted" style="margin:0 0 6px">${esc(G.engineer||"Engenheiro")}: "Para esta corrida, combinamos isto. Cumpriu, ganha créditos para a oficina."</p>${gs.map(g=>`<div class="goal on"><span>🎯</span><span>${esc(g.t)}</span><b class="num">+${g.cr}</b></div>`).join("")}</div>`:""})()}
    <div class="card"><h3>Grid de largada</h3><div class="tw" style="max-height:300px;overflow-y:auto"><table><tbody>${W.grid.map((id,i)=>{const d=G.drivers[id],t=teamOf(d.team);return`<tr class="${id===G.me?"me":""}"><td class="num">${i+1}</td><td>${teamLogo(t,"tc")}${esc(d.n)}</td><td class="muted">${t.n}</td></tr>`}).join("")}</tbody></table></div>
    <div class="fc">${f.map(x=>`<div>V${x.a}-${x.b}<b>${x.p}%</b></div>`).join("")}</div>
    <p class="muted" style="font-size:13.5px">Na corrida você pilota. Seu engenheiro fala com você pelo rádio e você responde: ritmo, energia, pedir box e obedecer ou não as ordens da equipe.</p>
@@ -201,30 +202,29 @@ function raceStep(){const me=R.cars.find(c=>c.isP);UI.trace=new Float32Array(R.g
     <div class="rhud" id="hud">
      <div class="h-tower" id="hTower"><div class="h-head"><b id="hLap">VOLTA</b><span id="hTowerMode"></span></div><div id="hRows"></div></div>
      <div class="h-sec" id="hSec"><div class="h-top"><span class="h-pos"><b id="hPos">P–</b><span id="hPosN"></span></span><span class="h-lapt" id="hCur">0:00.0</span></div>
-      <div class="h-bars"><i id="hS1"></i><i id="hS2"></i><i id="hS3"></i></div>
-      <div class="h-line"><span>Delta</span><b id="hDelta">—</b></div><div class="h-line"><span>Melhor</span><b id="hBest">—</b></div><div class="h-wx" id="hWx"></div></div>
+      <div class="h-now" id="hNow"></div>
+      <div class="h-res"><span>Comb.</span><div class="h-bar"><i id="hFuel"></i></div><b id="hFuelT">—</b></div><div class="h-res"><span>Energia</span><div class="h-bar"><i id="hBatt"></i></div><b id="hBattT">—</b></div>
+      <div class="h-det" id="hDet"><div class="h-bars"><i id="hS1"></i><i id="hS2"></i><i id="hS3"></i></div>
+      <div class="h-line"><span>Delta</span><b id="hDelta">—</b></div><div class="h-line"><span>Melhor</span><b id="hBest">—</b></div></div><div class="h-wx" id="hWx"></div></div>
      <canvas class="minimap h-map" id="mm" width="300" height="210" data-act="camAll" aria-label="Minimapa: toque para ver a pista inteira"></canvas>
      <div class="h-car" id="hCar"><canvas id="hCarCv" width="220" height="264" aria-label="Estado do carro e dos pneus"></canvas><span id="hCarTxt"></span></div>
      <div class="h-wheel" id="hWheel"><div class="hw-spd"><b id="hwSpd">0</b><small>km/h</small></div><div class="hw-gear" id="hwGear">N</div>
-      <div class="hw-mid"><div class="hw-bat"><i id="hwBat"></i></div><div class="hw-lamps"><span class="lamp" id="hwOT">OVERTAKE</span><span class="lamp aero" id="hwAero">AERO</span><span class="lamp clip" id="hwClip">CLIP</span><span class="lamp tow" id="hwTow">VÁCUO</span><span class="lamp" id="hwRisk">RISCO</span></div></div><div class="hw-ers" id="hwErs">AUTO</div></div>
+      <div class="hw-mid"><div class="hw-bat"><i id="hwBat"></i></div></div><div class="hw-ers" id="hwErs">AUTO</div></div>
     </div>
     <div class="flag" id="flag" hidden></div><div class="lights" id="lights" hidden><div class="lamps">${"<i></i>".repeat(5)}</div><span>LUZES</span></div>
     <div class="toast" id="toast" hidden></div><div class="lower" id="lower" hidden></div><div class="pausedov" id="pausedov" hidden>PAUSADO</div>
     <div class="ask" id="ask" hidden></div><div class="tipbox" id="tipbox" hidden></div><div class="perfbox" id="perfbox" hidden><canvas width="240" height="60"></canvas><div class="pl"></div></div>
     <div class="launch" id="launch" hidden><button class="launchbtn" data-act="launchTap" id="launchBtn">LARGAR</button><span id="launchTxt">Toque quando as cinco luzes APAGAREM (ou aperte espaço)</span></div></div>
-   <div class="ctl"><div class="row"><button class="btn sm" data-act="skipForm" id="skipForm" hidden>⏭ Pular volta de apresentação</button><button class="btn sm" data-act="pause" id="pauseb">⏸ Pausar</button><button class="btn sm" data-act="snd" id="sndb">${UI.sound?"🔊 Som ligado":"🔈 Ligar som"}</button><button class="btn sm" data-act="hudOpen">⚙️ Tela e som</button><button class="btn sm" data-act="perf" id="perfb">📊 Desempenho</button><button class="btn sm" data-act="simRest" id="simrest" hidden>Simular o resto da corrida</button></div>
+   <div class="ctl"><div class="row"><button class="btn sm" data-act="skipForm" id="skipForm" hidden>⏭ Pular volta de apresentação</button><button class="btn sm" data-act="pause" id="pauseb">⏸ Pausar</button><button class="btn sm" data-act="snd" id="sndb">${UI.sound?"🔊 Som ligado":"🔈 Ligar som"}</button><button class="btn sm" data-act="hudOpen">⚙️ Tela e som</button><button class="btn sm" data-act="simRest" id="simrest" hidden>Simular o resto da corrida</button></div>
     <div class="seg" id="cams">${cams.map(([k,n])=>`<button data-act="cam" data-k="${k}" class="${UI.cam===k?"on":""}">${n}</button>`).join("")}</div></div>
    <div class="rtabs" role="tablist">${[["radio","Rádio"],["tele","Telemetria"],["pos","Posições"]].map(([k,n])=>`<button role="tab" data-act="rtab" data-k="${k}" class="${UI.rtab===k?"on":""}">${n}</button>`).join("")}</div>
    <div class="rpanes">
     <section class="pane pane-radio${UI.rtab==="radio"?" on":""}" data-pane="radio"><div class="radioctl">
-     <div class="card"><h3>Ritmo ${ib("temperatura")}</h3><div class="seg">${[["attack","Atacar"],["normal","Normal"],["save","Poupar"]].map(([k,n])=>`<button data-act="mode" data-k="${k}" id="m_${k}">${n}</button>`).join("")}</div>
-      ${typeof ccCard==="function"&&!(R&&R.mpGuest)?ccCard():""}<h3>Energia ${ib("ers")}</h3><div class="seg">${[["auto","Auto"],["attack","Boost"],["defend","Defesa"],["save","Recarregar"]].map(([k,n])=>`<button data-act="ers" data-k="${k}" id="e_${k}">${n}</button>`).join("")}</div>
-      <h4 class="ag" style="margin-top:8px">Plano de energia</h4><div class="seg">${Object.entries(EPLAN).map(([k,n])=>`<button data-act="eplan" data-k="${k}" id="ep_${k}">${n}</button>`).join("")}</div>
-      <h3>Disputa ${ib("duelo")}</h3><div class="seg">${Object.entries(ASTYLE_S).map(([k,n])=>`<button data-act="astyle" data-k="${k}" id="as_${k}">${n}</button>`).join("")}</div>
-      <div class="row" style="margin-top:8px"><button class="btn sm" data-act="go" id="gob">Atacar agora</button><button class="btn sm" data-act="def" id="defb">Segurar posição</button><button class="btn sm" data-act="back" id="backb">Recuar</button><span class="muted num" id="gost" style="font-size:12.5px"></span></div>
-      <div class="row" style="margin-top:6px"><button class="btn sm" data-act="tow" id="towb">Quebrar o vácuo</button><span class="muted num" id="towst" style="font-size:12.5px"></span></div>
-      <div class="row" style="margin-top:8px"><button class="btn sm${G.settings.autoDec===false?"":" on"}" data-act="autoDec" id="adb">Decisões óbvias automáticas</button><button class="btn sm${G.settings.tips===false?"":" on"}" data-act="tipsT" id="tpb">Dicas do engenheiro</button><button class="btn sm${typeof PREFS!=="undefined"&&PREFS.tv===false?"":" on"}" data-act="tvT" id="tvb">Gráficos de TV</button></div></div>
-     <div class="card"><h3>Pedir box ${ib("pitlane")}</h3><div class="tyrepick">${["S","M","H","I","W"].map(c=>`<button data-act="box" data-k="${c}">${tyreBadge(c)}${COMP[c].n}</button>`).join("")}</div><div class="row"><button class="btn sm" data-act="box" data-k="">Cancelar box</button><span class="muted num" id="pitp" style="font-size:12.5px"></span></div>${typeof pxCard==="function"&&!(R&&R.mpGuest)?pxCard():""}</div>
+     <div class="card"><h3>Seu piloto</h3><div class="brnow" id="brNow">—</div>
+      <h4 class="ag">Ritmo</h4><div class="seg">${INT_PACE.map(([k,n])=>`<button data-act="pace" data-k="${k}" id="ip_${k}">${n}</button>`).join("")}</div>
+      <h4 class="ag">Disputas</h4><div class="seg">${INT_RISK.map(([k,n])=>`<button data-act="risk" data-k="${k}" id="ir_${k}">${n}</button>`).join("")}</div>
+      <p class="muted" style="font-size:12px;margin:2px 0 0">Energia, asa, ataque, defesa e ajustes do carro são decisões do piloto, pelo que ele vê na pista.</p>${R.goals&&R.goals.length?`<h4 class="ag">Metas da equipe</h4><div id="goalsLive">${goalsHtml(R.goals,true)}</div>`:""}</div>
+     <div class="card"><h3>Box ${ib("pitlane")}</h3><div class="tyrepick">${["S","M","H","I","W"].map(c=>`<button data-act="box" data-k="${c}">${tyreBadge(c)}${COMP[c].n}</button>`).join("")}</div><div class="row"><button class="btn sm" data-act="box" data-k="">Cancelar box</button><span class="muted num" id="pitp" style="font-size:12.5px"></span></div></div>
      <div class="card" style="grid-column:1/-1"><h3>Rádio</h3><ul class="rfeed" id="rfeed"></ul></div></div></section>
     <section class="pane pane-tele${UI.rtab==="tele"?" on":""}" data-pane="tele"><div class="wxbox"><canvas id="radar" width="440" height="300" aria-label="radar de chuva"></canvas><div id="wxfc" class="wxfc"></div></div><div class="wheel" id="wheel"></div><canvas class="trace" id="trace" width="900" height="220" aria-label="telemetria de velocidade"></canvas></section>
     <section class="pane pane-pos card tower${UI.rtab==="pos"?" on":""}" data-pane="pos" style="padding:10px"><h3 id="lapc">Volta</h3><div class="tw"><table><tbody id="tower"></tbody></table></div><h3>Direção de prova</h3><ul class="feed" id="rcfeed"></ul><h3>Transmissão</h3><ul class="feed" id="nfeed"></ul></section>
@@ -232,10 +232,10 @@ function raceStep(){const me=R.cars.find(c=>c.isP);UI.trace=new Float32Array(R.g
   setupStage();applyHud();UI.last=performance.now();if(R.mp)mpRaceDecor();
   UI.raf=requestAnimationFrame(raceLoop)}
 // ---------- configuração da tela da corrida (salva no jogo)
-const HUD_DEF={tower:"rel",labels:"near",sectors:true,car:true,wheel:true,map:true,bubbles:true,weather:true,trace:true};
-function hudCfg(){G.settings.hud=Object.assign({},HUD_DEF,G.settings.hud||{});return G.settings.hud}
+const HUD_DEF={tower:"rel",labels:"near",sectors:true,det:false,car:true,wheel:false,map:true,bubbles:true,weather:true,trace:false};
+function hudCfg(){G.settings.hud=Object.assign({},HUD_DEF,G.settings.hud||{});const H=G.settings.hud;if(!H.v2){H.v2=1;H.wheel=false;H.trace=false;H.det=false}return H}// v2: tela mais limpa por padrão
 function applyHud(){const H=hudCfg();const tog=(id,on)=>{const e=$(id);if(e)e.hidden=!on};
-  tog("#hTower",H.tower!=="off");tog("#hSec",H.sectors);tog("#hCar",H.car);tog("#hWheel",H.wheel);tog("#mm",H.map);tog("#trace",H.trace);tog("#hWx",H.weather);
+  tog("#hTower",H.tower!=="off");tog("#hSec",H.sectors);tog("#hDet",H.det);tog("#hCar",H.car);tog("#hWheel",H.wheel);tog("#mm",H.map);tog("#trace",H.trace);tog("#hWx",H.weather);
   const t=$("#hTower");if(t){t.classList.toggle("full",H.tower==="full");t._h=null;const r=$("#hRows");if(r)r._h=null}
   const lw=$("#lower");if(lw)lw.classList.toggle("nomap",!H.map)}
 function hudSettings(){const H=hudCfg();const seg=(k,o)=>`<div class="seg">${o.map(([v,n])=>`<button data-act="hud" data-k="${k}:${v}" class="${H[k]===v?"on":""}">${n}</button>`).join("")}</div>`;
@@ -243,8 +243,8 @@ function hudSettings(){const H=hudCfg();const seg=(k,o)=>`<div class="seg">${o.m
   modal(`<h2>Configurar a tela</h2><p class="muted" style="font-size:14px">O que aparece sobre a pista durante a corrida. Fica salvo para as próximas corridas.</p>
    <h3>Torre de posições</h3>${seg("tower",[["rel","Perto de mim"],["full","Grid inteiro"],["off","Esconder"]])}
    <h3>Nomes sobre os carros</h3>${seg("labels",[["all","Todos"],["near","Perto de mim"],["mine","Só o meu"]])}
-   <h3>Painéis</h3><div class="choice">${tg("sectors","Setores e tempos")}${tg("car","Estado do carro e pneus")}${tg("wheel","Volante")}${tg("map","Minimapa")}${tg("bubbles","Balões sobre os carros")}${tg("weather","Clima")}${tg("trace","Gráfico de velocidade")}</div>
-   <div class="row" style="margin-top:6px"><button class="btn sm" data-act="hudCinema">Modo cinema</button><button class="btn sm" data-act="hudReset">Restaurar padrão</button></div>${typeof sndPanel==="function"?sndPanel():""}<div class="row" style="margin-top:6px"><button class="btn go sm" data-act="closeModal">Pronto</button></div>`)}
+   <h3>Painéis</h3><div class="choice">${tg("sectors","Posição, combustível e energia")}${tg("det","Setores, delta e melhor volta")}${tg("car","Estado do carro e pneus")}${tg("wheel","Volante")}${tg("map","Minimapa")}${tg("bubbles","Balões sobre os carros")}${tg("weather","Clima")}${tg("trace","Gráfico de velocidade")}</div>
+   <div class="row" style="margin-top:6px"><button class="btn sm" data-act="hudCinema">Modo cinema</button><button class="btn sm" data-act="hudReset">Restaurar padrão</button></div><h3>Corrida</h3><div class="choice"><button class="chip${G.settings.tips===false?"":" on"}" data-act="tipsT"><b>${G.settings.tips===false?"":"✓ "}Avisos de box do engenheiro</b></button><button class="chip${typeof PREFS!=="undefined"&&PREFS.tv===false?"":" on"}" data-act="tvT"><b>${typeof PREFS!=="undefined"&&PREFS.tv===false?"":"✓ "}Gráficos de TV</b></button><button class="chip" data-act="perf"><b>Medidor de desempenho</b></button></div>${typeof sndPanel==="function"?sndPanel():""}<div class="row" style="margin-top:6px"><button class="btn go sm" data-act="closeModal">Pronto</button></div>`)}
 // ---------- HUD: torre, setores, volante e estado do carro
 function relGap(me,c){if(c===me)return"";if(c.status==="dnf"||c.status==="dsq")return"OUT";if(c.pit)return"BOX";const d=(c.prog-me.prog);if(Math.abs(d)>=1)return(d>0?"−":"+")+Math.floor(Math.abs(d))+" V";const t=d*me.L;return(t>0?"−":"+")+Math.abs(t).toFixed(3)}
 // torre: quem subiu fica verde, quem desceu vermelho (3 s); relógio roxo na volta mais rápida; linhas deslizam na troca
@@ -264,6 +264,10 @@ function hudTower(me){const H=hudCfg();if(H.tower==="off")return;const ord=R.ord
   setT("hLap",`VOLTA ${Math.min(R.L,Math.max(1,R.lead+1))}/${R.L}`);setT("hTowerMode",H.tower==="full"?"GRID":"")}
 function secCls(me,k){const t=me.secCur[k];if(t==null)return"";const b=R.secBest[k];if(b&&b.id===me.id&&Math.abs(b.t-t)<1e-6)return"p";if(me.secPB[k]!=null&&Math.abs(me.secPB[k]-t)<1e-6)return"g";return"y"}
 function hudSectors(me){const H=hudCfg();if(!H.sectors)return;const p=R.order.indexOf(me)+1;setT("hPos","P"+p);setT("hPosN","/"+R.cars.length);
+  {setT("hNow",brainNow(me));const fl=Math.max(0,me.fuel||0),f0=me.fuel0||1,per=f0/R.L,mg=(fl-per*Math.max(0,R.L-me.lap))/Math.max(.01,per);
+    const fe=$("#hFuel");if(fe){fe.style.width=clamp(fl/f0*100,0,100).toFixed(0)+"%";fe.style.background=mg<0?"#FF4D4F":mg<.8?"#FFD400":"#2BD46E"}
+    setT("hFuelT",(mg>=0?"+":"−")+Math.abs(mg).toFixed(1).replace(".",",")+" v");
+    const be=$("#hBatt");if(be){be.style.width=clamp(me.batt,0,100).toFixed(0)+"%";be.style.background=me.batt<15?"#FF4D4F":"#B65CFF"}setT("hBattT",Math.round(me.batt)+"%")}
   const cur=me.status==="run"&&R.started?R.t-me.lapStart:0;setT("hCur",fmtT(Math.max(0,cur)).replace(/(\.\d)\d\d$/,"$1"));
   let k=0;while(k<3&&me.secCur[k]!=null)k++;for(let j=0;j<3;j++){const e=$("#hS"+(j+1));if(!e)continue;const c=j<k?secCls(me,j):j===k&&running(me)?"cur":"";if(e.className!==c)e.className=c}
   const d=lapDelta(me);const de=setT("hDelta",d==null?"—":(d>0?"+":"−")+Math.abs(d).toFixed(3));if(de)de.className=d==null?"":d>0?"pos":"neg";setT("hBest",fmtT(me.best))}
@@ -271,8 +275,8 @@ function hudWheel(me){const H=hudCfg();if(!H.wheel)return;const g=gearRpm(Math.m
   setT("hwSpd",String(run?Math.round(me.v*3.6):0));setT("hwGear",!run?"N":me.pit?"P":String(g.gear));
   const b=$("#hwBat");if(b){b.style.width=clamp(me.batt,0,100).toFixed(0)+"%";b.style.background=me.batt<15?"#FF4D4F":"#B65CFF"}
   const zone=R.geo.ai&&R.geo.ai.ph[Math.floor(fr(me.prog)*R.geo.N)%R.geo.N]===0&&me.v>45&&R.geo.zoneMask[Math.floor(fr(me.prog)*R.geo.N)%R.geo.N];
-  $("#hwOT").classList.toggle("on",!!me.ovMode);$("#hwAero").classList.toggle("on",!!zone);$("#hwClip").classList.toggle("on",!!me.clip);{const rl=$("#hwRisk");if(rl){const ri=me.rk||riskInfo(me);const[lb,col]=riskLabel(ri.v);const on=ri.v>=1.35;rl.classList.toggle("on",on);const bg=on?col:"";if(rl.style.background!==bg){rl.style.background=bg;rl.style.color=on?"#111":""}}}{const tw=$("#hwTow");if(tw){const on=(me.tow||0)>.35,dirty=!!me.dirty;tw.classList.toggle("on",on||dirty);tw.classList.toggle("dirty",dirty&&!on);const tx=dirty&&!on?"AR SUJO":"VÁCUO";if(tw.textContent!==tx)tw.textContent=tx}}
-  setT("hwErs",{auto:"ERS AUTO",attack:"BOOST",defend:"DEFESA",save:"RECARGA"}[me.ers]+" · "+Math.round(me.batt)+"%")}
+  // as luzes do volante (overtake, aero, clip, vácuo, risco) saíram: o que o piloto está fazendo aparece no selo (brain.js)
+  setT("hwErs",Math.round(me.batt)+"%")}
 // desgaste por roda: o lado de fora das curvas da pista e o eixo mais exigido gastam mais
 function wheelWear(c){const w=c.tyre.wear,s=R.C.cw?1:-1,f=R.C.street?.95:1.05,j=(hashS(c.id)%7)/100;
   return{FL:clamp(w*(1+.12*s)*f+j*w,0,1),FR:clamp(w*(1-.12*s)*f,0,1),RL:clamp(w*(1+.12*s)*(2-f),0,1),RR:clamp(w*(1-.12*s)*(2-f)+j*w,0,1)}}
@@ -362,12 +366,10 @@ function updatePanels(now){const me=R.cars.find(c=>c.isP);
     setH("#nfeed",(R.narr||[]).slice(0,14).map(m=>`<li><span class="l">V${m.lap}</span><span class="t">${esc(m.t)}</span></li>`).join(""));
     setH("#rcfeed",R.msgs.slice(0,16).map(m=>`<li class="${m.cls}"><span class="l">V${m.lap}</span><span class="t">${esc(m.t)}${m.k?ib(m.k):""}</span></li>`).join(""));
     const rf=$("#rfeed");if(rf){const mine=R.radio.filter(m=>me&&(m.c===me.id));setH("#rfeed",mine.slice(0,16).map(m=>`<li class="${m.me?"me":"eng"}"><span class="l">V${m.lap}</span><span><span class="w">${m.me?esc(me.code):"Engenheiro"}</span><br><span class="t">${esc(m.t)}</span>${m.k?ib(m.k):""}</span></li>`).join(""));
-      if(mine.length>UI.radioN){if(!mine[0].me)sndRadio();UI.radioN=mine.length}}
-    if(me){["attack","normal","save"].forEach(k=>{const b=$("#m_"+k);if(b)b.classList.toggle("on",me.mode===k)});["auto","attack","defend","save"].forEach(k=>{const b=$("#e_"+k);if(b)b.classList.toggle("on",me.ers===k)});
-      {const pl=me.ersPlan||"norm";for(const k in EPLAN){const b=$("#ep_"+k);if(b)b.classList.toggle("on",pl===k)}}
-      {const st=me.atkStyle||"auto";for(const k in ASTYLE_S){const b=$("#as_"+k);if(b)b.classList.toggle("on",st===k)}const db=$("#defb");if(db)db.classList.toggle("on",!!me.defOrd)}
-      {const gs=$("#gost");if(gs){const A=me.att&&me.att.commit&&R.cars.find(x=>x.id===me.att.id);const gb=me.gb||me.gbShow;const gt=gb?R.cars.find(x=>x.id===gb.to):null;const t=gb?(gb.mode==="line"?"devolve a posição perto da linha":`devolver a posição${gt?" para "+gt.code:""}`):me.goReq?"tenta na próxima reta":(A||me.atkOn)?`atacando ${A?A.code:""}`.trim():me.defOrd?"segurando a posição":"";if(gs.textContent!==t)gs.textContent=t}}
-      {const ts=$("#towst");if(ts){const t=me.towReq?"pronto para mudar de linha":(me.tow||0)>.35?"você está no vácuo":me.dirty?"ar sujo: o carro escorrega":(me.heat||0)>.75?"freios e motor quentes":"";if(ts.textContent!==t)ts.textContent=t}}
+      if(mine.length>UI.radioN){if(!mine[0].me||mine[0].vox)sndRadio();UI.radioN=mine.length}}
+    if(me){{const I=intentOf(me);INT_PACE.forEach(([k])=>{const b=$("#ip_"+k);if(b)b.classList.toggle("on",I.pace===k)});INT_RISK.forEach(([k])=>{const b=$("#ir_"+k);if(b)b.classList.toggle("on",I.risk===k)});
+        {const gl=$("#goalsLive");if(gl&&R.goals&&R.t>(UI.goalT||0)){UI.goalT=R.t+1;const h=goalsHtml(R.goals,true);if(gl.innerHTML!==h)gl.innerHTML=h}}
+        const n=$("#brNow");if(n){const gb=me.gb||me.gbShow;const gt=gb?R.cars.find(x=>x.id===gb.to):null;const t=gb?`Devolvendo a posição${gt?" ao "+gt.code:""}`:brainNow(me);if(n.textContent!==t)n.textContent=t}}
       const pp=pitPredict(me);$("#pitp").textContent=me.pitCall?`Box chamado: ${COMP[me.pitCall].n}`:pp?`Parar agora: volta em ${pp.pos}º (−${pp.loss.toFixed(0)}s)`:""}}
   const vz=el=>!!(el&&el.offsetParent);if(vz($("#wheel")))wheelPanel(me);if(vz($("#trace"))){drawTrace(me);if(typeof drawTraceCmp==="function")drawTraceCmp(me)}if(typeof wxDraw==="function")wxDraw();askPanel();raceExtras()}
 // painel do volante: estrutura criada uma vez; a cada quadro só os textos mudam (sem recriar botões nem mudar a altura)
@@ -427,7 +429,7 @@ function raceExtras(){const me=R.cars.find(c=>c.isP);
   const p=$("#pausedov");if(p)p.hidden=!UI.paused}
 function hostCmdSafe(f){return typeof hostCmd==="function"?hostCmd(f):f()}
 function finishRaceUI(){if(UI.sound&&typeof sndMusic==="function")setTimeout(()=>sndMusic(true),1200);if(R&&R.mp){mpFinish();return}sndSilence();if(R.incidents&&R.incidents.length&&!W.stewDone){W.step="stewards";W.hadInc=true;UI.incIdx=0;render();return}finalizeRace()}
-function finalizeRace(){cancelAnimationFrame(REP.raf);const res=R.result;afterRace(res);G.round--;mediaAfterRace(res);if(W.stewArts)W.stewArts.forEach(a=>G.articles.unshift(a));G.round++;W.step="results";save();render()}
+function finalizeRace(){cancelAnimationFrame(REP.raf);const res=R.result;afterRace(res);G.round--;mediaAfterRace(res);if(W.stewArts)W.stewArts.forEach(a=>G.articles.unshift(a));G.round++;W.hasClips=!!(R.clips&&R.clips.length>=2);W.step=W.hasClips?"momentos":"results";save();render()}
 // ---------- sala dos comissários: replay do incidente, dados e a sua defesa
 const REP={play:true,speed:1,t:0,t0:0,t1:0,raf:0};
 function incEvidence(inc){const ev=inc.ev,o=R.cars.find(x=>x.id===inc.other);
@@ -467,7 +469,7 @@ function drawReplay(cv,inc,t){const dpr=(typeof qDpr==="function"?qDpr():Math.mi
   const ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);const S=frameAt(inc,t);const a=S.cars.find(c=>c.id===inc.me),b=S.cars.find(c=>c.id===inc.other);const m=a&&b?{x:(a.x+b.x)/2,y:(a.y+b.y)/2}:(a||b||{x:0,y:0});
   const sv={x:CAM.x,y:CAM.y,z:CAM.z,sx:CAM.sx,sy:CAM.sy};const[ix,iy]=iso(m.x,m.y);let z=Math.min(cw,ch*1.3)/(WS*46);if(a&&b){const[ax,ay]=iso(a.x,a.y),[bx,by]=iso(b.x,b.y);const d=Math.hypot(ax-bx,ay-by);z=Math.min(z,Math.min(cw,ch)*.55/Math.max(1,d))}
   CAM.x=ix;CAM.y=iy;CAM.z=Math.max(z,.25);CAM.sx=0;CAM.sy=0;const fx=R.fxq;R.fxq=inc.fx||[];
-  try{drawScene(ctx,cw,ch,{S,T:t});[[a,"#FFFFFF"],[b,"#FFD400"]].forEach(([c,col])=>{if(!c)return;const s=toScreen(c.x,c.y,0,cw,ch);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.ellipse(s[0],s[1],5.2*WS*CAM.z,2.8*WS*CAM.z,0,0,7);ctx.stroke();ctx.setLineDash([])})}
+  try{drawScene(ctx,cw,ch,{S,T:t,foc:[inc.me,inc.other]});[[a,"#FFFFFF"],[b,"#FFD400"]].forEach(([c,col])=>{if(!c)return;const s=toScreen(c.x,c.y,0,cw,ch);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.ellipse(s[0],s[1],5.2*WS*CAM.z,2.8*WS*CAM.z,0,0,7);ctx.stroke();ctx.setLineDash([])})}
   finally{R.fxq=fx;Object.assign(CAM,sv)}
   const near=Math.abs(t-inc.t)<.6;ctx.fillStyle="#0E1116D9";ctx.fillRect(8,8,176,24);ctx.fillStyle=near?"#FF4D4F":"#fff";ctx.font="700 12px 'Roboto Mono',monospace";ctx.textAlign="left";ctx.fillText(`REPLAY ${REP.speed<1?"0,4×":"1×"}  ${(t-inc.t>=0?"+":"")+(t-inc.t).toFixed(1).replace(".",",")}s${near?"  TOQUE":""}`,16,24)}
 function licPoints(){const n=G.calendar.length;return(G.lic||[]).filter(x=>(G.season-x.s)*n+(G.round-x.r)<n).reduce((a,x)=>a+x.pts,0)}
@@ -510,7 +512,7 @@ function bannedStep(){const r=R.result;const rs=G.drivers[r.reserve];const e=r.c
 function resultsStep(){const res=R.result;const e=res.cls.find(x=>x.d===G.me);const top=res.cls.filter(x=>x.status==="ok").slice(0,3);
   $("#wk").innerHTML=`<div class="grid2"><div class="card"><h3>Pódio</h3><canvas id="pod" width="520" height="340" style="width:100%;height:auto;border-radius:6px"></canvas></div>
    <div class="card"><h3>Você: ${e.status==="ok"?e.pos+"º lugar":e.status==="dsq"?"desclassificado":"abandono"}${e.pts?` · +${e.pts} pts`:""}</h3><p>${e.status==="ok"?`Largou em ${res.gridMe}º, ${e.stops} parada(s), melhor volta ${fmtT(e.best)}.`:esc(e.why||"")}</p>
-    <div class="kv"><span>Popularidade</span><b class="num">${Math.round(G.fame.pop)}</b></div><div class="kv"><span>Seguidores</span><b class="num">${fmtK(G.fame.followers)}</b></div><div class="kv"><span>Confiança da equipe</span><b class="num">${Math.round(G.trust)}%</b></div>
+    <div class="kv"><span>Popularidade</span><b class="num">${Math.round(G.fame.pop)}</b></div><div class="kv"><span>Seguidores</span><b class="num">${fmtK(G.fame.followers)}</b></div><div class="kv"><span>Confiança da equipe</span><b class="num">${Math.round(G.trust)}%</b></div>${res.goals&&res.goals.list.length?`<h4 class="ag">Metas da equipe</h4>${goalsHtml(res.goals.list,false)}`:""}${res.shopCr?`<div class="kv"><span>Créditos de oficina</span><b class="num">+${res.shopCr+(res.goals?res.goals.tot:0)} (total ${G.shop?G.shop.cr:0})</b></div>`:""}
     <div class="row"><button class="btn go" data-act="toMixed">Ir para a zona mista</button><button class="btn" data-act="mnLog">Registro da corrida</button></div></div>
    ${typeof hlCard==="function"?hlCard():""}<div class="card" style="grid-column:1/-1"><h3>Classificação final</h3>${resultTable(res.cls)}</div></div>`;
   const cv=$("#pod");const t0=performance.now();const tops=top.map(x=>{const d=G.drivers[x.d],t=teamOf(x.team);return{code:d.code,col:t.c,col2:t.c2}});
@@ -527,7 +529,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
   if(a==="gloss"){e.stopPropagation();const g=GLOSS[k];modal(`<h2>${g.t}</h2><p style="font-size:15px;line-height:1.55">${g.d}</p><button class="btn" data-act="closeModal">Entendi</button>`);return}
   if(a==="closeModal"||(a==="bgClose"&&e.target===b)){modal("");return}
   if(a==="bgClose")return;
-  if(a.startsWith("mp")){mpAction(a,k,b);return}if(a.startsWith("tv")&&typeof tvAction==="function"){tvAction(a,k,b);return}if(a.startsWith("px")&&typeof pxAction==="function"){pxAction(a,k);return}if(a.startsWith("mn")&&typeof mnAction==="function"){mnAction(a,k,b);return}if(a.startsWith("wk")&&typeof wkAction==="function"){wkAction(a,k);return}if(a.startsWith("lf")&&typeof lfAction==="function"){lfAction(a,k,b);return}if(a.startsWith("ow")&&typeof owAction==="function"){owAction(a,k);return}if(a.startsWith("cc")&&typeof ccAction==="function"){if(a==="ccAsSet"||a==="ccAsP")ccAction2(a,k);else ccAction(a,k);return}
+  if(a.startsWith("shop")&&typeof shopAction==="function"){shopAction(a,k,b);return}if((a==="hlNext"||a==="hlEnd")&&typeof hlAction==="function"){hlAction(a);return}if(a.startsWith("mp")){mpAction(a,k,b);return}if(a.startsWith("tv")&&typeof tvAction==="function"){tvAction(a,k,b);return}if(a.startsWith("px")&&typeof pxAction==="function"){pxAction(a,k);return}if(a.startsWith("mn")&&typeof mnAction==="function"){mnAction(a,k,b);return}if(a.startsWith("wk")&&typeof wkAction==="function"){wkAction(a,k);return}if(a.startsWith("lf")&&typeof lfAction==="function"){lfAction(a,k,b);return}if(a.startsWith("ow")&&typeof owAction==="function"){owAction(a,k);return}if(a.startsWith("cc")&&typeof ccAction==="function"){if(a==="ccAsSet"||a==="ccAsP")ccAction2(a,k);else ccAction(a,k);return}
   const A={
    continue(){if(load()){UI.scr="hub";if(G.phase==="weekend"){G.phase="home"}render()}},
    newCareer(){UI.scr="create";render()},toTitle(){UI.scr="title";render()},
@@ -562,14 +564,10 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
    hudReset(){G.settings.hud=Object.assign({},HUD_DEF);save();applyHud();hudSettings()},
    rtab(){UI.rtab=k;document.querySelectorAll(".rtabs button").forEach(x=>x.classList.toggle("on",x.dataset.k===k));document.querySelectorAll(".rpanes .pane").forEach(x=>x.classList.toggle("on",x.dataset.pane===k))},
    snd(){UI.sound=!UI.sound;const ok=sndToggle(UI.sound);if(!ok)UI.sound=false;G.settings.sound=UI.sound;b.textContent=UI.sound?"🔊 Som ligado":"🔈 Ligar som"},
-   tow(){if(R&&R.mpGuest)return mpCmd({tw:1});hostCmdSafe(()=>cmdTow())},
-   back(){if(R&&R.mpGuest)return mpCmd({bk:1});hostCmdSafe(()=>cmdBack())},
    perf(){if(typeof perfToggle==="function")perfToggle()},
    tip(){tipApply(k)},tipNo(){tipDismiss()},
-   autoDec(){G.settings.autoDec=G.settings.autoDec===false;save();b.classList.toggle("on",G.settings.autoDec!==false)},tipsT(){G.settings.tips=G.settings.tips===false;save();b.classList.toggle("on",G.settings.tips!==false);if(G.settings.tips===false&&typeof tipDismiss==="function")tipDismiss()},
-   go(){if(R&&R.mpGuest)return mpCmd({go:1});hostCmdSafe(()=>cmdGo())},
-   astyle(){if(R&&R.mpGuest)return mpCmd({as:k});hostCmdSafe(()=>cmdStyle(k))},eplan(){if(R&&R.mpGuest)return mpCmd({pl:k});hostCmdSafe(()=>cmdPlan(k))},def(){if(R&&R.mpGuest)return mpCmd({df:1});hostCmdSafe(()=>cmdDef())},
-   mode(){if(R&&R.mpGuest)return mpCmd({m:k});hostCmdSafe(()=>cmdMode(k))},ers(){if(R&&R.mpGuest)return mpCmd({e:k});hostCmdSafe(()=>cmdErs(k))},box(){if(R&&R.mpGuest)return mpCmd({b:k||null});hostCmdSafe(()=>cmdBox(k||null))},
+tipsT(){G.settings.tips=G.settings.tips===false;save();b.classList.toggle("on",G.settings.tips!==false);if(G.settings.tips===false&&typeof tipDismiss==="function")tipDismiss()},
+   pace(){uiAct("pace",k)},risk(){uiAct("risk",k)},box(){if(R&&R.mpGuest)return mpCmd({b:k||null});hostCmdSafe(()=>cmdBox(k||null))},
    askAns(){if(R&&R.mpGuest)mpAnswer(k);else answerAsk(k);const el=$("#ask");el.hidden=true;el.dataset.q=""},
    redTyre(){const me=R.cars.find(c=>c.isP);resumeRed({[me.id]:k});const el=$("#ask");el.hidden=true;el.dataset.red="";el.dataset.q=""},
    toMixed(){W.step="mixed";render()},

@@ -55,15 +55,18 @@ function deployRate(c){const close=c.ahead&&c.dA<70&&c.atk,threat=c.behind&&c.dB
 function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;const ph=AI.ph[i],ins=AI.insN[i],nb=AI.nbD[i],cw=AI.cw[i];
   const neutral=!R.started||!!R.sc||!!R.red||(R.yellows.length&&inYellow(c));c.neut=neutral;
   const amp=.22+(1-c.d.a.cons/100)*1.5;c.lineN+=(-c.lineN*.6+gauss()*amp*1.2)*dt;c.lineN=clamp(c.lineN,-1.1,1.1);
-  const ideal=g.line[i]*c.lineK;let yT=ideal+c.lineN,m=1;c.vCap=Infinity;c.hard=false;c.dirty=false;c.atk=false;c.defend=false;c.bypass=false;
+  const ideal=g.line[i]*c.lineK;let yT=ideal+c.lineN,m=1;
+  // carro avariado (no aro, furado, sem roda, asa ou suspensão muito danificadas): anda fora da linha e deixa passar até o box
+  {const D=c.dmg||{},w=D.whl||[0,0,0,0];c.crippled=R.started&&!c.pit&&(!!(c.tyre&&(c.tyre.rim||c.tyre.punct))||(D.off!=null&&D.off>=0)||(D.wing||0)>=.6||(D.rwing||0)>=.5||Math.max(w[0],w[1],w[2],w[3])>.6)}c.vCap=Infinity;c.hard=false;c.dirty=false;c.atk=false;c.defend=false;c.bypass=false;
   const A=c.ahead,dA=c.dA,B=c.behind;c.cdAtt=Math.max(0,c.cdAtt-dt);
   if(ph!==1)c.diveRoll=false;
   if(c.pitCall&&R.started&&pitDist(c)<330)yT=g.pitSide*4.1;
   else if(c.yieldTo){const mt=R.cars.find(x=>x.id===c.yieldTo);if(!mt||!running(mt)||mt.pit||mt.prog>c.prog){c.yieldTo=null}else if((c.prog-mt.prog)*g.len<140){yT=-Math.sign(mt.y||ideal||1)*4.4;m*=.94;if(!c.yielded||c.yielded.to!==mt.id)bubble(c,c.gb&&c.gb.to===mt.id?`Devolvendo a posição para ${mt.code}`:`Ordem de equipe: abrindo para ${mt.code}`,"order",4);c.yielded={to:mt.id,t:R.t}}}
   else if(c.blue){yT=-Math.sign(ideal||c.y||1)*4.6;m*=.975}
+  else if(c.crippled){yT=-Math.sign(ideal||c.y||1)*4.6}
   else if(!neutral&&A&&dA<120){
     const lapped=A.prog<c.prog-.5,lapping=A.prog>c.prog+.5;
-    const slowA=!A.ex&&(lapped||A.lose>0)||(A.pitCall&&pitDist(A)<330)||(A.pitExit&&R.t-A.pitExit<8)||A.yieldTo===c.id;
+    const slowA=!A.ex&&(lapped||A.lose>0||A.crippled)||(A.pitCall&&pitDist(A)<330)||(A.pitExit&&R.t-A.pitExit<8)||A.yieldTo===c.id;
     if(slowA){c.bypass=true;if(dA<85&&Math.abs(A.y-c.y)<3.4){const s=A.pitCall?-g.pitSide:A.blue?(-Math.sign(A.y)||1):sideRoom(A.y,c.y);yT=clamp(A.y+s*3.1,-YMAX,YMAX)}}
     else if(!lapping)battle(c,A,dA,ph,ins,nb);
   }else if(c.att)c.att=null;

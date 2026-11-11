@@ -61,16 +61,20 @@ function exSync(c){if(!c.dyn)return;const d=c.dyn,vl=Math.max(0,(c.v||0)*Math.co
 function physContacts(){const P=R.phys;if(!P||P.length<2)return;const L=R.geo.len;R.cpair=R.cpair||{};
   for(const c of P)c.fsN=fr(c.prog)*L;
   const n=P.length;for(let a=0;a<n;a++){const c=P[a];if(!running(c)||c.pit)continue;
-    for(let q=1;q<=3;q++){const o=P[(a+q)%n];if(o===c||!running(o)||o.pit)continue;let ds=o.fsN-c.fsN;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;if(Math.abs(ds)>=CARL)continue;
+    for(let q=1;q<=3;q++){const o=P[(a+q)%n];if(o===c||!running(o)||o.pit)continue;let ds=o.fsN-c.fsN;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;
+      // detecção antes de entrar: conta como toque se, na velocidade de aproximação atual, o de trás encostaria dentro do próximo passo
+      const rr=ds>=0?c:o,ff=rr===c?o:c,appr=Math.max(0,(rr.v||0)-(ff.v||0));if(Math.abs(ds)>=CARL+appr*SIM_DT)continue;
       const dy=(o.y||0)-(c.y||0);if(Math.abs(dy)>=CARW)continue;
       const key=c.id<o.id?c.id+"|"+o.id:o.id+"|"+c.id;const was=(R.cpair[key]||-9)>R.t-.3;R.cpair[key]=R.t;
       const rear=ds>=0?c:o,front=rear===c?o:c,dsa=Math.abs(ds),ov=CARL-dsa,oy=CARW-Math.abs(dy);const pre={rv:rear.vy||0,fv:front.vy||0,rearAtt:!!(rear.att&&rear.att.commit),frontCov:front.coverY!=null};
       if(ov/CARL<oy/CARW){// batida de frente/traseira
-        const close=Math.max(0,(rear.v||0)-(front.v||0));rear.prog-=ov*.75/L;front.prog+=ov*.25/L;rear.fsN-=ov*.75;
-        if(close>0){const va=((rear.v||0)+(front.v||0))/2;rear.v=Math.max(0,va-close*.12);front.v=va+close*.12}
+        // impulso: o de trás perde velocidade, o da frente ganha (é empurrado para frente pela física); a sobreposição que sobrar
+        // é desfeita aos poucos (no máximo 0,12 m por passo, invisível), nunca de uma vez
+        const close=Math.max(0,(rear.v||0)-(front.v||0));if(close>0){const va=((rear.v||0)+(front.v||0))/2;rear.v=Math.max(0,va-close*.12);front.v=va+close*.12}
+        if(ov>0){const cr=Math.min(ov,.12);rear.prog-=cr*.75/L;front.prog+=cr*.25/L;rear.fsN-=cr*.75;if((rear.v||0)>(front.v||0))rear.v=front.v||0}
         exSync(rear);exSync(front);if(!was||close>2)contactEvent(rear,front,"long",close,{off:(front.y||0)-(rear.y||0),ds:dsa,pre})}
       else{// lado a lado
-        const s=Math.sign(dy)||1;const push=oy/2+.02;if(!c.ex||!o.ex){c.y=(c.y||0)-s*push;o.y=(o.y||0)+s*push}
+        const s=Math.sign(dy)||1;const push=Math.min(oy/2+.02,.08);/* separação lateral aos poucos; a velocidade lateral faz o resto */if(!c.ex||!o.ex){c.y=(c.y||0)-s*push;o.y=(o.y||0)+s*push}
         const close=Math.max(0,((c.vy||0)-(o.vy||0))*s);if(close>0){const avg=((c.vy||0)+(o.vy||0))/2;c.vy=avg-s*close*.3;o.vy=avg+s*close*.3}
         exSync(c);exSync(o);// rotação pelo ponto do toque: o empurrão fora do centro gira os dois carros
         if(close>0&&c.dyn&&o.dyn){const dr=-s*.55*close*clamp(ds/CARL,-1,1);c.dyn.r+=dr;o.dyn.r+=dr;c.dyn.beta+=dr*.05;o.dyn.beta+=dr*.05}const dv=Math.abs((c.v||0)-(o.v||0));const slowBoth=(c.v||0)<8&&(o.v||0)<8;if(!was||(close>1.5&&!slowBoth)||close>4)contactEvent(rear,front,"lat",close+dv*.08,{ds:dsa,side:s,dy,pre,mover:((c.vy||0)*s>(-(o.vy||0)*s))?c:o})}}}}

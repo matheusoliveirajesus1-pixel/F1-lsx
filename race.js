@@ -360,7 +360,7 @@ function finish(c){c.status="fin";c.fin=c._cross??R.t;c.pit=null;if(c.isP){const
 // A velocidade da simulação (1x, 2x...) muda quantos passos cabem em cada quadro, nunca o tamanho do passo.
 const SIM_DT=.05;
 function simAdvance(sec,maxSteps,onStep){if(!R||R.over)return 0;R.acc=(R.acc||0)+Math.max(0,sec);let n=0;
-  while(R.acc>=SIM_DT-1e-9&&n<maxSteps&&!R.over&&!R.redChoose){step(SIM_DT);R.acc-=SIM_DT;n++;if(onStep)onStep()}
+  while(R.acc>=SIM_DT-1e-9&&n<maxSteps&&!R.over&&!R.redChoose){for(const c of R.cars){c._pp=c.prog;c._py=c.y||0;c._ppsi=c.psi}step(SIM_DT);R.acc-=SIM_DT;n++;if(onStep)onStep()}
   if(n>=maxSteps)R.acc=Math.min(R.acc,SIM_DT);// aparelho lento: a corrida fica em câmera lenta em vez de dar passos maiores
   return n}
 function step(dt){

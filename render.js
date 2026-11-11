@@ -67,7 +67,11 @@ function teamIdx(t){return Math.max(0,G.teams.findIndex(x=>x.id===t.id))}
 function lineAt(f){const g=TRACKGEO,M=g.M,x=fr(f)*M,i=Math.floor(x)%M,k=x-Math.floor(x);return g.line[i]+(g.line[(i+1)%M]-g.line[i])*k}
 function carWorld(c){// onde o carro está no mundo: só lê o estado físico (dyn.js). Box, rodada e acidente usam o mesmo cálculo.
   c._stopped=!!(c.pit&&c.pit.phase==="stop");c._yaw=c.yaw||0;
-  const p=trackPos(c.prog,(c.y||0)*WS);p.h+=c.psi!=null?c.psi:Math.atan2(c.vy||0,Math.max(6,c.v||0));return p}
+  // só no desenho (RENDER_A definido pelo laço da tela): posição entre o passo anterior e o atual da física, pela fração de tempo que sobrou
+  let pr=c.prog,y=c.y||0,ps=c.psi;
+  if(RENDER_A!=null&&c._pp!=null&&Math.abs(c.prog-c._pp)*R.geo.len<30&&Math.abs(y-c._py)<4){const a=RENDER_A,b=1-a;pr=c._pp*b+c.prog*a;y=c._py*b+y*a;if(ps!=null&&c._ppsi!=null){let d=ps-c._ppsi;d-=Math.round(d/(2*Math.PI))*2*Math.PI;ps=c._ppsi+d*a}}
+  const p=trackPos(pr,y*WS);p.h+=ps!=null?ps:Math.atan2(c.vy||0,Math.max(6,c.v||0));return p}
+var RENDER_A=null;
 function scWorld(){if(R.scP==null)return null;const PL=R.pitLane;const f=fr(R.scP);
   if(R.sc&&R.sc.ending){const s=((f-PL.fe)+1)%1*R.geo.len;if(s<PL.D)return pitPos(s/PL.D)}
   return trackPos(R.scP,0)}

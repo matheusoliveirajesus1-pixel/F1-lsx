@@ -82,7 +82,7 @@ function dynSub(c,dt,vT,hard,brk,yT,o){const d=c.dyn,L=R.geo.len,f=fr(c.prog);dy
       const vMax=Math.sqrt(vp2*vp2+2*aPlan*dist);if(vMax<vT){vT=vMax;hard=true}}}
   // ---- longitudinal: o que o piloto pede, limitado pelos pneus
   const aMin=o.dmax!=null?-o.dmax:(hard||brk||v-vT>2.5?-PH.decMax:-1.6),aMaxCmd=o.amax!=null?o.amax:16;
-  let aW=clamp((vT-v)/dt,aMin,aMaxCmd);if(thr)aW=aMaxCmd;
+  /* o piloto ajusta pequenas diferenças de velocidade aos poucos (~0,18 s), sem acelera-freia a cada passo; diferenças grandes (freada planejada) seguem imediatas */const dv0=vT-v,tau=(o.pit||o.sMax!=null||brk||Math.abs(dv0)>=4||dv0<0)?dt:.18/* frear por carro à frente, SC/VSC ou curva continua imediato */;let aW=clamp(dv0/Math.max(dt,tau),aMin,aMaxCmd);if(thr)aW=aMaxCmd;
   // ---- lateral: linha desejada → direção desejada → aceleração lateral pedida
   const em=!!c.emerg||!!o.em;const vyMax=o.pit?5:em?6.2:c.coverY!=null?2.6:clamp(1.2+v*.045,1.2,4.8);
   if(push)yT=push.dir*(TRK_H+1.3);// espremido: obrigado a sair da linha

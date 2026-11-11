@@ -323,7 +323,7 @@ function directorPick(){const me=R.cars.find(c=>c.isP);const h=R.hl[R.hl.length-
   if(me&&running(me)&&(r<.5||!b)){setShot(me,vrnd()<.45?"chase":"tv",9,`Você · P${pos(me)} · ${me.code}`);return}
   if(b&&r<.85){setShot(b.B,"tv",8,`Briga pelo ${pos(b.A)}º · ${b.A.code} × ${b.B.code}`);return}
   const l=R.order.find(c=>running(c)&&!c.pit);if(l)setShot(l,"tv",7,`Líder · ${l.code}`)}
-function cameraFrame(dt,cw,ch){const me=R.cars.find(c=>c.isP);let foc=me,kind=UI.cam;if(kind==="onboard"&&me){const p=me._w||carWorld(me);const[tx,ty]=iso(p.x,p.y);camTo(dt,tx,ty,Math.min(cw,ch*1.3)/(WS*24)*CAM.userZ,.04,.25);CAM.sx=0;CAM.sy=0;return me}if(UI.cam==="tv"&&typeof smartPick==="function")return smartPick(dt,cw,ch);
+function cameraFrame(dt,cw,ch){const me=R.cars.find(c=>c.isP);let foc=me,kind=UI.cam;if(UI.cam==="tv"&&typeof smartPick==="function")return smartPick(dt,cw,ch);
   if(UI.cam==="director"){directorPick();foc=DIR.subj||me;kind=DIR.kind}
   if(kind==="all"){shotAll(dt,cw,ch);camShake(dt,null);return null}
   if(kind==="fixed"&&DIR.fixed){const[tx,ty]=iso(DIR.fixed.x,DIR.fixed.y);camTo(dt,tx,ty,Math.min(cw,ch*1.3)/(WS*85)*CAM.userZ,.2,1.5);camShake(dt,null);return null}
@@ -337,7 +337,7 @@ function raceLoop(now){if(typeof MUS!=="undefined"&&MUS.on)sndMusic(false);if(G.
   if(R.mpHost)mpHostTick(now);
   if(R.redChoose&&!$("#ask").dataset.red)showRedChoice();
   const s=typeof stageVisible!=="function"||stageVisible()?fitRaceCanvas():null;let foc=null;if(s){const{ctx,cw,ch}=s;let drew=false;if(UI.cam==="tv"&&typeof SMART!=="undefined"&&SMART.mode==="replay")drew=smartDrawReplay(ctx,cw,ch,rdt);
-    RENDER_A=R.mpGuest||UI.paused?null:Math.min(1,(R.acc||0)/SIM_DT);if(!drew){foc=cameraFrame(rdt,cw,ch);UI.foc=foc;if(UI.cam==="onboard"&&typeof drawOnboard==="function")drawOnboard(ctx,cw,ch,foc);else drawScene(ctx,cw,ch)}drawRain(ctx,cw,ch,R.rain&&R.w>.15?R.rain:0);if(UI.cam!=="all"&&(typeof QL==="undefined"||QL.lvl>0))drawVignette(ctx,cw,ch);if(UI.cam==="tv"&&typeof smartPip==="function")smartPip(ctx,cw,ch);if(typeof tvOverlay==="function")tvOverlay(ctx,cw,ch,rdt);else if(CAM.flash>0){ctx.fillStyle=`rgba(0,0,0,${.55*CAM.flash})`;ctx.fillRect(0,0,cw,ch)}
+    RENDER_A=R.mpGuest||UI.paused?null:Math.min(1,(R.acc||0)/SIM_DT);if(!drew){foc=cameraFrame(rdt,cw,ch);UI.foc=foc;drawScene(ctx,cw,ch)}drawRain(ctx,cw,ch,R.rain&&R.w>.15?R.rain:0);if(UI.cam!=="all"&&(typeof QL==="undefined"||QL.lvl>0))drawVignette(ctx,cw,ch);if(UI.cam==="tv"&&typeof smartPip==="function")smartPip(ctx,cw,ch);if(typeof tvOverlay==="function")tvOverlay(ctx,cw,ch,rdt);else if(CAM.flash>0){ctx.fillStyle=`rgba(0,0,0,${.55*CAM.flash})`;ctx.fillRect(0,0,cw,ch)}
     const mm=$("#mm");if(mm&&!mm.hidden){const mx=mm.getContext("2d");mx.setTransform(2,0,0,2,0,0);drawMinimap(mx,mm.width/2,mm.height/2)}}
   RENDER_A=null;/* fora do desenho, ninguém lê posição interpolada */updatePanels(now);if(typeof tipsTick==="function")tipsTick();if(typeof pxRefresh==="function"&&(UI.pxN=(UI.pxN||0)+1)%15===0){pxRefresh();if(typeof ccRefresh==="function")ccRefresh()}
   const lw=$("#lower");if(lw){if(typeof tvLower==="function")tvLower(lw,foc||R.cars.find(c=>c.isP));else{const lab=UI.cam==="director"?DIR.label:UI.cam==="tv"&&typeof SMART!=="undefined"?SMART.label:"";const show=!!lab;lw.hidden=!show;if(show&&lw.textContent!==lab)lw.textContent=lab}}

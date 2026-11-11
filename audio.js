@@ -15,7 +15,9 @@ function sndInit(){if(SND.ctx)return true;try{const AC=window.AudioContext||wind
   SND.b.master=ctx.createGain();comp.connect(SND.b.master);SND.b.master.connect(ctx.destination);SND.master=SND.b.master;SND.bus=comp;
   for(const[k]of SND_BUS)if(k!=="master"){SND.b[k]=ctx.createGain();SND.b[k].connect(comp)}
   // o motor passa por um "abaixador" (quando o rádio fala, o motor baixa)
-  SND.duck=ctx.createGain();SND.duck.gain.value=1;SND.duck.connect(SND.b.eng);
+  SND.duck=ctx.createGain();SND.duck.gain.value=1;
+  // túnel: filtro que abafa o motor e um ganho de "lugar fechado" (abertos fora do túnel)
+  SND.tf=ctx.createBiquadFilter();SND.tf.type="lowpass";SND.tf.frequency.value=18000;SND.tf.Q.value=.6;SND.tg=ctx.createGain();SND.tg.gain.value=1;SND.duck.connect(SND.tf);SND.tf.connect(SND.tg);SND.tg.connect(SND.b.eng);
   // eco curto (túnel e muros das pistas de rua): resposta ao impulso gerada na hora
   const ir=ctx.createBuffer(2,ctx.sampleRate*1.4,ctx.sampleRate);for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3.2)}
   SND.rev=ctx.createConvolver();SND.rev.buffer=ir;SND.revG=ctx.createGain();SND.revG.gain.value=0;SND.duck.connect(SND.rev);SND.rev.connect(SND.revG);SND.revG.connect(comp);
@@ -45,9 +47,10 @@ function sndInit(){if(SND.ctx)return true;try{const AC=window.AudioContext||wind
   e.st=sndLoop(ctx,nb,"bandpass",2600,1.2,SND.b.voice);
   SND.eng=e;sndVolApply();SND.on=true;return true}catch(err){console.warn("som:",err);SND.ctx=null;return false}}
 function sndToggle(on){if(on){if(!sndInit())return false;SND.ctx.resume&&SND.ctx.resume();SND.on=true;sndVolApply()}else{SND.on=false;sndSilence(true);sndMusic(false)}return true}
-// trecho do túnel de Mônaco (entre Portier e a Nova Chicane)
-function sndTunnelAt(f){if(!R||R.C.id!=="monaco")return false;if(!SND.tunnel||SND.tunnel.g!==R.geo){const cs=R.geo.corners||[];const a=cs.find(c=>/Portier/.test(c.n)),b=cs.find(c=>/Nova Chicane/.test(c.n));
-    SND.tunnel={g:R.geo,a:a?a.i/R.geo.N+60/R.geo.len:-1,b:b?b.i/R.geo.N-60/R.geo.len:-1}}const T=SND.tunnel;return T.a>=0&&T.b>T.a&&f>T.a&&f<T.b}
+// túnel: quanto o carro está "dentro" (0 fora, 1 no meio), pela posição real; sobe e desce em ~40 m na entrada e na saída.
+// O trecho é o mesmo que o desenho usa (tunnelRange, em tracks.js): uma fonte só.
+function sndTunnelAt(f){if(!R||typeof tunnelRange!=="function")return 0;const T=tunnelRange(R.geo);if(!T)return 0;const L=R.geo.len;let s=(fr(f)-T.a)*L;if(s<-L/2)s+=L;const len=(T.b-T.a)*L;if(s<-40||s>len+40)return 0;
+  return clamp(Math.min(s+40,len+40-s)/80,0,1)}
 // chamado a cada quadro com o carro em foco; near = carro mais próximo (para o "zum" de passagem)
 let SNDLAST={gear:0,shiftT:0};
 function sndUpdate(c,opts){if(!SND.on||!SND.eng||!c)return;const e=SND.eng,ctx=SND.ctx,t=ctx.currentTime,o=opts||{};const sp=o.speed||1;const D=o.dist??1;
@@ -71,7 +74,9 @@ function sndUpdate(c,opts){if(!SND.on||!SND.eng||!c)return;const e=SND.eng,ctx=S
   // ambiente: público, chuva e eco (túnel de Mônaco forte; pistas de rua com eco leve dos muros)
   e.cr.g.gain.setTargetAtTime((R.C.street?.03:.045)+(typeof o.cheer==="number"?Math.max(0,o.cheer-.1)*.15:o.cheer?.12:0),t,.4);
   e.rn.g.gain.setTargetAtTime(R.w>.15?Math.min(.09,R.w*.1):0,t,.6);
-  const tun=sndTunnelAt(fr(c.prog));SND.revG.gain.setTargetAtTime(tun?.55:R.C.street?.09:0,t,tun?.08:.4);
+  const tun=sndTunnelAt(fr(c.prog));SND.revG.gain.setTargetAtTime(Math.max(R.C.street?.09:0,tun*.75),t,.12);
+  if(SND.tf){SND.tf.frequency.setTargetAtTime(18000-tun*15200,t,.12);SND.tg.gain.setTargetAtTime(1+tun*.45,t,.12)}
+  if(tun>0)e.cr.g.gain.setTargetAtTime(.01,t,.2);// dentro do túnel o público some
   // carro passando perto: Doppler pela velocidade relativa e lado pelo estéreo
   const n=o.near;if(n){const nv=n.v||0;const df=Math.max(.2,n.d);const rel=clamp((nv-v)/40,-.5,.5);const dop=n.app?1+Math.abs(rel)*.25:1-Math.abs(rel)*.25;
     e.po.frequency.setTargetAtTime(Math.max(30,gearRpm(nv).rpm/20*dop),t,.05);e.pg.gain.setTargetAtTime(Math.min(.14,.05/df),t,.05);if(e.pp)e.pp.pan.setTargetAtTime(clamp(n.pan||0,-.9,.9),t,.06)}

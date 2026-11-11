@@ -128,6 +128,15 @@ function buildCircuit(id){const C=CIR[id];let P=[],kap=[],first=0,x=0,y=0;
   first=segs[0].k==="s"?Math.round(segs[0].len*.55/DS):0}
   // fechar a posição distribuindo o erro
   const N=P.length,ex=x-P[0].x,ey=y-P[0].y;P.forEach((p,i)=>{p.x-=ex*i/N;p.y-=ey*i/N});
+  // trechos paralelos encostados (traçado comprimido, ex.: Baku curvas 5-6 × 18-19): afasta os dois aos poucos até caber
+  // pista + muro entre eles. Cruzamentos de verdade (Suzuka) não são tocados: só trechos com direções quase paralelas.
+  {const SEP=21,dir=i=>{const a=P[(i-2+N)%N],b=P[(i+2)%N];return Math.atan2(b.y-a.y,b.x-a.x)};
+    for(let it=0;it<12;it++){const dx=new Float32Array(N),dy=new Float32Array(N);let any=false;
+      for(let i=0;i<N;i+=2){let best=1e9,bj=-1;for(let j=0;j<N;j++){let d=Math.abs(j-i);d=Math.min(d,N-d);if(d<40)continue;const dd=Math.hypot(P[i].x-P[j].x,P[i].y-P[j].y);if(dd<best){best=dd;bj=j}}
+        if(bj<0||best>=SEP)continue;if(Math.abs(Math.cos(dir(i)-dir(bj)))<.75)continue;any=true;
+        const ux=(P[i].x-P[bj].x)/(best||1),uy=(P[i].y-P[bj].y)/(best||1),push=(SEP-best)*.3;
+        for(let k=-24;k<=24;k++){const w=Math.cos(k/24*Math.PI/2)**2,q=(i+k+N)%N;dx[q]+=ux*push*w/2;dy[q]+=uy*push*w/2}}
+      if(!any)break;for(let i=0;i<N;i++){P[i].x+=dx[i];P[i].y+=dy[i]}}}
   for(let i=0;i<N;i++){const a=P[(i-1+N)%N],b=P[(i+1)%N];P[i].h=Math.atan2(b.y-a.y,b.x-a.x)}
   // curvatura suavizada (±12 m)
   const ks=kap.map((_,i)=>{let s=0;for(let j=-3;j<=3;j++)s+=kap[(i+j+N)%N];return s/7});
@@ -176,3 +185,8 @@ function buildCircuit(id){const C=CIR[id];let P=[],kap=[],first=0,x=0,y=0;
   const geo={id,C,P,N,len:N*DS,k:Float32Array.from(kl),kc:Float32Array.from(ks),line,corners,zones,ctr:{x:P.reduce((s,p)=>s+p.x,0)/N,y:P.reduce((s,p)=>s+p.y,0)/N}};
   geo.sectors=[0,Math.floor(N/3),Math.floor(2*N/3)];return geo}
 function cornerAt(geo,i){let best=null,bd=1e9;for(const c of geo.corners){let d=(c.i-i+geo.N)%geo.N;if(d>geo.N/2)d-=geo.N;if(Math.abs(d)<bd){bd=Math.abs(d);best=c}}return bd<40?best:null}
+
+// ---------- estruturas especiais (fonte única para desenho, áudio e testes)
+// túnel de Mônaco: da saída de Portier até a "Saída do túnel" (sob o hotel), em fração da volta
+function tunnelRange(geo){if(!geo||geo.id!=="monaco")return null;if(geo._tun!==undefined)return geo._tun;const cs=geo.corners||[];const a=cs.find(c=>/Portier/.test(c.n)),b=cs.find(c=>/Saída do túnel/.test(c.n));
+  geo._tun=a&&b&&b.i>a.i?{a:(a.i+12)/geo.N,b:(b.i+18)/geo.N}:null;return geo._tun}

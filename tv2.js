@@ -1,21 +1,6 @@
-// ===================== TRANSMISSÃO 2: CÂMERA DE BORDO, GRÁFICOS DE PREVISÃO E PÓDIO =====================
-// Câmera de bordo: a pista gira para o carro apontar para cima, com o halo e o volante na frente.
+// ===================== TRANSMISSÃO 2: GRÁFICOS DE PREVISÃO E PÓDIO =====================
 // Gráficos: previsão de alcance ("chega em X voltas"), janela de box, radar de velocidade e história dos pneus.
 // Pódio: champanhe e uma fanfarra original.
-function drawOnboard(ctx,cw,ch,c){if(!c){drawScene(ctx,cw,ch);return}const p=c._w||carWorld(c);const a=toScreen(p.x,p.y,0,cw,ch),b=toScreen(p.x+Math.cos(p.h)*20,p.y+Math.sin(p.h)*20,0,cw,ch);
-  const ang=Math.atan2(b[1]-a[1],b[0]-a[0]);const D=Math.ceil(Math.hypot(cw,ch)*1.05);const sx=CAM.sx,sy=CAM.sy;CAM.sx=0;CAM.sy=0;
-  ctx.save();ctx.translate(cw/2,ch*.7);ctx.rotate(-ang-Math.PI/2);ctx.translate(-D/2,-D/2);try{drawScene(ctx,D,D)}finally{ctx.restore();CAM.sx=sx;CAM.sy=sy}
-  // cockpit: halo e laterais
-  ctx.save();ctx.fillStyle="#0B0D11";ctx.beginPath();ctx.moveTo(cw*.5-8,0);ctx.lineTo(cw*.5+8,0);ctx.lineTo(cw*.5+14,ch*.22);ctx.lineTo(cw*.5-14,ch*.22);ctx.fill();
-  ctx.lineWidth=Math.max(16,cw*.03);ctx.strokeStyle="#111418";ctx.beginPath();ctx.ellipse(cw/2,ch*.25,cw*.36,ch*.3,0,Math.PI*1.05,Math.PI*1.95);ctx.stroke();
-  ctx.fillStyle=c.col||"#333";ctx.beginPath();ctx.moveTo(0,ch);ctx.lineTo(cw*.18,ch*.78);ctx.lineTo(cw*.32,ch);ctx.fill();ctx.beginPath();ctx.moveTo(cw,ch);ctx.lineTo(cw*.82,ch*.78);ctx.lineTo(cw*.68,ch);ctx.fill();
-  // volante com o painel
-  const W=Math.min(300,cw*.42),H=W*.32,x=cw/2-W/2,y=ch-H-10;ctx.fillStyle="#15181E";ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,W,H,H*.45);else ctx.rect(x,y,W,H);ctx.fill();
-  ctx.fillStyle="#05070A";ctx.fillRect(x+W*.28,y+H*.15,W*.44,H*.6);const g=typeof gearRpm==="function"?gearRpm(Math.max(1,c.v||0)):{gear:1,rpm:0};
-  ctx.fillStyle="#FFD400";ctx.font=`900 ${Math.round(H*.42)}px 'Roboto Mono',monospace`;ctx.textAlign="center";ctx.fillText(String(c.pit?"N":g.gear),cw/2,y+H*.6);
-  ctx.font=`700 ${Math.round(H*.2)}px 'Roboto Mono',monospace`;ctx.fillStyle="#fff";ctx.fillText(Math.round((c.v||0)*3.6)+" km/h",cw/2-W*.38+W*.1,y+H*.55);ctx.fillText("P"+pos(c),cw/2+W*.3,y+H*.55);
-  const n=10,lit=Math.round(clamp((g.rpm-7000)/4800,0,1)*n);for(let i=0;i<n;i++){ctx.fillStyle=i<lit?(i<4?"#21C55D":i<7?"#FF4D4D":"#3A86FF"):"#222";ctx.fillRect(x+W*.3+i*W*.04,y+H*.05,W*.03,H*.07)}
-  ctx.fillStyle="#3A86FF";ctx.fillRect(x+W*.3,y+H*.8,W*.4*clamp((c.batt||0)/100,0,1),H*.06);ctx.restore()}
 // ---------- gráficos de previsão (um a cada ~45 s, quando não há aviso mais importante)
 function tvGraphics(){if(!R.started||R.over||R.sc||R.red||TVX.ban||TVX.banQ.length)return;if(R.t<(TVX.gfxNext||40))return;TVX.gfxNext=R.t+vrr(40,55);const run=R.order.filter(c=>running(c)&&!c.pit);if(run.length<4)return;
   const kind=(TVX.gfxK=((TVX.gfxK||0)+1)%4);

@@ -30,7 +30,7 @@ const LAZY={race:["scene.js","render.js","cars.js","camera.js","tv.js","tv2.js",
 function lazyScript(f){if(LZF[f])return LZF[f];return LZF[f]=new Promise(ok=>{const s=document.createElement("script");s.src=f;s.async=false;s.onload=()=>ok(true);s.onerror=()=>ok(false);document.body.appendChild(s)})}
 function lazyLoad(name){if(LZ[name])return LZ[name];const files=name==="online"?[...LAZY.race,...LAZY.online]:LAZY[name];
   LZ[name]=files.reduce((p,f)=>p.then(()=>lazyScript(f)),Promise.resolve()).then(()=>{perfWrap();return true});return LZ[name]}
-function raceReady(){return typeof drawScene==="function"&&typeof buildTrack==="function"&&typeof smartPick==="function"&&typeof tvOverlay==="function"&&typeof drawOnboard==="function"&&typeof wxDraw==="function"}
+function raceReady(){return typeof drawScene==="function"&&typeof buildTrack==="function"&&typeof smartPick==="function"&&typeof tvOverlay==="function"&&typeof wxDraw==="function"}
 function onlineReady(){return typeof mpAction==="function"&&typeof ssnAction==="function"}
 function lazyWait(){const el=document.getElementById("app");if(el&&!el.querySelector(".lzw"))el.insertAdjacentHTML("beforeend",`<div class="lzw" role="status"><span class="lzs"></span>Carregando…</div>`)}
 function lazyDone(){document.querySelectorAll(".lzw").forEach(x=>x.remove())}

@@ -33,7 +33,8 @@ function buildTrack(geo){
   corners.filter(c=>c.sev>.22).slice(0,5).forEach(c=>{const p=P(c.i,-c.dir*(TW+95*U));stands.push({x:p.x,y:p.y,h:heading[c.i],w:70*U,f:c.i/M,seed:c.i*.37,o:-c.dir})});
   {const minD=(x,y)=>{let b=1e9;for(let i=0;i<M;i+=2){const p=path[i];const d=(p.x-x)*(p.x-x)+(p.y-y)*(p.y-y);if(d<b)b=d}return Math.sqrt(b)};
     for(let k=stands.length-1;k>=0;k--){const st=stands[k],c=Math.cos(st.h),s2=Math.sin(st.h);const pts=[[0,0],[st.w/2,0],[-st.w/2,0]].map(([u])=>({x:st.x+u*c,y:st.y+u*s2}));if(pts.some(q=>minD(q.x,q.y)<TW+26*U))stands.splice(k,1)}}
-  const boards=[];uniq.slice(0,4).forEach(r=>{for(let k=4;k<r.len-4;k+=10){const i=(r.s+k+M)%M;const o=-side;boards.push({...P(i,o*(TW+5*U)),h:heading[i],c:vpick(["#E10600","#FFD400","#00A3E0","#FFFFFF","#00B140"])})}});
+  const boards=[];{const SC=typeof SPONSOR_CAT!=="undefined"?SPONSOR_CAT:[];let hs=0;for(const ch of geo.id)hs=(hs*31+ch.charCodeAt(0))>>>0;let nb=0;
+    uniq.slice(0,4).forEach(r=>{for(let k=4;k<r.len-4;k+=10){const i=(r.s+k+M)%M;const o=-side;const sp=SC.length?SC[(hs+(nb>>1)*7)%SC.length]:null;nb++;boards.push({...P(i,o*(TW+5*U)),h:heading[i],sp:sp&&sp.id,c:sp?sp.c2:"#FFFFFF"})}})}
   const gp=f=>{const pp=pitPosRaw(pit,f);return{pp,n:{x:-Math.sin(pp.h),y:Math.cos(pp.h)}}};
   const garages=[];for(let k=0;k<11;k++){const f=.3+k*.036;const{pp,n}=gp(f);garages.push({x:pp.x+n.x*side*20*U,y:pp.y+n.y*side*20*U,h:pp.h,f})}
   const building={pts:[0,1].map(k=>{const{pp,n}=gp(k?.72:.28);return{x:pp.x+n.x*side*40*U,y:pp.y+n.y*side*40*U,h:pp.h}})};
@@ -57,6 +58,11 @@ function lerpAng(a,b,k){let d=b-a;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)
 function wallLatAt(f,sign){const g=TRACKGEO;if(g&&g.scn&&typeof sceneWallLat==="function")return sceneWallLat(f,sign);if(!g||!g.gravel)return null;const M=g.M;const i=Math.round(fr(f)*M)%M;for(const gr of g.gravel){if(gr.o!==sign||!gr.wl)continue;const k=((i-gr.i0)%M+M)%M;if(k<gr.wl.length)return gr.wl[k]}return null}
 // posição na pista: o centro é uma curva contínua (Catmull-Rom) que passa pelos pontos do traçado; a direção e a normal vêm da
 // derivada dessa curva. Assim o desenho não tem quinas e a mesma curva dá à dinâmica (dynMetric) o comprimento e a curvatura exatos.
+// bordas da pista (2 amostras por trecho): branco em ±(TW+0,65 m), asfalto em ±TW
+function trackEdges(g){if(g._edges)return g._edges;const n=g.M*2,mk=L=>{const o=new Array(n);for(let k=0;k<n;k++){const p=trackPos(k/n,L);o[k]={x:p.x,y:p.y}}return o};
+  return g._edges={aL:mk(TW),aR:mk(-TW),wL:mk(TW+.65*WS),wR:mk(-(TW+.65*WS))}}
+function ringPath(ctx,A,B,cw,ch){ctx.beginPath();for(let k=0;k<A.length;k++){const s=toScreen(A[k].x,A[k].y,0,cw,ch);k?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1])}ctx.closePath();
+  for(let k=B.length-1;k>=0;k--){const s=toScreen(B[k].x,B[k].y,0,cw,ch);k===B.length-1?ctx.moveTo(s[0],s[1]):ctx.lineTo(s[0],s[1])}ctx.closePath()}
 function trackFrame(f){const g=TRACKGEO,M=g.M,P=g.path;f=fr(f);const x=f*M,i=Math.floor(x)%M,k=x-Math.floor(x),j=(i+1)%M,a=P[i],b=P[j],pa=P[(i-1+M)%M],pb=P[(j+1)%M];
   const max=(b.x-pa.x)/2,may=(b.y-pa.y)/2,mbx=(pb.x-a.x)/2,mby=(pb.y-a.y)/2,k2=k*k,k3=k2*k;
   const h00=2*k3-3*k2+1,h10=k3-2*k2+k,h01=-2*k3+3*k2,h11=k3-k2,d00=6*k2-6*k,d10=3*k2-4*k+1,d01=-6*k2+6*k,d11=3*k2-2*k,e00=12*k-6,e10=6*k-4,e01=6-12*k,e11=6*k-2;
@@ -143,8 +149,9 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
   if(detail){pathScreen(ctx,g.pit,cw,ch,false);ctx.strokeStyle="#FFFFFF55";ctx.lineWidth=1;ctx.setLineDash([8*Z,8*Z]);ctx.stroke();ctx.setLineDash([])}
   // pista
   pathScreen(ctx,g.path,cw,ch,true);ctx.strokeStyle=street?"#9AA1A9":"#2E7D32";ctx.lineWidth=(TW*2+10*U)*Z;ctx.stroke();
-  pathScreen(ctx,g.path,cw,ch,true);ctx.strokeStyle="#F4F4F4";ctx.lineWidth=(TW*2+3*U)*Z;ctx.stroke();
-  pathScreen(ctx,g.path,cw,ch,true);{const tp=detail&&typeof trackPattern==="function"?trackPattern(ctx,cw,ch):null;ctx.strokeStyle=tp||"#3A3F46";ctx.lineWidth=TW*2*Z;ctx.stroke();if(wet>.25){ctx.strokeStyle="rgba(20,24,30,.35)";ctx.stroke()}}
+  // asfalto como faixa com duas bordas, gerada pela mesma curva da física (trackPos): linha branca nas bordas reais
+  {const E=trackEdges(g);ringPath(ctx,E.wL,E.wR,cw,ch);ctx.fillStyle="#F4F4F4";ctx.fill();
+   ringPath(ctx,E.aL,E.aR,cw,ch);const tp=detail&&typeof trackPattern==="function"?trackPattern(ctx,cw,ch):null;ctx.fillStyle=tp||"#3A3F46";ctx.fill();if(wet>.25){ctx.fillStyle="rgba(20,24,30,.35)";ctx.fill()}}
   if(g.scn&&typeof drawBarriers==="function")drawBarriers(ctx,cw,ch,street);
   if(detail){if(!g.rpath)g.rpath=Array.from({length:g.M},(_,i)=>{const p=trackPos(i/g.M,g.line[i]);return{x:p.x,y:p.y}});
     const dry=R.drying||0;pathScreen(ctx,g.rpath,cw,ch,true);
@@ -158,6 +165,9 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
       if(!onScreen(pts[3],cw,ch,200))continue;poly(ctx,pts);ctx.fillStyle=`rgba(95,135,190,${.28+dep*.32})`;ctx.fill();ctx.strokeStyle=`rgba(210,230,255,${.15+dep*.2})`;ctx.lineWidth=1;ctx.stroke()}}
   // zebras
   if(detail&&g.scn)drawKerbs(ctx,cw,ch,street);
+  if(typeof tunnelRange==="function"&&tunnelRange(R.geo))drawTunnelFloor(ctx,cw,ch,Z);
+  if(detail)drawMats(ctx,cw,ch,Z);
+  if(R.geo&&R.geo.id==="suzuka")drawBridgeDeck(ctx,cw,ch,Z);
   // DRS e setores
   g.drs.forEach(([a,b])=>{const n=a<b?b-a:b+1-a;const pts=[];for(let k=0;k<=40;k++)pts.push(trackPos(a+n*k/40,-(TW-3*U)));pathScreen(ctx,pts,cw,ch,false);ctx.strokeStyle="#2ECC71";ctx.lineWidth=Math.max(1.5,2.4*U*Z);ctx.setLineDash([10*U*Z,8*U*Z]);ctx.stroke();ctx.setLineDash([]);
     if(detail){const s=toScreen(...Object.values(trackPos(a,-(TW+12*U))).slice(0,2),8*U,cw,ch);ctx.fillStyle="#2ECC71";ctx.fillRect(s[0]-15,s[1]-7,30,12);ctx.fillStyle="#08130A";ctx.font="700 9px 'Roboto Mono',monospace";ctx.textAlign="center";ctx.fillText("AERO",s[0],s[1]+2)}});
@@ -204,7 +214,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
       {const c=Math.cos(st.h),s2=Math.sin(st.h);const rp=[[-st.w/2,4],[st.w/2,4],[st.w/2,16],[-st.w/2,16]].map(([u,v])=>toScreen(st.x+u*c-v*U*s2*o,st.y+u*s2+v*U*c*o,30*U,cw,ch));ctx.fillStyle="rgba(235,239,243,.9)";poly(ctx,rp);ctx.fill();ctx.strokeStyle="#7E8792";ctx.lineWidth=1;ctx.stroke();
         for(const u of[-st.w/2+4*U,st.w/2-4*U]){const A=toScreen(st.x+u*c-14*U*s2*o,st.y+u*s2+14*U*c*o,0,cw,ch),B=toScreen(st.x+u*c-14*U*s2*o,st.y+u*s2+14*U*c*o,30*U,cw,ch);ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke()}}
       ctx.globalAlpha=1}})});
-    g.boards.forEach(b=>{const s=toScreen(b.x,b.y,0,cw,ch);if(!onScreen(s,cw,ch,40*U))return;items.push({d:b.x+b.y,draw:()=>isoBox(ctx,b.x,b.y,22*U,2*U,5*U,b.h,b.c,shade(b.c,.6),shade(b.c,.8),cw,ch)})});
+    g.boards.forEach(b=>{const s=toScreen(b.x,b.y,0,cw,ch);if(!onScreen(s,cw,ch,40*U))return;items.push({d:b.x+b.y,draw:()=>{isoBox(ctx,b.x,b.y,22*U,2*U,5*U,b.h,b.c,shade(b.c,.6),shade(b.c,.8),cw,ch);if(b.sp)boardLogo(ctx,b,cw,ch,Z)}})});
     g.garages.forEach((ga,i)=>{const t=G.teams[i];const s=toScreen(ga.x,ga.y,0,cw,ch);if(!onScreen(s,cw,ch,80*U))return;items.push({d:ga.x+ga.y,draw:()=>{isoBox(ctx,ga.x,ga.y,26*U,16*U,14*U,ga.h,t?t.c:"#888",shade(t?t.c:"#888888",.5),shade(t?t.c:"#888888",.72),cw,ch)}})});
     g.posts.forEach(p=>{const s=toScreen(p.x,p.y,0,cw,ch);if(!onScreen(s,cw,ch,40*U))return;items.push({d:p.x+p.y,draw:()=>{{const Tp=isoBox(ctx,p.x,p.y,7*U,7*U,7*U,0,"#F57C00","#AEB5BE","#D3D8DE",cw,ch);ctx.fillStyle="#F57C00";poly(ctx,Tp);ctx.fill();ctx.strokeStyle="#8A4400";ctx.lineWidth=1;ctx.stroke()}const fs=flagState(p.f);const top=toScreen(p.x,p.y,10*U,cw,ch);
       if(fs==="red")drawFlag(ctx,top,"#E10600",Z,now);else if(fs==="yellow")drawFlag(ctx,top,"#FFD400",Z,now);else if(fs==="dbl"){drawFlag(ctx,top,"#FFD400",Z,now);drawFlag(ctx,[top[0]-8*Z,top[1]],"#FFD400",Z,now+.3)}
@@ -241,6 +251,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     items.push({d:p.x+p.y,draw:()=>{drawCar(ctx,cw,ch,{col:"#F2A900",col2:"#1B1B1B",sc:true,code:"SC"},p,detail,{});const s=toScreen(p.x,p.y,11*U,cw,ch);if(RS||!R.sc.ending){ctx.fillStyle=Math.floor(now*4)%2?"#FF9800":"#FFEB3B";ctx.fillRect(s[0]-5,s[1]-2,10,3)}
       ctx.font="700 11px 'Titillium Web',sans-serif";ctx.textAlign="center";const lab="SAFETY CAR";const tw=ctx.measureText(lab).width+8;ctx.fillStyle="#F2A900";ctx.fillRect(s[0]-tw/2,s[1]-22,tw,14);ctx.fillStyle="#111";ctx.fillText(lab,s[0],s[1]-11)}})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.draw());post.forEach(f=>f());// fogo e extintores por cima de tudo
+  if(typeof tunnelRange==="function"&&tunnelRange(R.geo))drawTunnelRoof(ctx,cw,ch,Z,opts);
   if(night){ctx.fillStyle="rgba(6,10,30,.5)";ctx.fillRect(0,0,cw,ch);ctx.save();ctx.globalCompositeOperation="lighter";for(let i=0;i<g.M;i+=24){const q=trackPos(i/g.M,0);const s=toScreen(q.x,q.y,0,cw,ch);if(!onScreen(s,cw,ch,80*U*Z))continue;const r=60*U*Z;const gr=ctx.createRadialGradient(s[0],s[1],0,s[0],s[1],r);gr.addColorStop(0,"rgba(255,236,190,.22)");gr.addColorStop(1,"rgba(255,236,190,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(s[0],s[1],r,0,7);ctx.fill()}
     ctx.restore()}
   spost.forEach(f=>f());if(night&&g.scn&&g.scn.nl){ctx.fillStyle="rgba(255,214,140,.85)";for(const q of g.scn.nl)ctx.fillRect(q[0]-1,q[1]-1,2,2);g.scn.nl.length=0}
@@ -332,3 +343,73 @@ function drawFire(ctx,cw,ch,p,age,Z,now){const k=Math.min(1,(16-age)/4);for(let 
   for(let j=0;j<5;j++){const a=((age*1.4+j*.6)%3)/3;const q=toScreen(p.x,p.y,(14+a*40)*U,cw,ch);ctx.fillStyle=`rgba(40,40,40,${.45*(1-a)*k})`;ctx.beginPath();ctx.arc(q[0]+Math.sin(now+j)*6*U*Z,q[1],(5+a*10)*U*Z,0,7);ctx.fill()}}
 function drawExt(ctx,cw,ch,p,age,Z,now){const k=Math.min(1,(age-5)/1.5)*Math.min(1,(18-age)/2);for(let j=0;j<2;j++){const ang=p.h+(j?1.3:-1.6);const mx=p.x+Math.cos(ang)*14*U,my=p.y+Math.sin(ang)*14*U;const m=toScreen(mx,my,0,cw,ch);
     ctx.fillStyle="#FF8F00";ctx.fillRect(m[0]-1.5*U*Z,m[1]-6*U*Z,3*U*Z,6*U*Z);for(let i=0;i<6;i++){const t=((now*2+i*.17+j*.5)%1);const q=toScreen(mx+(p.x-mx)*t,my+(p.y-my)*t,4*U,cw,ch);ctx.fillStyle=`rgba(245,245,245,${.55*k*(1-t*.5)})`;ctx.beginPath();ctx.arc(q[0],q[1],(2+t*6)*U*Z,0,7);ctx.fill()}}}
+
+// ===================== TÚNEL (Mônaco) =====================
+// Chão escuro com luzes próprias; paredes e teto por cima dos carros. Quando a câmera acompanha um carro que está no túnel,
+// o teto e as paredes ficam transparentes aos poucos (e voltam ao sair), sem cortar a pista.
+const TUN={a:1,last:0};
+function tunnelBand(L,z,n){const T=tunnelRange(R.geo);const out=[];for(let k=0;k<=n;k++){const p=trackPos(T.a+(T.b-T.a)*k/n,L);out.push({x:p.x,y:p.y,z:z||0})}return out}
+function drawTunnelFloor(ctx,cw,ch,Z){const T=tunnelRange(R.geo),n=Math.max(8,Math.round((T.b-T.a)*R.geo.len/4)),W2=TW+1.2*WS;
+  const A=tunnelBand(W2,0,n),B=tunnelBand(-W2,0,n);ctx.beginPath();A.forEach((p,i)=>{const s=toScreen(p.x,p.y,0,cw,ch);i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1])});
+  for(let i=B.length-1;i>=0;i--){const s=toScreen(B[i].x,B[i].y,0,cw,ch);ctx.lineTo(s[0],s[1])}ctx.closePath();ctx.fillStyle="rgba(8,10,16,.58)";ctx.fill();
+  // luzes do teto refletidas no chão (amarelas, a cada ~16 m)
+  ctx.save();ctx.globalCompositeOperation="lighter";const step=Math.max(1,Math.round(16/4));for(let k=0;k<=n;k+=step){for(const L of[TW*.55,-TW*.55]){const p=trackPos(T.a+(T.b-T.a)*k/n,L),s=toScreen(p.x,p.y,0,cw,ch);if(!onScreen(s,cw,ch,40))continue;const r=Math.max(3,4.2*WS*Z);
+    const gr=ctx.createRadialGradient(s[0],s[1],0,s[0],s[1],r);gr.addColorStop(0,"rgba(255,206,120,.55)");gr.addColorStop(1,"rgba(255,206,120,0)");ctx.fillStyle=gr;ctx.fillRect(s[0]-r,s[1]-r,2*r,2*r)}}ctx.restore()}
+function drawTunnelRoof(ctx,cw,ch,Z,opts){const T=tunnelRange(R.geo),n=Math.max(8,Math.round((T.b-T.a)*R.geo.len/4)),W2=TW+2.2*WS,H=6.5*WS;
+  // transparência: o carro que a câmera segue (ou o jogador) está no túnel (com folga de ~25 m)? suaviza ~0,35 s
+  const foc=(typeof UI!=="undefined"&&UI.foc)||R.cars.find(c=>c.isP);let inside=false;if(foc&&!opts.pip){const L=R.geo.len;
+    if(opts.S){/* replay: só há a posição gravada; vale estar perto da linha do túnel (com folga de ~25 m nas pontas) */const r=opts.S.cars.find(q=>q.id===foc.id);if(r&&r.vis!==false){const k0=-25/L,k1=(T.b-T.a)+25/L;for(let k=0;k<=24&&!inside;k++){const q=trackPos(T.a+k0+(k1-k0)*k/24,0);if(Math.hypot(q.x-r.x,q.y-r.y)<Math.max(TW*2,(k1-k0)*L*WS/24))inside=true}}}
+    else{let s=(fr(foc.prog)-T.a)*L;if(s<-L/2)s+=L;inside=s>-25&&s<(T.b-T.a)*L+25}}
+  const now=performance.now()/1000,dt=Math.min(.1,Math.max(0,now-(TUN.last||now)));TUN.last=now;const tgt=inside?.12:1;if(!opts.pip)TUN.a+=(tgt-TUN.a)*Math.min(1,dt*6);const al=opts.pip?.35:TUN.a;/* câmeras pequenas: teto meio transparente fixo, sem piscar */
+  const g0L=tunnelBand(W2,0,n),g0R=tunnelBand(-W2,0,n),rL=tunnelBand(W2,H,n),rR=tunnelBand(-W2,H,n);const S=p=>toScreen(p.x,p.y,p.z,cw,ch);
+  const face=(lo,hi,col)=>{ctx.beginPath();lo.forEach((p,i)=>{const s=S(p);i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1])});for(let i=hi.length-1;i>=0;i--){const s=S(hi[i]);ctx.lineTo(s[0],s[1])}ctx.closePath();ctx.fillStyle=col;ctx.fill()};
+  ctx.save();ctx.globalAlpha=al;
+  // paredes laterais (as duas; a da frente cobre a de trás), bocas escuras nas pontas, teto de concreto
+  face(g0L,rL,"#6E6A64");face(g0R,rR,"#7B776F");
+  for(const k of[0,n]){const q=[g0L[k],g0R[k],rR[k],rL[k]].map(S);ctx.beginPath();q.forEach((s,i)=>i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1]));ctx.closePath();ctx.fillStyle="#121418";ctx.fill()}
+  face(rL,rR,"#A39E95");ctx.strokeStyle="rgba(255,255,255,.18)";ctx.lineWidth=Math.max(1,.4*WS*Z);for(const E of[rL,rR]){ctx.beginPath();E.forEach((p,i)=>{const s=S(p);i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1])});ctx.stroke()}
+  // juntas do concreto
+  ctx.strokeStyle="rgba(0,0,0,.12)";ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<=n;k+=3){const a=S(rL[k]),b=S(rR[k]);ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1])}ctx.stroke();
+  ctx.restore()}
+
+// ===================== PONTE (Suzuka, traçado em oito) =====================
+// Acha o cruzamento (dois trechos distantes na volta que passam pelo mesmo ponto) e desenha o trecho de cima como ponte:
+// tabuleiro de asfalto com faixas brancas, guarda-corpos de concreto e sombra sobre a pista de baixo.
+function bridgeCross(g){if(g._brg!==undefined)return g._brg;const P=g.path,M=g.M;let best=null;
+  for(let i=0;i<M;i+=2)for(let j=i+Math.floor(M/4);j<M-Math.floor(M/8);j+=2){const d=Math.hypot(P[i].x-P[j].x,P[i].y-P[j].y);if(!best||d<best.d)best={d,lo:i,hi:j}}
+  g._brg=best&&best.d<TW?best:null;return g._brg}
+function drawBridgeDeck(ctx,cw,ch,Z){const g=TRACKGEO,B=bridgeCross(g);if(!B)return;const M=g.M,P=g.path;const S=(x,y)=>toScreen(x,y,0,cw,ch);
+  const sp=Math.max(6,Math.round(34*WS/Math.max(1e-6,Math.hypot(P[1].x-P[0].x,P[1].y-P[0].y))));const idx=[];for(let k=-sp;k<=sp;k++)idx.push(((B.hi+k)%M+M)%M);
+  const side=(L)=>idx.map(i=>{const h=g.heading[i];return S(P[i].x-Math.sin(h)*L,P[i].y+Math.cos(h)*L)});
+  const fillBand=(L1,L2,col)=>{const A=side(L1),C=side(L2);ctx.beginPath();A.forEach((s,i)=>i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1]));for(let i=C.length-1;i>=0;i--)ctx.lineTo(C[i][0],C[i][1]);ctx.closePath();ctx.fillStyle=col;ctx.fill()};
+  // sombra larga sobre a pista de baixo, depois o tabuleiro
+  {const sh=idx.map(i=>{const h=g.heading[i];return i});ctx.save();ctx.translate(0,Math.max(3,2.2*WS*Z));fillBand(TW+2.2*WS,-(TW+2.2*WS),"rgba(0,0,0,.30)");ctx.restore()}fillBand(TW+1.6*WS,-(TW+1.6*WS),"#8E9298");fillBand(TW+.65*WS,-(TW+.65*WS),"#F4F4F4");fillBand(TW,-TW,"#3A3F46");
+  // guarda-corpos: mureta de concreto de ~1 m (face + topo)
+  for(const L of[TW+1.25*WS,-(TW+1.25*WS)]){const lo=idx.map(i=>{const h=g.heading[i];return[P[i].x-Math.sin(h)*L,P[i].y+Math.cos(h)*L]});const A=lo.map(q=>toScreen(q[0],q[1],0,cw,ch)),T=lo.map(q=>toScreen(q[0],q[1],.95*WS,cw,ch));
+    ctx.beginPath();A.forEach((s,i)=>i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1]));for(let i=T.length-1;i>=0;i--)ctx.lineTo(T[i][0],T[i][1]);ctx.closePath();ctx.fillStyle="#A9ADB3";ctx.fill();
+    ctx.beginPath();T.forEach((s,i)=>i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1]));ctx.strokeStyle="#DADDE1";ctx.lineWidth=Math.max(1.5,.6*WS*Z);ctx.stroke()}}
+
+// ===================== PATROCINADORES NA PISTA =====================
+// Logotipos (sponsors.js) viram imagens uma vez e são desenhados por transformação afim: na face das placas que está
+// virada para a câmera e deitados no chão (tapetes pintados na grama/área de escape). Texto sempre da esquerda para a direita.
+const SPIMG={};function sponsorImg(id){if(SPIMG[id])return SPIMG[id];const sp=typeof sponsorOf==="function"&&sponsorOf(id);if(!sp||typeof Image==="undefined")return null;
+  const svg=sponsorLogoSvg(sp,48);const im=new Image();im.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);const vw=25+String(sp.n).length*7.5+5;SPIMG[id]={im,ar:vw/24};return SPIMG[id]}
+// desenha a imagem no quadrilátero dado por origem O (canto superior esquerdo), vetor da largura Ux e da altura Vy (pixels de tela)
+function imgAffine(ctx,im,O,Ux,Vy){const w=im.naturalWidth||im.width,h=im.naturalHeight||im.height;if(!w||!h)return;ctx.save();ctx.transform(Ux[0]/w,Ux[1]/w,Vy[0]/h,Vy[1]/h,O[0],O[1]);ctx.drawImage(im,0,0);ctx.restore()}
+function boardLogo(ctx,b,cw,ch,Z){if(22*U*Z<16||(typeof mapSimple==="function"&&mapSimple()))return;const L=sponsorImg(b.sp);if(!L||!L.im.complete)return;
+  const c=Math.cos(b.h),s=Math.sin(b.h),w=22*U,d=2*U,H=5*U;let nx=-s,ny=c;if(nx+ny<0){nx=-nx;ny=-ny}
+  const cx=b.x+nx*d/2,cy=b.y+ny*d/2;let a=[cx-c*w/2,cy-s*w/2],e=[cx+c*w/2,cy+s*w/2];let A=toScreen(a[0],a[1],H*.92,cw,ch),E=toScreen(e[0],e[1],H*.92,cw,ch);if(E[0]<A[0]){[a,e]=[e,a];[A,E]=[E,A]}
+  const A0=toScreen(a[0],a[1],H*.08,cw,ch);imgAffine(ctx,L.im,A,[E[0]-A[0],E[1]-A[1]],[A0[0]-A[0],A0[1]-A[1]])}
+function drawMats(ctx,cw,ch,Z){const S=TRACKGEO.scn;if(!S||!S.mats||Z<.3)return;const simple=typeof mapSimple==="function"&&mapSimple();
+  for(const mt of S.mats){const s0=toScreen(mt.x,mt.y,0,cw,ch);if(!onScreen(s0,cw,ch,mt.L*Z+40))continue;const Li=sponsorImg(mt.sp);if(!Li||!Li.im.complete)continue;
+    const c=Math.cos(mt.h),s=Math.sin(mt.h),Lw=mt.L,Wd=Lw/Li.ar;let ux=c,uy=s;const P0=toScreen(mt.x-ux*Lw/2,mt.y-uy*Lw/2,0,cw,ch),P1=toScreen(mt.x+ux*Lw/2,mt.y+uy*Lw/2,0,cw,ch);if(P1[0]<P0[0]){ux=-ux;uy=-uy}
+    // "para cima" da imagem = lado mais longe da câmera (menor x+y)
+    let vx=-uy,vy=ux;if(vx+vy>0){vx=-vx;vy=-vy}
+    const o=[mt.x-ux*Lw/2+vx*Wd/2,mt.y-uy*Lw/2+vy*Wd/2];const O=toScreen(o[0],o[1],0,cw,ch),X=toScreen(o[0]+ux*Lw,o[1]+uy*Lw,0,cw,ch),Y=toScreen(o[0]-vx*Wd,o[1]-vy*Wd,0,cw,ch);
+    ctx.globalAlpha=simple?.6:.82;imgAffine(ctx,Li.im,O,[X[0]-O[0],X[1]-O[1]],[Y[0]-O[0],Y[1]-O[1]]);ctx.globalAlpha=1}}
+function drawBanners(ctx,cw,ch,Z){const g=TRACKGEO,S=g.scn;if(Z<.3||(typeof mapSimple==="function"&&mapSimple()))return;
+  for(const b of S.banners){const a=S.wl[b.sg],pi=g.path[b.i],pj=g.path[b.j],hi=g.heading[b.i],hj=g.heading[b.j];
+    const wi=[pi.x-Math.sin(hi)*b.sg*a[b.i],pi.y+Math.cos(hi)*b.sg*a[b.i]],wj=[pj.x-Math.sin(hj)*b.sg*a[b.j],pj.y+Math.cos(hj)*b.sg*a[b.j]];
+    let A=toScreen(wi[0],wi[1],3.6*WS,cw,ch);if(!onScreen(A,cw,ch,80))continue;const L=sponsorImg(b.sp);if(!L||!L.im.complete)continue;
+    let E=toScreen(wj[0],wj[1],3.6*WS,cw,ch),A0=toScreen(wi[0],wi[1],.95*WS,cw,ch);if(E[0]<A[0]){A=E;E=toScreen(wi[0],wi[1],3.6*WS,cw,ch);A0=toScreen(wj[0],wj[1],.95*WS,cw,ch)}
+    imgAffine(ctx,L.im,A,[E[0]-A[0],E[1]-A[1]],[A0[0]-A[0],A0[1]-A[1]])}}

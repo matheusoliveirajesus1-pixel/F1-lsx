@@ -38,21 +38,33 @@ function debrisTick(dt){const D=R.debris;if(!D||!D.length)return;const L=R.geo.l
 // ---------- reflexo: perceber o perigo à frente e decidir desviar ou frear
 function reactTime(c){const s=c.st||{};const craft=clamp((sk(c,"craft")-55)/45,0,1);return(.17+(1-craft)*.2+(100-(s.foco??90))*.0025+(s.fat||0)*.0015)*(1+(c.spray||0)*1.4)}
 function hazardAvoid(c){if(!R.started||c.pit||c.ex)return null;const L=R.geo.len,fs=fr(c.prog)*L,look=Math.max(45,(c.v||0)*2.6);const hs=[];
-  for(const o of R.phys||[]){if(o===c)continue;const slow=o.ex||(R.started&&!R.sc&&(o.v||0)<Math.max(12,(c.prof?c.prof.v[Math.floor(fr(o.prog)*R.geo.N)%R.geo.N]*(c.k||1):(c.v||0))*.55)/* lento para o lugar onde ele está (não um carro freando normalmente para a curva) */&&!o.pit&&!o.parked&&o.lap>0)||(R.sc&&(o.v||0)<4&&!o.pit);if(!slow)continue;let d=fr(o.prog)*L-fs;if(d<0)d+=L;if(d>look||d<1)continue;
+  for(const o of R.phys||[]){if(o===c)continue;const slow=o.ex||(R.started&&!R.sc&&(o.v||0)<Math.max(12,(c.prof?c.prof.v[Math.floor(fr(o.prog)*R.geo.N)%R.geo.N]*(c.k||1):(c.v||0))*.55)/* lento para o lugar onde ele está (não um carro freando normalmente para a curva) */&&!o.pit&&!o.parked&&(o.lap>0||R.t-R.go>2.5||(o.stallT||0)>R.t))/* carro apagado no grid também é obstáculo */||(R.sc&&(o.v||0)<4&&!o.pit);if(!slow)continue;let d=fr(o.prog)*L-fs;if(d<0)d+=L;if(d>look||d<1)continue;
     const oy=(o.y||0)+(o.ex?o.ex.vy*Math.min(1.2,d/Math.max(8,c.v)):0);if(Math.abs(oy-(c.y||0))>CARW+3.2&&Math.abs((o.y||0)-(c.y||0))>CARW+3.2)continue;hs.push({id:o.id,d,y:oy,y0:o.y||0,v:o.v||0,o})}
   if(R.debris)for(const b of R.debris){let d=b.fs-fs;if(d<0)d+=L;if(d>look||d<1)continue;if(Math.abs(b.y-(c.y||0))>CARW+1.5)continue;hs.push({id:"d"+b.fs.toFixed(0),d,y:b.y,v:0,small:true})}
   if(!hs.length){c.hzSeen=null;return null}
   // o perigo principal é o carro mais próximo (destroços pequenos só pedem um desvio, nunca escondem um carro parado logo atrás)
   hs.sort((a,b)=>a.d-b.d);const cars=hs.filter(h=>!h.small);const hz=cars[0]||hs[0];
-  if(!c.hzSeen||c.hzSeen.id!==hz.id){const blocked=c.aheadO&&c.aheadO!==hz.o&&c.dAO<hz.d;c.hzSeen={id:hz.id,t:R.t,rt:reactTime(c)*(blocked?1.35:1)}}
+  if(!c.hzSeen||c.hzSeen.id!==hz.id){const blocked=c.aheadO&&c.aheadO!==hz.o&&c.dAO<hz.d;const busy=c.hzLane&&R.t-c.hzLane.t<2;/* já está contornando: o próximo carro do grupo não pede um novo tempo de reação */c.hzSeen={id:hz.id,t:R.t,rt:busy?0:reactTime(c)*(blocked?1.35:1)}}
   if(R.t-c.hzSeen.t<c.hzSeen.rt)return{late:true};// ainda não viu
-  const ttc=hz.d/Math.max(1,(c.v||0)-hz.v);let best=null,bc=1e9;
-  for(let y=-(YMAX+2.5);y<=YMAX+2.5;y+=.5){if(Math.abs(y-(c.y||0))>6.2*ttc*.85)continue;let bad=false,cost=Math.abs(y-(c.y||0))+(Math.abs(y)>YMAX?2.5:0);
+  const ttc=hz.d/Math.max(1,(c.v||0)-hz.v);let best=null,bc=1e9,bestBlk=null;const prev=c.hzLane&&R.t-c.hzLane.t<4?c.hzLane.y:null;/* o lado escolhido vale para o grupo de obstáculos (vários carros parados juntos), não só para o mais próximo */const hzSet=new Set(cars.map(h=>h.o));
+  for(let y=-(YMAX+2.5);y<=YMAX+2.5;y+=.5){if(Math.abs(y-(c.y||0))>Math.max(3,6.2*ttc*.85))continue;let bad=false,cost=Math.abs(y-(c.y||0))+(Math.abs(y)>YMAX?4+(Math.abs(y)-YMAX)*2:0);
     for(const h of hs){const need=h.small?CARW*.5+.9:CARW+.5;const near=Math.min(Math.abs(y-h.y),Math.abs(y-h.y0??h.y));if(near<need){if(h.small)cost+=3;else{bad=true;break}}}if(bad)continue;
-    for(const o of c.alongs||[]){if(Math.abs((o.y||0)-y)<CARW+.2){bad=true;break}}if(bad)continue;
-    if(cost<bc){bc=cost;best=y}}
+    // carros andando ao lado ocupam a faixa (o próprio obstáculo já foi contado acima)
+    // carro andando ao lado na faixa: não é motivo para cruzar para o outro lado do obstáculo; espera ele passar (custo, não proibição)
+    let blk=null;for(const o of c.alongs||[]){if(hzSet.has(o))continue;if(Math.abs((o.y||0)-y)<CARW+.2){cost+=5;if(!blk||o.v<blk.v)blk=o}}
+    // carros que também estão contornando por perto: prefere o lado com menos gente
+    for(const o of R.phys||[]){if(o===c||hzSet.has(o)||!o.hzLane||o.hzLane.id!==hz.id)continue;let dd=fr(o.prog)*L-fs;if(dd<-L/2)dd+=L;if(dd>L/2)dd-=L;if(Math.abs(dd)<25&&Math.abs(o.hzLane.y-y)<CARW+.4)cost+=1.5}
+    // decisão firme: não troca de lado a cada instante (só se o lado escolhido fechar)
+    if(prev!=null){if(Math.sign(y-hz.y0)!==Math.sign(prev-hz.y0))cost+=8;cost+=Math.max(0,Math.abs(y-prev)-1)*.8}
+    if(cost<bc){bc=cost;best=y;bestBlk=blk}}
   const capCar=cars.length?Math.sqrt(Math.max(0,2*42*(cars[0].d-CARL-.5)))+cars[0].v*.6:null;
-  if(best!=null)return{yT:best,cap:ttc<.9&&!hz.small?Math.max(hz.v+8,(c.v||0)*.9):null};
+  if(best!=null){c.hzLane={id:hz.id,y:best,t:R.t};if(hz.small)return{yT:best,cap:null};
+    // só tira o pé se não der tempo de ir para o lado andando nesta velocidade
+    const need=Math.max(0,Math.abs(best-(c.y||0))-.3),vyM=6.2*.85,tNeed=need/vyM;let cap=null;if(need>.4&&tNeed>ttc*.8){cap=hz.v+hz.d*vyM/Math.max(.5,need)*.8;cap=Math.max(cap,hz.v+4)}
+    // obstáculo perto e na mesma faixa: desvia freando (não só esterçando)
+    if(!hz.small&&ttc<1.2&&Math.abs((hz.y0??hz.y)-(c.y||0))<CARW+.4){const cb=Math.max(hz.v+6,(c.v||0)*.86);cap=cap==null?cb:Math.min(cap,cb)}
+    if(bestBlk){let dd=fr(bestBlk.prog)*L-fs;if(dd<-L/2)dd+=L;if(dd>L/2)dd-=L;if(dd<CARL+1){const cb=Math.max(0,(bestBlk.v||0)-1.5);cap=cap==null?cb:Math.min(cap,cb)}}/* quem está ao lado na faixa passa primeiro */
+    return{yT:best,cap}}
   return{cap:capCar}}
 // ---------- contato físico entre carros (rodado a cada passo, depois do movimento)
 // depois de um choque, a escapada continua com a velocidade e a direção resultantes

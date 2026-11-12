@@ -135,7 +135,7 @@ function dynSub(c,dt,vT,hard,brk,yT,o){const d=c.dyn,L=R.geo.len,f=fr(c.prog);dy
   // ---- longitudinal efetivo (com atrito de superfície fora da pista)
   if(!d.spin){v=v+aL*dt;v-=sf.drag*dt*(v>1?1:0);v=Math.max(0,v)}
   // ---- marcha à ré (comando de contornar carro parado)
-  let rev=null;if(c.rev){rev=c.rev;v=0}
+  let rev=null;if(c.rev&&(c.ex||c.pit))c.rev=null;if(c.rev){rev=c.rev;v=0}
   // ---- integração no sistema da pista: subpassos de até 0,6 m que param nos pontos do traçado (onde a curvatura da curva desenhada
   // muda de expressão), cada um pelo ponto médio. Assim a posição desenhada anda exatamente o que a velocidade física manda.
   const chi0=d.chi;let ds=0,dy=0;

@@ -18,11 +18,13 @@ function accFlag(c,imp){const f=fr(c.prog),ay=Math.abs(c.y||0),onT=ay<TRK_H+1,bl
 (function(){if(typeof hazardAvoid!=="function")return;const base=hazardAvoid;
   globalThis.hazardAvoid=function(c){const r=base(c);if(!r||r.late)return r;const hz=c.hzSeen;
     if(r.yT!=null){// desvia, mas também tira velocidade se está perto
-      const o=c.aheadO;let ttc=9;for(const x of R.phys||[]){if(x===c||!(x.ex||(x.v||0)<12))continue;let d=fr(x.prog)*R.geo.len-fr(c.prog)*R.geo.len;if(d<0)d+=R.geo.len;if(d<60){ttc=Math.min(ttc,d/Math.max(1,(c.v||0)-(x.v||0)))}}
+      const o=c.aheadO;let ttc=9,ttcOff=9;for(const x of R.phys||[]){if(x===c||!(x.ex||(x.v||0)<12))continue;const inPath=Math.abs((x.y||0)-r.yT)<=CARW+.6||Math.abs((x.y||0)-(c.y||0))<=CARW+.6;let d=fr(x.prog)*R.geo.len-fr(c.prog)*R.geo.len;if(d<0)d+=R.geo.len;if(d<60){const t=d/Math.max(1,(c.v||0)-(x.v||0));if(inPath)ttc=Math.min(ttc,t);else ttcOff=Math.min(ttcOff,t)}}
+      // fora do caminho: tira o pé de leve (o carro rodado pode voltar para a pista), sem ir a passo de tartaruga
+      if(ttcOff<1.8&&ttc>=1.8){const cap=Math.max(22,(c.v||0)*clamp(ttcOff/2,.75,.95));r.cap=r.cap!=null?Math.min(r.cap,cap):cap}
       if(ttc<1.8){const cap=Math.max(10,(c.v||0)*clamp(ttc/2,.45,.95));r.cap=r.cap!=null?Math.min(r.cap,cap):cap}c.emergT=R.t+1}
     else if(r.cap!=null){c.emergT=R.t+1;c.blockT=c.blockT||R.t}
-    if(r.yT!=null)c.blockT=0;return r}})();
-function revStep(c,dt,v1){if(!R.started||c.pit||c.ex||!running(c)||R.sc||R.red)return null;
+    if(r.yT!=null){const Q=c.aheadO;const nose=Q&&((Q.v||0)<1||Q.ex)&&c.dAO<CARL+1.3&&(c.v||0)<.6;/* tem para onde ir, mas está de nariz encostado: precisa de ré para esterçar */c.blockT=nose?(c.blockT||R.t):0}return r}})();
+function revStep(c,dt,v1){if(!R.started||c.pit||c.ex||!running(c)||R.sc||R.red){if(c.rev){c.rev=null;c.blockT=0}return null}/* a ré nunca fica ligada fora da pista, no box ou com bandeira (antes podia travar o carro para sempre) */
   if(c.rev){const a=R.t-c.rev.t0;if(a>2.2||fr(c.prog)<.004){c.rev=null;c.blockT=0;c.revCD=R.t+6;return null}return-1.6}// o movimento da ré é feito pelo núcleo de dinâmica (dyn.js lê c.rev)
   if(!c.blockT||(c.v||0)>1||R.t<(c.revCD||0)||R.t-c.blockT<1.4)return null;
   let near=null,nd=99;for(const o of R.phys||[]){if(o===c)continue;let d=fr(o.prog)*R.geo.len-fr(c.prog)*R.geo.len;if(d<0)d+=R.geo.len;if(d<nd&&d<12&&Math.abs((o.y||0)-(c.y||0))<CARW+1.2){nd=d;near=o}}

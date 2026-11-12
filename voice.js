@@ -78,6 +78,7 @@ function voxLine(list,c,v){const arr=Array.isArray(list)?list:list[voxTemper(c)]
 function vox(kind,c,v,pri,who){if(!R||!R.vox||!c)return;pri=pri||1;const k=kind+(who||"");if((R.vox.said[k]||-99)>R.t-(pri>=3?0:pri===2?22:45))return;if(R.t<R.vox.next&&pri<3){if(pri===2)R.vox.q.push({kind,c,v,pri,who,t:R.t});return}
   const list=VOX[kind];if(!list)return;R.vox.said[k]=R.t;R.vox.next=R.t+(pri>=3?3:pri===2?6:8)+(typeof vrr==="function"?vrr(0,3):1.5);R.vox.lastT=R.t;const txt=voxLine(list,c,Object.assign({},v||{},pri<2?{__once:1}:{}));if(!txt)return;(R.vox.log=R.vox.log||[]).push({t:R.t,lap:Math.max(1,R.lead+1),who:who||"me",txt});
   if(who==="mate"){if(typeof tvRadioSay==="function")tvRadioSay(c,txt);else narr(`Rádio de ${c.code}: "${txt}"`,1);return}
+  if(typeof tvMyRadioSay==="function")tvMyRadioSay(c,txt,who);
   if(who==="eng"){radio(c,txt,{k:"vox",vox:1})/* o feed já mostra "Engenheiro" no cabeçalho */;if(typeof ttsSay==="function")ttsSay("eng",txt,pri)}
   else{radio(c,txt,{me:1,k:"vox",vox:1});if(typeof ttsSay==="function")ttsSay("me",txt,pri)}}
 function voxFlush(){const Q=R.vox.q;if(!Q.length||R.t<R.vox.next)return;const x=Q.shift();if(R.t-x.t<8)vox(x.kind,x.c,x.v,x.pri,x.who);R.vox.q=Q.filter(y=>R.t-y.t<8)}

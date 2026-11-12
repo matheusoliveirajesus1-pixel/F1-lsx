@@ -39,6 +39,10 @@ const CIRCUITS=[
  {id:"zandvoort",gp:"GP da Holanda",n:"Zandvoort",city:"Zandvoort",nat:"Holanda",len:4259,laps:72,target:71.5,pit:21,wear:1.15,rain:.3,ovt:.25,cw:true,sprint:true,
   t:"s680 r180/38 s150 l40/90 r90/50 s300 l60/90 r70/45 l40/120 r90/90 s250 l60/60 r70/40 s300 r40/120 l30/150 s200 r180/80 s250",
   names:["Tarzan","Gerlach","Hugenholtz","Hunserug","Rob Slotemaker","Scheivlak","Mastersbocht","Bocht 11","Hans Ernst","Arie Luyendyk"]},
+ // circuito do próprio jogo (inventado): costeiro, entre o mar, o farol e a vila no morro
+ {id:"baia",gp:"GP da Baía Serena",n:"Baía Serena",city:"Porto Serena",nat:"Brasil",len:5180,laps:59,target:86,pit:20,wear:1.05,rain:.3,ovt:.55,cw:false,
+  t:"s950 r120/24 s260 l60/90 r60/80 s300 r70/130 s200 l50/120 s220 l40/150 r40/110 s680 r100/28 s200 l80/45 r60/40 s360 r80/190 s420 l50/60 r50/50 s260 r60/90 s160",
+  names:["Curva do Farol","Esses da Restinga","Mirante","Capela","Curva do Alto","Entrada da Vila","Grampo da Vila","Saída da Vila","Chicane do Mercado","Penhasco","Chicane da Marina","Saída da Marina","Curva do Cais"]},
  {id:"monza",gp:"GP da Itália",n:"Monza",city:"Monza",nat:"Itália",len:5793,laps:53,target:80.5,pit:24,wear:.85,rain:.15,ovt:.8,cw:true,
   t:"s1100 r80/22 l80/22 s300 r90/190 s450 l50/40 r50/40 s350 r85/90 s150 r70/90 s1000 l40/60 r40/60 l25/250 s950 r180/110 s700",
   names:["Variante del Rettifilo","Curva Grande","Variante della Roggia","Lesmo 1","Lesmo 2","Variante Ascari","Parabolica (Alboreto)"]},
@@ -73,6 +77,7 @@ const CIRCUITS=[
 const CIR=Object.fromEntries(CIRCUITS.map(c=>[c.id,c]));
 // nomes das curvas na ordem em que aparecem nos traçados reais (as curvas de alta são contadas quando o traçado pede)
 const RNAMES={
+ baia:["Curva do Farol","Esses da Restinga","Mirante","Capela","Curva do Alto","Entrada da Vila","Grampo da Vila","Saída da Vila","Chicane do Mercado","Penhasco","Chicane da Marina","Saída da Marina","Curva do Cais"],
  monaco:["Sainte Dévote","Beau Rivage","Massenet","Cassino","Mirabeau","Grampo do Fairmont","Portier","Túnel","Saída do túnel","Nova Chicane","Tabac","Piscina","Saída da Piscina","Rascasse"],
  monza:["Variante del Rettifilo","Curva Grande","Curva Grande","Curva Grande (saída)","Curva Grande (saída)","Variante della Roggia","Lesmo 1","Lesmo 2","Variante Ascari","Saída da Ascari","Parabolica (Alboreto)"],
  spa:["La Source","Eau Rouge","Raidillon","Les Combes","Saída de Les Combes","Bruxelas","Curva 9","Pouhon","Saída da Pouhon","Fagnes","Saída da Fagnes","Stavelot","Paul Frère","Blanchimont","Blanchimont","Saída da Blanchimont","Bus Stop"],
@@ -111,8 +116,10 @@ function realPath(raw,len){const n=raw.length/2;const p=i=>{i=((i%n)+n)%n;return
   // suaviza o ruído dos vértices (janela gaussiana de ±20 m)
   const kap=[];for(let i=0;i<N;i++){let s=0,w=0;for(let q=-5;q<=5;q++){const ww=Math.exp(-q*q/12);s+=raw2[((i+q)%N+N)%N]*ww;w+=ww}kap.push(s/w)}
   return{P,kap}}
-function buildCircuit(id){const C=CIR[id];let P=[],kap=[],first=0,x=0,y=0;
-  if(typeof REALTRK!=="undefined"&&REALTRK[id]){const r=realPath(REALTRK[id],C.len);P=r.P;kap=r.kap;x=P[0].x;y=P[0].y;first=RSTART[id]?Math.round(RSTART[id]/DS)%P.length:0}
+// Baía Serena: traçado desenhado para o jogo (metros, norte para cima, sentido da corrida, começando na linha de chegada)
+const BAIA_PTS=[0,0,280,0,560,0,820,0,900,6,940,40,932,88,890,108,835,104,790,128,760,175,790,225,760,280,790,335,800,420,850,500,930,545,1000,600,1015,680,985,750,950,830,905,905,840,945,760,962,700,915,675,830,650,760,612,735,578,760,572,840,555,920,500,965,380,990,240,990,110,975,40,940,20,880,60,830,30,770,0,740,-20,640,-60,530,-120,430,-150,340,-140,265,-95,230,-130,185,-165,150,-160,80,-120,25,-60,2];
+function buildCircuit(id){const C=CIR[id];let P=[],kap=[],first=0,x=0,y=0;const RAW=(typeof REALTRK!=="undefined"&&REALTRK[id])||(id==="baia"?BAIA_PTS:null);
+  if(RAW){const r=realPath(RAW,C.len);P=r.P;kap=r.kap;x=P[0].x;y=P[0].y;first=RSTART[id]?Math.round(RSTART[id]/DS)%P.length:0}
   else{let segs=parseTurtle(C.t);
   // fechar o ângulo total em ±360°
   const sum=segs.reduce((s,g)=>s+(g.k==="l"?g.ang:g.k==="r"?-g.ang:0),0),want=C.cw?-360:360,res=want-sum,abs=segs.reduce((s,g)=>s+(g.k!=="s"?g.ang:0),0);

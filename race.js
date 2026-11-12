@@ -55,7 +55,7 @@ function garF(t){const ord=G.garage||GARAGE0;let i=ord.indexOf(t.id);if(i<0)i=G.
 function scProg(){const l=R.order.find(c=>c.status==="run"&&!c.pit&&!c.parked);return l?l.prog+60/R.geo.len:null}
 // ---------- corrida
 let R=null;
-function startRace(pre){R0K=riskK();// pre: {plan, tyre, fuel} do seu carro (a equipe decide o resto)
+function startRace(pre){R0K=riskK();if(typeof MYR!=="undefined"){MYR.cur=null;MYR.q.length=0}// pre: {plan, tyre, fuel} do seu carro (a equipe decide o resto)
   const C=W.C,L=W.laps;const plans=strategyPlans();const geo=W.geo;
   R={tr:C,C,geo,L,t:0,pitLane:pitLane(C,geo.len),askQ:[],toast:null,cars:[],sc:null,w:0,rain:0,msgs:[],radio:[],fast:{t:999,c:null},over:false,lead:0,finishing:false,pause:null,order:[],ticks:0,flags:{},dsq:[],pitBusy:{}};
   R.w=rainAt(0)?.55:0;R.rain=rainAt(0);const fuelRace=78*L/C.laps;
@@ -165,7 +165,7 @@ function updWrecks(){scClearTick();for(const w of R.wrecks){if(w.c&&!w.removed){
   R.yellows=R.yellows.filter(y=>y.w?!y.w.removed:R.t<y.until)}
 function bubble(c,text,kind,dur){if(!c||!R.bubbles)return;R.bubbles.push({id:c.id,text:text.length>78?text.slice(0,76)+"…":text,kind:kind||"",t:R.t,dur:dur||4.5});if(R.bubbles.length>16)R.bubbles.shift()}
 function rcMsg(t,cls,k){R.msgs.unshift({lap:Math.max(1,R.lead+1),t,cls:cls||"",k});if(R.msgs.length>60)R.msgs.pop()}
-function radio(c,t,o){const m={lap:Math.max(1,R.lead+1),c:c.id,code:c.code,t,rt:R.t,...(o||{})};R.radio.unshift(m);if(R.radio.length>40)R.radio.pop();if(o&&o.pause&&c.isP)R.toast={t:R.t,text:t};if(c.hum)bubble(c,(o&&o.me?"":"🎧 ")+t.replace(/^[^:"]{2,22}: "?/,"").replace(/"$/,""),o&&o.me?"me":"radio",5)}
+function radio(c,t,o){const m={lap:Math.max(1,R.lead+1),c:c.id,code:c.code,t,rt:R.t,...(o||{})};R.radio.unshift(m);if(R.radio.length>40)R.radio.pop();if(o&&o.pause&&c.isP)R.toast={t:R.t,text:t};if(c.hum&&!(o&&o.vox))bubble(c,(o&&o.me?"":"🎧 ")+t.replace(/^[^:"]{2,22}: "?/,"").replace(/"$/,""),o&&o.me?"me":"radio",5)}
 function pos(c){return R.order.indexOf(c)+1}
 function running(c){return c.status==="run"}
 
@@ -241,7 +241,7 @@ function pitLaneOff(c,P,PL){const sd=(TRACKGEO&&TRACKGEO.side)||1,ramp=clamp(Mat
   if((P.phase==="out"||P.phase==="release")&&P.served){return work+(fast-work)*sm(clamp((P.s-P.gar-2)/30,0,1))}
   return fast}
 function pitMove(c,dt){const P=c.pit,PL=R.pitLane;let v=c.v||0,vT=0,amax=16;
-  if(P.phase==="in"){const d=P.gar-P.s;vT=Math.min(PIT_LIM,Math.sqrt(2*11*Math.max(0,d))+.4);if(d<=.25){P.phase="stop";pitArrive(c);vT=0}}
+  if(P.phase==="in"){const d=P.gar-P.s;vT=Math.min(PIT_LIM,Math.sqrt(2*5.5*Math.max(0,d))+.2);/* entra de lado na vaga freando: com os pneus virando e freando ao mesmo tempo a freada é menor (antes passava 3-11 m da marca) */if(d<=.25){P.phase="stop";pitArrive(c);vT=0}}
   else if(P.phase==="stop"){vT=0;P.stopT+=dt;if(P.stopT>=P.stop){const h=P.relChk?0:(P.relChk=1,pitRelease(c));if(h>0)P.stop+=h;else{P.phase="out";P.served=true;pitService(c)}}}
   else if(P.phase==="queue"){const d=P.slot-P.s;vT=d>0?Math.min(PIT_LIM,Math.sqrt(2*8*d)+.3):0;if(d<=.25){vT=0;if(!c.parked&&v<.3){c.parked=true;c.parkIdx=R.red?R.red.n:0}}}
   else{vT=PIT_LIM;amax=8;if(R.red&&R.red.phase==="return"&&P.phase==="out"){P.phase="queue";P.red=true;P.slot=Math.max(P.s+1,PL.D*.93-(R.red.n++)*13)}
@@ -429,7 +429,7 @@ function step(dt){
   if(typeof recalcFlush==="function")recalcFlush();
   // bandeira azul
   for(const c of ord){c.blue=false;if(!running(c)||c.pit)continue;const f=c.prog%1;
-    for(const o of ord){if(o===c||!running(o)||o.pit)continue;if(o.prog-c.prog>.6){let df=(f-(o.prog%1)+1)%1;if(df>0&&df<.012)c.blue=true}}}
+    for(const o of ord){if(o===c||!running(o)||o.pit)continue;if(o.prog-c.prog>.6){let df=(f-(o.prog%1)+1)%1;if(df>0&&df<Math.max(.012,140/R.geo.len))c.blue=true/* bandeira azul a ~140 m: dá tempo de escolher o lado numa reta */}}}
   if(ord[0])R.lead=Math.max(R.lead,ord[0].lap);
   if(R.cars.every(c=>c.status!=="run"))endRace();
 }

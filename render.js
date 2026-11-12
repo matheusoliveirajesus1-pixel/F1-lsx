@@ -136,7 +136,7 @@ function drawFlag(ctx,s,col,Z,t,col2){const w=Math.max(6,8*Z),h=Math.max(4,5*Z),
   ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(s[0],s[1]-h*3);ctx.quadraticCurveTo(s[0]+w/2,s[1]-h*3+wave,s[0]+w,s[1]-h*3);ctx.lineTo(s[0]+w,s[1]-h*2);ctx.quadraticCurveTo(s[0]+w/2,s[1]-h*2+wave,s[0],s[1]-h*2);ctx.closePath();ctx.fill();
   if(col2==="chk"){ctx.fillStyle="#111";for(let a=0;a<3;a++)for(let b=0;b<2;b++)if((a+b)%2)ctx.fillRect(s[0]+a*w/3,s[1]-h*3+b*h/2+wave*.3,w/3,h/2)}}
 function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.w,street=R.C.street,T=opts.T??R.t,now=performance.now()/1000;const detail=Z>.3;const RS=opts.S?Object.fromEntries(opts.S.cars.map(c=>[c.id,c])):null;const night=!!R.C.night;const WP={};
-  if(g.scn)drawGround(ctx,cw,ch,detail,wet,night);else{ctx.fillStyle="#3C7440";ctx.fillRect(0,0,cw,ch)}
+  if(g.scn)drawGround(ctx,cw,ch,detail,wet,night);if(g.scn&&g.scn.baia&&typeof baiaWaves==="function")baiaWaves(ctx,cw,ch,Z,performance.now()/1000);else{ctx.fillStyle="#3C7440";ctx.fillRect(0,0,cw,ch)}
   ctx.lineJoin="round";ctx.lineCap="round";
   // brita e muros
   g.gravel.forEach(gr=>{const s0=toScreen(g.path[gr.i].x,g.path[gr.i].y,0,cw,ch);if(!onScreen(s0,cw,ch,150*U*Z+60))return;
@@ -252,7 +252,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     items.push({d:p.x+p.y,draw:()=>{drawCar(ctx,cw,ch,{col:"#F2A900",col2:"#1B1B1B",sc:true,code:"SC"},p,detail,{});const s=toScreen(p.x,p.y,11*U,cw,ch);if(RS||!R.sc.ending){ctx.fillStyle=Math.floor(now*4)%2?"#FF9800":"#FFEB3B";ctx.fillRect(s[0]-5,s[1]-2,10,3)}
       ctx.font="700 11px 'Titillium Web',sans-serif";ctx.textAlign="center";const lab="SAFETY CAR";const tw=ctx.measureText(lab).width+8;ctx.fillStyle="#F2A900";ctx.fillRect(s[0]-tw/2,s[1]-22,tw,14);ctx.fillStyle="#111";ctx.fillText(lab,s[0],s[1]-11)}})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.draw());post.forEach(f=>f());// fogo e extintores por cima de tudo
-  if(typeof tunnelRange==="function"&&tunnelRange(R.geo))drawTunnelRoof(ctx,cw,ch,Z,opts);
+  if(typeof tunnelRange==="function"&&tunnelRange(R.geo))drawTunnelRoof(ctx,cw,ch,Z,opts);if(g.scn&&g.scn.baia&&typeof baiaOver==="function")baiaOver(ctx,cw,ch,Z);
   // ponte de Suzuka: quem passa por baixo some sob o tabuleiro; quem está em cima é desenhado de novo por cima dele
   if(R.geo&&typeof fichaOf==="function"&&fichaOf(R.geo.id).ponte){const B=bridgeCross(g);if(B){const on=bridgeCars(g,B,WP);if(on.lo.length){drawBridgeDeck(ctx,cw,ch,Z,true);on.hi.forEach(c=>drawCar(ctx,cw,ch,c,WP[c.id],detail,opts))}}}
   if(night){ctx.fillStyle="rgba(6,10,30,.5)";ctx.fillRect(0,0,cw,ch);ctx.save();ctx.globalCompositeOperation="lighter";for(let i=0;i<g.M;i+=24){const q=trackPos(i/g.M,0);const s=toScreen(q.x,q.y,0,cw,ch);if(!onScreen(s,cw,ch,80*U*Z))continue;const r=60*U*Z;const gr=ctx.createRadialGradient(s[0],s[1],0,s[0],s[1],r);gr.addColorStop(0,"rgba(255,236,190,.22)");gr.addColorStop(1,"rgba(255,236,190,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(s[0],s[1],r,0,7);ctx.fill()}

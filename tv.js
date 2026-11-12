@@ -12,6 +12,7 @@ function tvOverlay(ctx,cw,ch,dt){if(!R)return;if(!R.clips)R.clips=[];const now=p
   if(CAM.flash>TVX.lastFlash+.4){TVX.st=now;TVX.lastCut=R.t;const f=typeof SMART!=="undefined"&&SMART.mode==="me"?meCar():null;TVX.stCol=f&&f.t?f.t.c:"#E10600"}TVX.lastFlash=CAM.flash;CAM.flash=0;
   tvEvents();/* os lances agora são gravados dentro da corrida, com qualquer câmera (clipMark/clipTick em goals.js) */
   // gráficos de transmissão só na TV e no Diretor; nas outras câmeras a fila é descartada (nada fica acumulado para aparecer atrasado)
+  tvMyRadio(ctx,cw,ch,now);/* o seu rádio (você e o engenheiro) aparece em qualquer câmera */
   if(typeof bcOn==="function"&&!bcOn()){TVX.ban=null;TVX.banQ.length=0;TVX.cap=null;TVX.capQ.length=0;TVX.rad=null;if(typeof bcOff==="function")bcOff();return}
   if(!tvOn()){tvStinger(ctx,cw,ch,now);return}
   tvStinger(ctx,cw,ch,now);if(typeof tvOpening==="function"&&tvOpening(ctx,cw,ch,now))return;tvBanner(ctx,cw,ch,now);tvRadioCard(ctx,cw,ch,now);tvCaption(ctx,cw,ch,now);if(typeof tvCard==="function")tvCard(ctx,cw,ch,now)}
@@ -91,9 +92,24 @@ function tvRadioEvent(h,cs){const c=cs[0];const top=x=>x&&pos(x)<=10;
   // pneus no fim: alguém do top 10 reclama de vez em quando
   if(vrnd()<.25){const w=R.order.slice(0,10).find(x=>running(x)&&!x.hum&&x.tyre.wear>.7&&!x.pitCall);if(w)tvRadio(w,"tyre")}}
 function tvRadioSC(){const c=R.order.slice(0,8).find(x=>running(x)&&!x.hum&&!x.pit);if(c)tvRadio(c,"sc",2)}
+// ---------- cartão do SEU rádio (falas do voice.js: você e o engenheiro), no mesmo estilo do rádio da transmissão, em qualquer câmera.
+// Uma fala por vez: a próxima espera a atual ficar pelo menos 2,5 s na tela; falas que esperaram mais de 6 s são descartadas.
+const MYR={cur:null,q:[]};
+function tvMyRadioSay(c,txt,who){if(!c||!txt)return;const now=performance.now()/1000;MYR.q.push({c,txt,who:who||"me",at:now});if(MYR.q.length>3)MYR.q.shift()}
+function tvMyRadio(ctx,cw,ch,now){if(!R||R.over&&!MYR.cur)return;let r=MYR.cur;
+  if(MYR.q.length&&(!r||now-r.t0>Math.min(2.5,r.dur))){MYR.q=MYR.q.filter(x=>now-x.at<6);const n=MYR.q.shift();if(n){r=MYR.cur={...n,t0:now,dur:Math.min(7,3.4+n.txt.length*.035)}}}
+  if(!r)return;const a=now-r.t0;if(a>r.dur){MYR.cur=null;return}const mob=cw<640;const k=Math.min(1,a/.25,(r.dur-a)/.3);const col=r.c.t?r.c.t.c:"#E10600";const eng=r.who==="eng";
+  ctx.save();ctx.globalAlpha=k;const fs=mob?12:14;ctx.font=`600 italic ${fs}px ${TVF}`;const lines=tvWrap(ctx,`“${r.txt}”`,mob?cw*.62:300).slice(0,3);const w=Math.max(190,Math.max(...lines.map(l=>ctx.measureText(l).width))+26),h=40+lines.length*fs*1.3;
+  // embaixo do cartão da transmissão quando os dois estão na tela
+  let y=mob?ch*.55:ch*.36;if(TVX.rad&&(typeof bcOn!=="function"||bcOn())&&tvOn()){ctx.font=`600 italic ${fs}px ${TVF}`;const n=Math.min(3,tvWrap(ctx,`“${TVX.rad.txt}”`,mob?cw*.62:300).length);y+=40+n*fs*1.3+8}
+  const x=10-(1-k)*40;ctx.fillStyle="rgba(8,10,14,.9)";ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,5,h);
+  ctx.fillStyle=eng?"#5BD1FF":"#FFD400";ctx.font=`800 ${mob?10:11}px ${TVF}`;ctx.textAlign="left";ctx.fillText(eng?"ENGENHEIRO · SEU RÁDIO":"SEU RÁDIO",x+14,y+15);
+  ctx.fillStyle="#FFFFFF";ctx.font=`900 ${mob?13:15}px ${TVF}`;ctx.fillText(eng?`ENG → ${r.c.code}`:`${r.c.code} · P${pos(r.c)}`,x+14,y+32);
+  ctx.fillStyle=col;for(let i=0;i<9;i++){const bh=3+Math.abs(Math.sin(now*11+i*1.7))*9;ctx.fillRect(x+w-70+i*6,y+20-bh/2,3,bh)}
+  ctx.fillStyle="#E6E9EF";ctx.font=`600 italic ${fs}px ${TVF}`;lines.forEach((l,i)=>ctx.fillText(l,x+14,y+48+i*fs*1.3));ctx.restore()}
 function tvRadioCard(ctx,cw,ch,now){const r=TVX.rad;if(!r)return;if(typeof BCX!=="undefined"&&BCX.tw&&now-r.t0<.3){r.t0=now;return}/* torre aberta: o rádio espera */const a=now-r.t0;if(a>r.dur){TVX.rad=null;return}const mob=cw<640;const k=Math.min(1,a/.25,(r.dur-a)/.3);
   ctx.save();ctx.globalAlpha=k;const fs=mob?12:14;ctx.font=`600 italic ${fs}px ${TVF}`;const lines=tvWrap(ctx,`“${r.txt}”`,mob?cw*.62:300).slice(0,3);const w=Math.max(170,Math.max(...lines.map(l=>ctx.measureText(l).width))+26),h=40+lines.length*fs*1.3;
-  const x=10-(1-k)*40,y=mob?ch*.42:ch*.36;ctx.fillStyle="rgba(8,10,14,.9)";ctx.fillRect(x,y,w,h);ctx.fillStyle=r.c.t.c;ctx.fillRect(x,y,5,h);
+  const x=10-(1-k)*40,y=mob?ch*.55:ch*.36;ctx.fillStyle="rgba(8,10,14,.9)";ctx.fillRect(x,y,w,h);ctx.fillStyle=r.c.t.c;ctx.fillRect(x,y,5,h);
   ctx.fillStyle="#FFD400";ctx.font=`800 ${mob?10:11}px ${TVF}`;ctx.textAlign="left";ctx.fillText("RÁDIO DA EQUIPE",x+14,y+15);ctx.fillStyle="#FFFFFF";ctx.font=`900 ${mob?13:15}px ${TVF}`;ctx.fillText(`${r.c.code} · P${pos(r.c)}`,x+14,y+32);
   // ondinha de áudio
   ctx.fillStyle=r.c.t.c;for(let i=0;i<9;i++){const bh=3+Math.abs(Math.sin(now*11+i*1.7))*9;ctx.fillRect(x+w-70+i*6,y+20-bh/2,3,bh)}

@@ -32,6 +32,7 @@ const SCN={
   interlagos:{g:"park2",tr:"broad",td:.35,cityFar:.85,water:[{e:[.68,.57,.1,.08]},{e:[.55,.82,.06,.05]}]},
   lasvegas:{g:"desertUrban",pal:"vegas",tr:"palm",td:.12,city:{dens:.4,h:[15,40]},lm:[{k:"strip",seg:[10,11],d:120},{k:"sphere",c:6,d:160}]},
   lusail:{g:"desert",tr:"palm",td:.06},
+  baia:{baia:1,g:"tropic",tr:"palm",td:.3,tapetes:6},
   abudhabi:{g:"desert",tr:"palm",td:.2,water:[{e:[.75,.82,.15,.07]},{half:"S",d:220}],lm:[{k:"yas",c:11},{k:"parque",c:5,d:380}]}
 };
 // cores do chão: [base, faixa da grama cortada, borda perto da pista]
@@ -90,8 +91,9 @@ function sceneBuild(TG){const id=TG.id,th=Object.assign({g:"park",tr:"broad",td:
   const fromUV=(u,v)=>({x:bb.x0+u*BW,y:bb.y0+v*BH});
   const DIR={N:[0,-1],S:[0,1],E:[1,0],W:[-1,0],SE:[.7071,.7071],SW:[-.7071,.7071],NE:[.7071,-.7071],NW:[-.7071,-.7071]};
   const BIG=Math.max(BW,BH)*4+m(4000);
-  // água
-  const water=[];
+  // água (e, na Baía Serena, o plano do cenário próprio: mar, praia, vila, vinhedo...)
+  const BP=th.baia&&typeof baiaPlan==="function"?baiaPlan(TG,m):null;
+  const water=BP?BP.water.slice():[];
   for(const w of th.water||[]){let pts=[];
     if(w.inl){for(let i=0;i<M;i+=3){const p=P[i];const wob=1+.03*Math.sin(i*.07)+.02*Math.sin(i*.23);pts.push({x:ax+(p.x-ax)*w.inl*wob,y:ay+(p.y-ay)*w.inl*wob})}}
     else if(w.e){const c=fromUV(w.e[0],w.e[1]),rx=w.e[2]*BW,ry=w.e[3]*BH;for(let k=0;k<48;k++){const a=k/48*Math.PI*2,wb=1+.08*Math.sin(a*3+w.e[0]*9)+.05*Math.sin(a*5);pts.push({x:c.x+Math.cos(a)*rx*wb,y:c.y+Math.sin(a)*ry*wb})}}
@@ -108,7 +110,7 @@ function sceneBuild(TG){const id=TG.id,th=Object.assign({g:"park",tr:"broad",td:
   const trees=[];const tk=th.tr;const nz=(x,y)=>.5+.25*Math.sin(x/m(140)+1.3)*Math.cos(y/m(170)-.7)+.25*Math.sin((x+y)/m(90)+2.1);
   const R0=m(240),maxT=Math.round(110+190*Math.min(1,th.td));/* menos árvores: a pista é a protagonista */
   for(let k=0;k<9000&&trees.length<maxT;k++){const x=bb.x0-R0+rng()*(BW+2*R0),y=bb.y0-R0+rng()*(BH+2*R0);const n=nz(x,y);if(rng()>th.td*(n>.55?1.7:.35)+.04)continue;
-    const dt=dTrack(x,y,m(60));if(dt<TW+m(26))continue;if(nearExtra(x,y,m(40)))continue;if(isWater(x,y,dt))continue;if(th.city&&rng()<.7)continue;
+    const dt=dTrack(x,y,m(60));if(dt<TW+m(26))continue;if(nearExtra(x,y,m(40)))continue;if(isWater(x,y,dt))continue;if(BP&&BP.avoid(x,y))continue;if(th.city&&rng()<.7)continue;
     const kind=tk==="mixed"?(rng()<.5?"pine":"broad"):tk;trees.push({x,y,s:.75+rng()*.7,k:kind,c:rng()})}
   // prédios
   const bld=[];const pal=BPAL[th.pal||"def"];
@@ -196,7 +198,7 @@ function sceneBuild(TG){const id=TG.id,th=Object.assign({g:"park",tr:"broad",td:
       const nx=Math.sin(h)*sg,ny=-Math.cos(h)*sg;if(nx+ny<.6)continue;/* normal do muro (aponta para a pista) precisa olhar para a câmera */
       let dh=TG.heading[j]-h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));if(Math.abs(dh)>.12)continue;
       banners.push({i,j,sg,sp:SC[(hs+banners.length*3)%SC.length].id});i+=gap}}}
-  TG.scn={th,water,trees,bld,lms,peaks,wl,kerbs,mats,banners,lights,inS,ac:{x:ax,y:ay},isWater,cells,RC,maxH,clipN,dOther};SPR.reset();return TG.scn}
+  TG.scn={th,water,trees,bld,lms,peaks,wl,kerbs,mats,banners,lights,inS,ac:{x:ax,y:ay},isWater,cells,RC,maxH,clipN,dOther};if(BP&&typeof baiaBuild==="function")baiaBuild(TG,TG.scn,dTrack);SPR.reset();return TG.scn}
 // blocos que cobrem a tela (com folga embaixo para prédios altos cuja base está fora da tela)
 function visCells(S,cw,ch,extra){const Z=CAM.z;const inv=(sx,sy)=>{const a=(sx-cw/2-CAM.sx)/Z+CAM.x,b=(sy-ch/2-CAM.sy)/Z+CAM.y;const u=a/ISO_C,v=b/ISO_S;return[(u+v)/2,(v-u)/2]};
   const mg=60+(extra||0)*S.RC*Z,bot=S.maxH*Z+80+(extra||0)*S.RC*Z;const P=[inv(-mg,-mg),inv(cw+mg,-mg),inv(-mg,ch+bot),inv(cw+mg,ch+bot)];
@@ -278,6 +280,7 @@ function drawGroundRaw(ctx,cw,ch,detail,wet,night,noBlobs){const g=TRACKGEO,S=g.
   // água
   if(!isl)for(const w of S.water){ctx.beginPath();w.forEach((p,i)=>{const s=toScreen(p.x,p.y,0,cw,ch);i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1])});ctx.closePath();
     ctx.fillStyle=WATER_C;ctx.fill();const p=wpat(ctx,T.water,.6,cw,ch,now*1.5,0);if(p){ctx.fillStyle=p;ctx.fill()}ctx.strokeStyle="rgba(230,240,250,.35)";ctx.lineWidth=Math.max(1,2.2*WS*Z);ctx.stroke()}
+  if(S.baia&&typeof baiaGround==="function")baiaGround(ctx,cw,ch,Z,detail);
   // ilha / faixa de terra ao redor da pista
   const imx=(th.island+12)*WS*Z+60;if(isl){pathScreen(ctx,g.path,cw,ch,true,0,imx);ctx.strokeStyle="#D8D2B8";ctx.lineWidth=(th.island*2+10)*WS*Z;ctx.stroke();pathScreen(ctx,g.path,cw,ch,true,0,imx);ctx.strokeStyle=col(GC[0]);ctx.lineWidth=th.island*2*WS*Z;ctx.stroke();
     const p=wpat(ctx,T.grass,.35,cw,ch);if(p){pathScreen(ctx,g.path,cw,ch,true,0,imx);ctx.strokeStyle=p;ctx.globalAlpha=.8;ctx.stroke();ctx.globalAlpha=1}}
@@ -316,7 +319,7 @@ function drawKerbs(ctx,cw,ch,street){const g=TRACKGEO,S=g.scn,M=g.M,Z=CAM.z;cons
 // ---------- objetos com profundidade
 function sceneItems(items,post,ctx,cw,ch,night,now,detail){const g=TRACKGEO,S=g.scn,Z=CAM.z,th=S.th;const m=v=>v*WS;
   const vis=(x,y,r)=>{const s=toScreen(x,y,0,cw,ch);return s[0]>-r*Z-40&&s[0]<cw+r*Z+40&&s[1]>-r*Z*1.6-60&&s[1]<ch+r*Z*.6+40};
-  if(!detail){for(const o of S.lms)if(o.k!=="yachts"&&o.k!=="bowl")lmItems(o,items,post,ctx,cw,ch,night,now,vis);return}
+  if(!detail){for(const o of S.lms)if(o.k!=="yachts"&&o.k!=="bowl")lmItems(o,items,post,ctx,cw,ch,night,now,vis);if(S.baia&&typeof baiaItems==="function")baiaItems(items,post,ctx,cw,ch,night,now,false);return}
   const vc=visCells(S,cw,ch)||[...S.cells.values()];const tnow=now;const zb=zBucket(Z);const pip=ctx.canvas&&ctx.canvas!==document.getElementById("rc");const simple=typeof mapSimple==="function"&&mapSimple();if(simple&&(SPR.n||SPR.trees.size))SPR.reset();SPR.budget=(pip||simple)?0:6;if(!pip)SPR.frame++;
   const TL=[],BL=[],LL=[];for(const c of vc){c.seen=tnow;for(const t of c.t)TL.push(t);for(const b of c.b)BL.push(b);for(const l of c.l)LL.push(l)}
   const fewTrees=simple||(typeof QL!=="undefined"&&QL.lvl===0);for(const t of TL){if(fewTrees&&((t.x*7+t.y*13)|0)%2)continue;if(!vis(t.x,t.y,m(30)))continue;items.push({d:t.x+t.y,draw:()=>{const sp=treeSprite(t,zb);if(sp)drawSprite(ctx,cw,ch,sp,t.x,t.y,Z);else drawTree(ctx,cw,ch,t,Z)}})}
@@ -329,7 +332,7 @@ function sceneItems(items,post,ctx,cw,ch,night,now,detail){const g=TRACKGEO,S=g.
   if(!pip&&!simple){sprSweep(S,tnow);const ring=visCells(S,cw,ch,1)||[];for(const c of ring){if(SPR.budget<=0)break;c.seen=Math.max(c.seen,tnow-1);for(const b of c.b){if(SPR.budget<=0||(typeof perfBudget==="function"&&!perfBudget(4)))break;if(b._spr&&b._spr.zb===zb)continue;if(SPR.bytes>sprCap()*.8)break;SPR.budget--;const n=bakeBuilding(b,zb,night);if(n)sprPut(b,n)}}}
   for(const L of LL){if(!vis(L.x,L.y,m(20)))continue;items.push({d:L.x+L.y,draw:()=>{const a=toScreen(L.x,L.y,0,cw,ch),b=toScreen(L.x,L.y,m(14),cw,ch);ctx.strokeStyle="#3A4048";ctx.lineWidth=Math.max(1,.5*WS*Z);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
     ctx.fillStyle="#FFF6D8";ctx.fillRect(b[0]-2*Z*WS*.5,b[1]-1,4*Z*WS*.5,2);post.push(()=>{const r=Math.max(6,m(9)*Z);const gr=ctx.createRadialGradient(b[0],b[1],0,b[0],b[1],r);gr.addColorStop(0,"rgba(255,246,216,.55)");gr.addColorStop(1,"rgba(255,246,216,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(b[0],b[1],r,0,7);ctx.fill()})}})}
-  for(const o of S.lms)lmItems(o,items,post,ctx,cw,ch,night,now,vis)}
+  for(const o of S.lms)lmItems(o,items,post,ctx,cw,ch,night,now,vis);if(S.baia&&typeof baiaItems==="function")baiaItems(items,post,ctx,cw,ch,night,now,detail)}
 function drawTree(ctx,cw,ch,t,Z){const s=toScreen(t.x,t.y,0,cw,ch);const q=WS*Z*t.s;
   ctx.fillStyle="rgba(0,0,0,.18)";ctx.beginPath();ctx.ellipse(s[0]+4*q,s[1]+1*q,9*q,4*q,0,0,7);ctx.fill();
   if(t.k==="pine"){const top=toScreen(t.x,t.y,22*WS*t.s,cw,ch);ctx.fillStyle="#4A3420";ctx.fillRect(s[0]-.6*q,s[1]-4*q,1.2*q,4*q);

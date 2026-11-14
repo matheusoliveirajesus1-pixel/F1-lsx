@@ -1,0 +1,683 @@
+{
+ "opcoes": {
+  "contaminar": false,
+  "frames": false,
+  "render": false,
+  "speed": 1,
+  "races": 6,
+  "seed": 7,
+  "dist": 0.25,
+  "detector": false,
+  "relogio": false,
+  "out": "A.json"
+ },
+ "corridas": [
+  {
+   "rodada": 1,
+   "circuito": "melbourne",
+   "voltas": 15,
+   "passos": 27104,
+   "vencedor": "KEL",
+   "ordem": [
+    "KEL",
+    "BRO",
+    "LAH",
+    "CHA",
+    "ISH",
+    "HAR",
+    "REI",
+    "AGI",
+    "BEN",
+    "GAL",
+    "LEF",
+    "SUW",
+    "LIN",
+    "VLL",
+    "MER",
+    "BEI",
+    "KLL",
+    "VIL",
+    "VIS",
+    "GUO"
+   ],
+   "abandonos": [
+    "TES: Câmbio",
+    "AGU: Acidente"
+   ],
+   "desclassificados": [],
+   "volta_mais_rapida": 81.788,
+   "mediana_melhor_volta": 83.132,
+   "mediana_voltas": 84.559,
+   "decisoes": {
+    "ritmo": {
+     "normal": 50.8,
+     "attack": 37.4,
+     "save": 11.8
+    },
+    "energia": {
+     "auto": 59.4,
+     "defend": 13.3,
+     "attack": 24.8,
+     "save": 2.5
+    },
+    "bateria_vazia_pct": 0,
+    "pedindo_ataque_pct": 4.48,
+    "defendendo_pct": 0.4,
+    "ataques_comprometidos": 47,
+    "sem_combustivel": 0,
+    "jogador": 21
+   },
+   "ultrapassagens": 124,
+   "safety_cars": 0,
+   "vsc": 0,
+   "bandeiras_vermelhas": 0,
+   "contatos": 12,
+   "contatos_fortes": 3,
+   "escapadas": {
+    "spin": 4,
+    "off": 4
+   },
+   "rodadas": 4,
+   "escapadas_total": 11,
+   "rodadas_fisicas": 2,
+   "tipos_contato": {
+    "long+largada+forte": 1,
+    "lat+largada": 2,
+    "lat+largada+escapada": 1,
+    "lat+forte": 2,
+    "lat": 3,
+    "long": 1,
+    "lat+escapada": 2
+   },
+   "erros_piloto": {
+    "minor": 30,
+    "off": 3,
+    "spin": 1,
+    "crash": 0,
+    "dnf": 2,
+    "fire": 0,
+    "beach": 0
+   },
+   "carros_com_punicao_de_tempo": 3,
+   "mensagens_de_punicao": 7,
+   "veredictos": {
+    "Incidente de corrida": 4,
+    "Sem punição": 3,
+    "5 s": 2
+   }
+  },
+  {
+   "rodada": 2,
+   "circuito": "shanghai",
+   "voltas": 14,
+   "passos": 29340,
+   "vencedor": "LAH",
+   "ordem": [
+    "LAH",
+    "AGI",
+    "LIN",
+    "AGU",
+    "BRO",
+    "BEN",
+    "KEL",
+    "REI",
+    "BEI",
+    "TES",
+    "CHA",
+    "SUW",
+    "VIL",
+    "ISH",
+    "VLL",
+    "LEF",
+    "GUO",
+    "GAL",
+    "KLL",
+    "HAR",
+    "MER"
+   ],
+   "abandonos": [],
+   "desclassificados": [
+    "VIS: não usou dois compostos diferentes"
+   ],
+   "volta_mais_rapida": 91.934,
+   "mediana_melhor_volta": 95.654,
+   "mediana_voltas": 97.376,
+   "decisoes": {
+    "ritmo": {
+     "normal": 59,
+     "attack": 29.9,
+     "save": 11.1
+    },
+    "energia": {
+     "auto": 70.2,
+     "defend": 8.9,
+     "attack": 21
+    },
+    "bateria_vazia_pct": 0,
+    "pedindo_ataque_pct": 5.65,
+    "defendendo_pct": 0.19,
+    "ataques_comprometidos": 26,
+    "sem_combustivel": 0,
+    "jogador": 10
+   },
+   "ultrapassagens": 99,
+   "safety_cars": 0,
+   "vsc": 0,
+   "bandeiras_vermelhas": 0,
+   "contatos": 10,
+   "contatos_fortes": 2,
+   "escapadas": {
+    "off": 3,
+    "spin": 3
+   },
+   "rodadas": 3,
+   "escapadas_total": 5,
+   "rodadas_fisicas": 2,
+   "tipos_contato": {
+    "lat+largada": 2,
+    "lat": 4,
+    "long": 2,
+    "long+largada+forte": 1,
+    "long+forte": 1
+   },
+   "erros_piloto": {
+    "minor": 32,
+    "off": 9,
+    "spin": 1,
+    "crash": 0,
+    "dnf": 0,
+    "fire": 0,
+    "beach": 0,
+    "saved": 3
+   },
+   "carros_com_punicao_de_tempo": 1,
+   "mensagens_de_punicao": 5,
+   "veredictos": {
+    "Incidente de corrida": 3,
+    "Advertência": 1
+   }
+  },
+  {
+   "rodada": 3,
+   "circuito": "suzuka",
+   "voltas": 13,
+   "passos": 28395,
+   "vencedor": "LIN",
+   "ordem": [
+    "LIN",
+    "BRO",
+    "KEL",
+    "AGI",
+    "BEI",
+    "VIS",
+    "LAH",
+    "HAR",
+    "TES",
+    "BEN",
+    "REI",
+    "SUW",
+    "MER",
+    "KLL",
+    "GUO",
+    "VLL",
+    "AGU",
+    "ISH",
+    "GAL",
+    "LEF",
+    "VIL"
+   ],
+   "abandonos": [
+    "CHA: Freios"
+   ],
+   "desclassificados": [],
+   "volta_mais_rapida": 92.204,
+   "mediana_melhor_volta": 93.937,
+   "mediana_voltas": 95.426,
+   "decisoes": {
+    "ritmo": {
+     "normal": 55.9,
+     "attack": 34.4,
+     "save": 9.8
+    },
+    "energia": {
+     "auto": 48.4,
+     "defend": 16.6,
+     "attack": 34.7,
+     "save": 0.3
+    },
+    "bateria_vazia_pct": 0,
+    "pedindo_ataque_pct": 5.5,
+    "defendendo_pct": 0.09,
+    "ataques_comprometidos": 36,
+    "sem_combustivel": 0,
+    "jogador": 9
+   },
+   "ultrapassagens": 56,
+   "safety_cars": 0,
+   "vsc": 2,
+   "bandeiras_vermelhas": 0,
+   "contatos": 11,
+   "contatos_fortes": 3,
+   "escapadas": {
+    "spin": 3,
+    "off": 1
+   },
+   "rodadas": 3,
+   "escapadas_total": 4,
+   "rodadas_fisicas": 1,
+   "tipos_contato": {
+    "lat": 7,
+    "long+forte": 2,
+    "long": 1,
+    "lat+forte": 1
+   },
+   "erros_piloto": {
+    "minor": 21,
+    "off": 2,
+    "spin": 0,
+    "crash": 0,
+    "dnf": 0,
+    "fire": 0,
+    "beach": 0,
+    "save": 1,
+    "saved": 1
+   },
+   "carros_com_punicao_de_tempo": 0,
+   "mensagens_de_punicao": 5,
+   "veredictos": {
+    "Incidente de corrida": 3,
+    "Advertência": 1,
+    "5 s": 1
+   }
+  },
+  {
+   "rodada": 4,
+   "circuito": "miami",
+   "voltas": 14,
+   "passos": 27570,
+   "vencedor": "AGU",
+   "ordem": [
+    "AGU",
+    "LAH",
+    "BRO",
+    "LIN",
+    "KEL",
+    "BEI",
+    "VIL",
+    "VIS",
+    "TES",
+    "LEF",
+    "BEN",
+    "MER",
+    "HAR",
+    "SUW",
+    "KLL",
+    "AGI",
+    "VLL",
+    "REI",
+    "GUO",
+    "GAL",
+    "ISH",
+    "CHA"
+   ],
+   "abandonos": [],
+   "desclassificados": [],
+   "volta_mais_rapida": 88.92,
+   "mediana_melhor_volta": 91.161,
+   "mediana_voltas": 92.551,
+   "decisoes": {
+    "ritmo": {
+     "normal": 51.2,
+     "attack": 38.6,
+     "save": 10.2
+    },
+    "energia": {
+     "auto": 60.2,
+     "attack": 23.8,
+     "defend": 15.9,
+     "save": 0.1
+    },
+    "bateria_vazia_pct": 0,
+    "pedindo_ataque_pct": 8.49,
+    "defendendo_pct": 0.17,
+    "ataques_comprometidos": 39,
+    "sem_combustivel": 0,
+    "jogador": 9
+   },
+   "ultrapassagens": 169,
+   "safety_cars": 0,
+   "vsc": 0,
+   "bandeiras_vermelhas": 0,
+   "contatos": 49,
+   "contatos_fortes": 16,
+   "escapadas": {
+    "spin": 16,
+    "off": 6
+   },
+   "rodadas": 16,
+   "escapadas_total": 4,
+   "rodadas_fisicas": 3,
+   "tipos_contato": {
+    "long+largada+forte": 6,
+    "long+largada+escapada+forte": 6,
+    "long+largada": 7,
+    "long+largada+escapada": 3,
+    "lat+largada+escapada": 7,
+    "lat+largada": 11,
+    "lat+forte": 2,
+    "long+forte": 2,
+    "lat": 4,
+    "long": 1
+   },
+   "erros_piloto": {
+    "minor": 20,
+    "off": 3,
+    "spin": 0,
+    "crash": 0,
+    "dnf": 0,
+    "fire": 0,
+    "beach": 0,
+    "save": 3,
+    "saved": 3
+   },
+   "carros_com_punicao_de_tempo": 0,
+   "mensagens_de_punicao": 15,
+   "veredictos": {
+    "Incidente de corrida": 2,
+    "5 s": 1,
+    "Sem punição": 2
+   }
+  },
+  {
+   "rodada": 5,
+   "circuito": "montreal",
+   "voltas": 18,
+   "passos": 35982,
+   "vencedor": "AGU",
+   "ordem": [
+    "AGU",
+    "LIN",
+    "BRO",
+    "VIS",
+    "ISH",
+    "CHA",
+    "MER",
+    "BEN",
+    "KLL",
+    "LAH",
+    "VLL",
+    "HAR",
+    "SUW",
+    "GAL",
+    "KEL",
+    "BEI",
+    "GUO",
+    "REI",
+    "TES"
+   ],
+   "abandonos": [
+    "VIL: Acidente",
+    "AGI: Câmbio",
+    "LEF: Câmbio"
+   ],
+   "desclassificados": [],
+   "volta_mais_rapida": 73.431,
+   "mediana_melhor_volta": 74.658,
+   "mediana_voltas": 78.126,
+   "decisoes": {
+    "ritmo": {
+     "normal": 62.8,
+     "attack": 34.8,
+     "save": 2.4
+    },
+    "energia": {
+     "auto": 61.1,
+     "defend": 11.7,
+     "attack": 26.8,
+     "save": 0.4
+    },
+    "bateria_vazia_pct": 0,
+    "pedindo_ataque_pct": 4.87,
+    "defendendo_pct": 0.27,
+    "ataques_comprometidos": 41,
+    "sem_combustivel": 0,
+    "jogador": 19
+   },
+   "ultrapassagens": 150,
+   "safety_cars": 1,
+   "vsc": 0,
+   "bandeiras_vermelhas": 2,
+   "contatos": 19,
+   "contatos_fortes": 10,
+   "escapadas": {
+    "spin": 8,
+    "crash": 1,
+    "off": 2
+   },
+   "rodadas": 8,
+   "escapadas_total": 11,
+   "rodadas_fisicas": 1,
+   "tipos_contato": {
+    "long+largada+forte": 5,
+    "long+largada+escapada+forte": 2,
+    "long+largada+escapada": 2,
+    "lat+forte": 1,
+    "long": 2,
+    "long+forte": 2,
+    "lat": 4,
+    "lat+largada+escapada": 1
+   },
+   "erros_piloto": {
+    "minor": 22,
+    "off": 8,
+    "spin": 1,
+    "crash": 0,
+    "dnf": 1,
+    "fire": 0,
+    "beach": 0,
+    "saved": 4,
+    "save": 1
+   },
+   "carros_com_punicao_de_tempo": 2,
+   "mensagens_de_punicao": 6,
+   "veredictos": {
+    "Incidente de corrida": 5,
+    "5 s": 2
+   }
+  },
+  {
+   "rodada": 6,
+   "circuito": "monaco",
+   "voltas": 20,
+   "passos": 34818,
+   "vencedor": "AGU",
+   "ordem": [
+    "AGU",
+    "KEL",
+    "MER",
+    "LEF",
+    "LIN",
+    "CHA",
+    "TES",
+    "BEI",
+    "GAL",
+    "BRE",
+    "VLL",
+    "VIS",
+    "SUW",
+    "ISH",
+    "LAH",
+    "REI",
+    "BEN",
+    "HAR",
+    "GUO"
+   ],
+   "abandonos": [
+    "KLL: Câmbio",
+    "BRO: Câmbio",
+    "AGI: Acidente (toque)"
+   ],
+   "desclassificados": [],
+   "volta_mais_rapida": 73.475,
+   "mediana_melhor_volta": 74.813,
+   "mediana_voltas": 80.92,
+   "decisoes": {
+    "ritmo": {
+     "normal": 59.2,
+     "attack": 29.5,
+     "save": 11.2
+    },
+    "energia": {
+     "auto": 79.4,
+     "attack": 11.3,
+     "defend": 9.3,
+     "save": 0
+    },
+    "bateria_vazia_pct": 0,
+    "pedindo_ataque_pct": 3.72,
+    "defendendo_pct": 0,
+    "ataques_comprometidos": 20,
+    "sem_combustivel": 0,
+    "jogador": 7
+   },
+   "ultrapassagens": 164,
+   "safety_cars": 0,
+   "vsc": 1,
+   "bandeiras_vermelhas": 0,
+   "contatos": 23,
+   "contatos_fortes": 11,
+   "escapadas": {
+    "spin": 5,
+    "crash": 2,
+    "off": 1
+   },
+   "rodadas": 5,
+   "escapadas_total": 16,
+   "rodadas_fisicas": 3,
+   "tipos_contato": {
+    "long+largada+forte": 5,
+    "lat+largada": 2,
+    "long+largada": 2,
+    "lat+largada+forte": 2,
+    "long+forte": 2,
+    "lat": 5,
+    "lat+forte": 2,
+    "long": 3
+   },
+   "erros_piloto": {
+    "minor": 89,
+    "off": 8,
+    "spin": 7,
+    "crash": 2,
+    "dnf": 1,
+    "fire": 0,
+    "beach": 0,
+    "save": 4,
+    "saved": 6
+   },
+   "carros_com_punicao_de_tempo": 2,
+   "mensagens_de_punicao": 21,
+   "veredictos": {
+    "Incidente de corrida": 7,
+    "Advertência": 1,
+    "Sem punição": 2,
+    "5 s": 5
+   }
+  }
+ ],
+ "classificacao_pilotos": [
+  [
+   "AGU",
+   102
+  ],
+  [
+   "BRO",
+   91
+  ],
+  [
+   "KEL",
+   87
+  ],
+  [
+   "LIN",
+   87
+  ],
+  [
+   "LAH",
+   69
+  ],
+  [
+   "AGI",
+   43
+  ],
+  [
+   "CHA",
+   31
+  ],
+  [
+   "ISH",
+   28
+  ],
+  [
+   "BEI",
+   24
+  ],
+  [
+   "VIS",
+   24
+  ],
+  [
+   "MER",
+   21
+  ],
+  [
+   "LEF",
+   18
+  ],
+  [
+   "REI",
+   15
+  ],
+  [
+   "BEN",
+   15
+  ],
+  [
+   "TES",
+   15
+  ],
+  [
+   "HAR",
+   12
+  ],
+  [
+   "VIL",
+   8
+  ],
+  [
+   "SUW",
+   6
+  ],
+  [
+   "VLL",
+   6
+  ],
+  [
+   "GUO",
+   6
+  ],
+  [
+   "GAL",
+   3
+  ],
+  [
+   "KLL",
+   2
+  ],
+  [
+   "BRE",
+   1
+  ]
+ ],
+ "hash": "23d52bf6d7c9d3c290ea10dd66c4418a2193158b6fb6f0999239daca88a807c6"
+}

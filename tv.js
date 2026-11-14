@@ -59,7 +59,7 @@ function tvCaption(ctx,cw,ch,now){if(!TVX.cap&&TVX.capQ.length&&!(cw<640&&typeof
   ctx.font=`800 ${mob?10:11}px ${TVF}`;ctx.fillText(lab,x+12,y+15);ctx.fillStyle="#FFFFFF";ctx.font=`600 ${fs}px ${TVF}`;ctx.textAlign="left";lines.forEach((l,i)=>ctx.fillText(l,x+12,y+20+lh*(i+.8)));ctx.restore()}
 function tvWrap(ctx,t,w){const out=[];let cur="";for(const word of String(t).split(/\s+/)){const nx=cur?cur+" "+word:word;if(ctx.measureText(nx).width>w&&cur){out.push(cur);cur=word}else cur=nx}if(cur)out.push(cur);return out}
 // o comentarista olha os números da corrida e explica o que está acontecendo
-function tvComment(){const run=R.order.filter(c=>running(c));if(run.length<3)return null;const L=R.L,lap=R.lead,left=L-lap;const ops=[];
+function tvComment(){if(R.qMode)return null;/* comentários de corrida (vantagem, voltas) não valem na classificação */const run=R.order.filter(c=>running(c));if(run.length<3)return null;const L=R.L,lap=R.lead,left=L-lap;const ops=[];
   const A=run[0],B=run[1];const gap=(A.prog-B.prog)*B.L;
   if(gap<1.2)ops.push(`${B.code} está a ${gap.toFixed(1).replace(".",",")} segundo do líder. Se continuar assim, a briga pela vitória vai até o fim.`);
   else if(gap>8&&left>3)ops.push(`${A.code} controla a corrida com ${Math.round(gap)} segundos de vantagem. Agora é cuidar dos pneus e não errar.`);
@@ -104,13 +104,13 @@ function tvMyRadio(ctx,cw,ch,now){if(!R||R.over&&!MYR.cur)return;let r=MYR.cur;
   let y=mob?ch*.55:ch*.36;if(TVX.rad&&(typeof bcOn!=="function"||bcOn())&&tvOn()){ctx.font=`600 italic ${fs}px ${TVF}`;const n=Math.min(3,tvWrap(ctx,`“${TVX.rad.txt}”`,mob?cw*.62:300).length);y+=40+n*fs*1.3+8}
   const x=10-(1-k)*40;ctx.fillStyle="rgba(8,10,14,.9)";ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,5,h);
   ctx.fillStyle=eng?"#5BD1FF":"#FFD400";ctx.font=`800 ${mob?10:11}px ${TVF}`;ctx.textAlign="left";ctx.fillText(eng?"ENGENHEIRO · SEU RÁDIO":"SEU RÁDIO",x+14,y+15);
-  ctx.fillStyle="#FFFFFF";ctx.font=`900 ${mob?13:15}px ${TVF}`;ctx.fillText(eng?`ENG → ${r.c.code}`:`${r.c.code} · P${pos(r.c)}`,x+14,y+32);
+  ctx.fillStyle="#FFFFFF";ctx.font=`900 ${mob?13:15}px ${TVF}`;ctx.fillText(eng?`ENG → ${r.c.code}`:`${r.c.code} · P${dpos(r.c)}`,x+14,y+32);
   ctx.fillStyle=col;for(let i=0;i<9;i++){const bh=3+Math.abs(Math.sin(now*11+i*1.7))*9;ctx.fillRect(x+w-70+i*6,y+20-bh/2,3,bh)}
   ctx.fillStyle="#E6E9EF";ctx.font=`600 italic ${fs}px ${TVF}`;lines.forEach((l,i)=>ctx.fillText(l,x+14,y+48+i*fs*1.3));ctx.restore()}
 function tvRadioCard(ctx,cw,ch,now){const r=TVX.rad;if(!r)return;if(typeof BCX!=="undefined"&&BCX.tw&&now-r.t0<.3){r.t0=now;return}/* torre aberta: o rádio espera */const a=now-r.t0;if(a>r.dur){TVX.rad=null;return}const mob=cw<640;const k=Math.min(1,a/.25,(r.dur-a)/.3);
   ctx.save();ctx.globalAlpha=k;const fs=mob?12:14;ctx.font=`600 italic ${fs}px ${TVF}`;const lines=tvWrap(ctx,`“${r.txt}”`,mob?cw*.62:300).slice(0,3);const w=Math.max(170,Math.max(...lines.map(l=>ctx.measureText(l).width))+26),h=40+lines.length*fs*1.3;
   const x=10-(1-k)*40,y=mob?ch*.55:ch*.36;ctx.fillStyle="rgba(8,10,14,.9)";ctx.fillRect(x,y,w,h);ctx.fillStyle=r.c.t.c;ctx.fillRect(x,y,5,h);
-  ctx.fillStyle="#FFD400";ctx.font=`800 ${mob?10:11}px ${TVF}`;ctx.textAlign="left";ctx.fillText("RÁDIO DA EQUIPE",x+14,y+15);ctx.fillStyle="#FFFFFF";ctx.font=`900 ${mob?13:15}px ${TVF}`;ctx.fillText(`${r.c.code} · P${pos(r.c)}`,x+14,y+32);
+  ctx.fillStyle="#FFD400";ctx.font=`800 ${mob?10:11}px ${TVF}`;ctx.textAlign="left";ctx.fillText("RÁDIO DA EQUIPE",x+14,y+15);ctx.fillStyle="#FFFFFF";ctx.font=`900 ${mob?13:15}px ${TVF}`;ctx.fillText(`${r.c.code} · P${dpos(r.c)}`,x+14,y+32);
   // ondinha de áudio
   ctx.fillStyle=r.c.t.c;for(let i=0;i<9;i++){const bh=3+Math.abs(Math.sin(now*11+i*1.7))*9;ctx.fillRect(x+w-70+i*6,y+20-bh/2,3,bh)}
   ctx.fillStyle="#E6E9EF";ctx.font=`600 italic ${fs}px ${TVF}`;lines.forEach((l,i)=>ctx.fillText(l,x+14,y+48+i*fs*1.3));ctx.restore()}

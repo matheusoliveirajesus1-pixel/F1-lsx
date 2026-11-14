@@ -49,12 +49,11 @@ function revStep(c,dt,v1){if(!R.started||c.pit||c.ex||!running(c)||R.sc||R.red){
     if(c.hum&&s.verdict&&s.verdict!=="Sem punição"){radio(c,`${G.engineer||"Engenheiro"}: "${ex} Decisão: ${s.verdict}."`,{k:"punicao"});
       if(c.isP&&!R.mp&&running(c)&&!s.reviewed)pushAsk({c,kind:"review",dur:14,inc:s,q:`${G.engineer||"Engenheiro"}: "Punição de ${s.verdict}. ${ex} Pedimos revisão aos comissários? Custa uma taxa de €2.000 e só muda se houver prova nova."`,opts:[["review","Pedir revisão"],["accept","Aceitar a punição"]],def:"accept"})}
     else if(v&&v.hum&&s.verdict==="Sem punição")radio(v,`${G.engineer||"Engenheiro"}: "${ex} Os comissários decidiram: sem punição."`,{k:"punicao"});
-    // advertência conta para o ano (5 advertências, 4 de pilotagem = 10 posições no grid)
-    if(s.verdict==="Sem punição"&&s.clar>.8&&c.d){c.d.repr=(c.d.repr||0)+1;if(c.d.repr>=5){c.d.repr=0;c.d.gridPen=(c.d.gridPen||0)+10;rcMsg(`${c.code} chegou à 5ª advertência do ano: perde 10 posições no grid da próxima corrida.`,"warn","punicao")}}}})();
+    /* advertências do ano: pen.js (repAdd), iguais para todos */}})();
 (function(){if(typeof answerAskObj!=="function")return;const base=answerAskObj;
   globalThis.answerAskObj=function(a,k,auto){if(a&&a.kind==="review"){const s=a.inc;s.reviewed=1;if(k!=="review"){radio(a.c,"Entendido, aceitamos.",{me:1});return}
-      if(G&&!G.mp)G.money=(G.money||0)-.002;const ok=s.clar<.78&&rnd()<.55;
-      if(ok){const c=a.c;const pen=s.verdict==="10 s"?10:s.verdict==="5 s"?5:0;if(pen){c.pen=Math.max(0,c.pen-pen);s.verdict="Revogada na revisão"}rcMsg(`Comissários revisaram o lance de ${c.code} com as novas imagens: punição retirada.`,"good","punicao");radio(c,`${G.engineer||"Engenheiro"}: "Ganhamos a revisão! A punição foi retirada."`)}
+      if(G&&!G.mp)G.money=(G.money||0)-.002;const ok=s.clar<.72;/* revisão sem sorteio: só muda quando a culpa estava em dúvida (as imagens novas a favor) */
+      if(ok){const c=a.c;const pen=s.verdict==="10 s"?10:s.verdict==="5 s"?5:0;if(pen){c.pen=Math.max(0,c.pen-pen);s.verdict="Revogada na revisão";if(typeof stewReport==="function")stewReport(c,"Revogada na revisão",s.why||"","imagens novas: a culpa não ficou clara")}rcMsg(`Comissários revisaram o lance de ${c.code} com as novas imagens: punição retirada.`,"good","punicao");radio(c,`${G.engineer||"Engenheiro"}: "Ganhamos a revisão! A punição foi retirada."`)}
       else{rcMsg(`Comissários: pedido de revisão de ${a.c.code} negado, não há prova nova.`,"","punicao");radio(a.c,`${G.engineer||"Engenheiro"}: "Revisão negada. A punição continua."`)}return}
     return base(a,k,auto)}})();
 // ---------- 5) regras da FIA (rodadas a cada passo junto com as peças soltas)
@@ -66,7 +65,8 @@ function fiaTick(){if(!R||!R.started)return;fiaInit();const F=R._fia;if(!F.stall
   const raceT=R.t-(R.go||0);if(!F.timeUp&&!R.finishing&&(raceT>F.tLim||raceT>F.tTot)){F.timeUp=true;R.L=Math.min(R.L,R.lead+1);rcMsg("Tempo máximo de corrida atingido: esta é a última volta.","warn","quadriculada")}
   // retardatários tiram a volta antes da relargada
   if(R.sc&&R.sc.type==="sc"&&!R.sc.unlap&&R.lead>=R.sc.start+R.sc.laps-1&&R.sc.laps>1){R.sc.unlap=1;const lead=R.order[0];if(lead){const run=R.order.filter(c=>running(c)&&!c.pit);
-      const onLead=run.filter(c=>Math.floor(c.prog)>=Math.floor(lead.prog)-0);const tail=onLead[onLead.length-1];const lapped=run.filter(c=>Math.floor(c.prog)<Math.floor(lead.prog)&&c!==tail);
+      /* retardatário = mais de meia volta atrás do líder (antes comparava o número da volta e, logo depois do líder cruzar a linha, quase todo o pelotão parecia uma volta atrás) */
+      const onLead=run.filter(c=>lead.prog-c.prog<=.5);const tail=onLead[onLead.length-1];const lapped=run.filter(c=>lead.prog-c.prog>.5&&c!==tail);
       // os retardatários andam de verdade: saem da fila pela esquerda, passam o pelotão e o safety car e dão a volta até o fim da fila (sem salto de posição)
       if(tail&&lapped.length){R.sc.unlapOn=true;R.sc.tailId=tail.id;lapped.forEach(c=>{c.unlap=R.t});
         rcMsg(`Retardatários liberados: ${lapped.map(c=>c.code).join(", ")} passam o safety car e vão para o fim da fila.`,"","sc")}}}
@@ -79,14 +79,15 @@ function fiaTick(){if(!R||!R.started)return;fiaInit();const F=R._fia;if(!F.stall
   // refrigeração fechada demais em pista quente: o motor perde potência às vezes
   for(const c of R.cars){if(!c.hotK||!running(c)||c.pit)continue;if(rnd()<c.hotK*.0006){c.lose=Math.max(c.lose||0,.6);if(c.hum&&(!c._hotMsg||R.t-c._hotMsg>40)){c._hotMsg=R.t;radio(c,`${G.engineer||"Engenheiro"}: "Motor quente: está cortando potência. Poupe um pouco ou levante o pé no fim das retas."`,{k:"motor"})}}}
   // excesso de velocidade no pit lane: multa por km/h acima do limite
-  for(const c of R.cars){if(!c.pit||c._pitSpd===c.pit)continue;c._pitSpd=c.pit;const disc=(c.d.pers||{}).disc??65;if(rnd()<(100-disc)*.0004){const kmh=ri(1,6);const eur=kmh*100;rcMsg(`${c.code}: excesso de velocidade no pit lane (${kmh} km/h acima). Multa de €${eur}.`,"","punicao");if(c.isP&&G&&!G.mp)G.money=(G.money||0)-eur/1e6}}}
+  /* excesso de velocidade no pit lane: medido em pen.js (sem sorteio) */}
 (function(){if(typeof looseTick!=="function")return;const base=looseTick;globalThis.looseTick=function(){base();try{fiaTick()}catch(e){console.warn("fia",e)}}})();
 // pontos de corrida encurtada, classificação com 90% e desempate (aplicados no resultado)
 const SHORT_PTS=[[2,[]],[.25,[6,4,3,2,1]],[.5,[13,10,8,6,5,4,3,2,1]],[.75,[19,14,12,9,8,6,5,3,2,1]]];
 (function(){if(typeof endRace!=="function")return;const base=endRace;globalThis.endRace=function(){const was=R.over;base.apply(this,arguments);if(was||!R.result||R.result.sprint)return;try{fiaResult(R.result)}catch(e){console.warn("fia",e)}}})();
 function fiaResult(res){const F=R._fia||{L0:R.L};const cls=res.cls;
   // vistoria depois da corrida: prancha do assoalho gasta demais (carro baixo demais no acerto)
-  {const me=R.cars.find(c=>c.isP);const e=me&&cls.find(x=>x.d===me.d.id&&x.status==="ok");if(e&&me.plankK>0&&rnd()<Math.min(.6,me.plankK*.22)){e.status="dsq";e.pos=null;e.pts=0;e.why="desgaste excessivo da prancha do assoalho (carro baixo demais)";rcMsg(`DESCLASSIFICADO: ${me.code} (prancha do assoalho gasta além do limite).`,"bad","punicao")}}const ok=cls.filter(e=>e.status==="ok");if(!ok.length)return;const wl=ok[0].laps||R.L;
+  // prancha: desgaste calculado pelas voltas com o carro abaixo da altura sugerida (pen.js); acima do limite = desclassificado (vale para todos)
+  for(const c of R.cars){const e=cls.find(x=>x.d===c.d.id&&x.status==="ok");if(!e||!(c.plankW>1))continue;e.status="dsq";e.pos=null;e.pts=0;e.why=`desgaste excessivo da prancha do assoalho (${Math.round(c.plankW*100)}% do limite)`;rcMsg(`DESCLASSIFICADO: ${c.code} (prancha do assoalho gasta além do limite).`,"bad","punicao");if(typeof stewReport==="function")stewReport(c,"Desclassificado","prancha do assoalho gasta além do limite",`${Math.round(c.plankW*100)}% do limite`)}const ok=cls.filter(e=>e.status==="ok");if(!ok.length)return;const wl=ok[0].laps||R.L;
   // 90%: quem abandonou depois de completar 90% das voltas do vencedor é classificado
   const cl90=cls.filter(e=>e.status==="dnf"&&e.laps>=Math.floor(wl*.9)).sort((a,b)=>b.laps-a.laps);
   cl90.forEach(e=>{e.status="ok";e.cl90=1;e.why=(e.why?e.why+" · ":"")+"classificado (90% da prova)";e.time=0});

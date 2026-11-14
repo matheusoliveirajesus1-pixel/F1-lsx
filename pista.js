@@ -42,5 +42,9 @@ function yellowK(c){if(!R.yellows.length)return 1;const f=fr(c.prog),L=R.geo.len
   for(const y of R.yellows){if(y.until<R.t)continue;const tgt=y.dbl?.84:.93;let d=fr(y.a)-f;if(d<0)d+=1;d*=L;const inside=inZone(f,y.a,y.b);
     const kk=inside?tgt:d<160?1-(1-tgt)*(1-d/160):1;if(kk<k){k=kk;dbl=y.dbl;yy=y}}
   if(yy&&inZone(f,yy.a,yy.b)){yy.id=yy.id||(R.yId=(R.yId||0)+1);if(c.yLast!==yy.id){c.yLast=yy.id;const disc=(c.d.pers||{}).disc??65;
-      c.yNo=!c.pit&&rnd()<(1-disc/100)*.022+(c.mode==="attack"?.008:0)+((c.st&&c.st.frus>60)?.008:0);if(c.yNo){R.nYellowNo=(R.nYellowNo||0)+1;stewAdd({kind:"yellow",cul:c.id,dbl,at:R.t+rr(20,40)})}}}
+      c.yNo=!c.pit&&rnd()<(1-disc/100)*.011+(c.mode==="attack"?.004:0)+((c.st&&c.st.frus>60)?.004:0);if(c.yNo)R.nYellowNo=(R.nYellowNo||0)+1;
+      // medição: velocidade média na zona contra a velocidade normal do carro naquele ponto (os comissários olham isso, não a intenção)
+      c.yM={id:yy.id,dbl,n:0,s:0}}
+    if(c.yM&&c.yM.id===yy.id&&!c.pit&&!c.ex&&!(c.emergT>R.t)){const ref=speedAt(c,f)*(c.k||1);if(ref>8){c.yM.s+=Math.min(1.2,(c.v||0)/ref);c.yM.n++}}}
+  else if(c.yM){const M=c.yM;c.yM=null;if(M.n>8){const r=M.s/M.n,lim=M.dbl?.91:.965;if(r>lim){R.nYellowPen=(R.nYellowPen||0)+1;stewAdd({kind:"yellow",cul:c.id,dbl:M.dbl,ratio:r,at:R.t+rr(12,20)})}}}
   if(k<1&&c.yNo)k=1-(1-k)*.35;return k}

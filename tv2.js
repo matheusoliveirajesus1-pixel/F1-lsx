@@ -2,7 +2,7 @@
 // Gráficos: previsão de alcance ("chega em X voltas"), janela de box, radar de velocidade e história dos pneus.
 // Pódio: champanhe e uma fanfarra original.
 // ---------- gráficos de previsão (um a cada ~45 s, quando não há aviso mais importante)
-function tvGraphics(){if(!R.started||R.over||R.sc||R.red||TVX.ban||TVX.banQ.length)return;if(R.t<(TVX.gfxNext||40))return;TVX.gfxNext=R.t+vrr(40,55);const run=R.order.filter(c=>running(c)&&!c.pit);if(run.length<4)return;
+function tvGraphics(){if(!R.started||R.over||R.sc||R.red||R.qMode||TVX.ban||TVX.banQ.length)return;if(R.t<(TVX.gfxNext||40))return;TVX.gfxNext=R.t+vrr(40,55);const run=R.order.filter(c=>running(c)&&!c.pit);if(run.length<4)return;
   const kind=(TVX.gfxK=((TVX.gfxK||0)+1)%4);
   if(kind===0){let best=null;for(let i=1;i<Math.min(12,run.length);i++){const A=run[i-1],B=run[i];const gap=(A.prog-B.prog)*B.L;const d=(A.L||0)-(B.L||0);if(gap>.7&&gap<4&&d>.12){const laps=Math.ceil(gap/d);if(!best||laps<best.laps)best={A,B,laps,gap}}}
     if(best){tvBan("PREVISÃO DE ALCANCE",`${best.B.code} chega em ${best.A.code} em ~${best.laps} volta${best.laps>1?"s":""} (${best.gap.toFixed(1).replace(".",",")} s de diferença)`,best.B.t.c,5,1);return}}
@@ -73,7 +73,7 @@ function towerCamRow(cars,me){if(!bcOn()||!R.started||R.over){BCX.tw=null;return
   if(!tw&&t>=BCX.twNext&&!TVX.rad&&!(mob&&(TVX.ban||TVX.banQ.length||(typeof SMART!=="undefined"&&SMART.pip)||(typeof flagInfo==="function"&&flagInfo())))){let pick=null;const fast=R.fast&&R.fast.c&&R.fast.c.id;
     for(const c of cars){if(!running(c)||c===me||c.pit)continue;const p=pos(c),pv=BCX.twPos[c.id];
       if(fast&&fast===c.id&&BCX.twFast!==fast){pick={c,lab:"VOLTA MAIS RÁPIDA"};break}
-      if(pv!=null&&p<pv&&R.t-(c.pitExit||-99)>10){pick={c,lab:`GANHOU POSIÇÃO · P${p}`};break}
+      if(pv!=null&&p<pv&&R.t-(c.pitExit||-99)>10){pick={c,lab:R.qMode?`SUBIU NA TABELA · P${p}`:`GANHOU POSIÇÃO · P${p}`};break}
       if(c.pitExit&&t-c.pitExit<4){pick={c,lab:"SAIU DO BOX"};break}
       if(c.att&&c.att.commit){const A=R.cars.find(x=>x.id===c.att.id);pick={c,lab:A?`ATACANDO ${A.code}`:"ATACANDO"};break}}
     if(pick){tw=BCX.tw={id:pick.c.id,lab:pick.lab,t0:t,dur:6.5};BCX.twNext=t+20}}

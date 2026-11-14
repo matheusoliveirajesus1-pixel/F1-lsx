@@ -109,7 +109,7 @@ function careerTab(){const me=ME();$("#body").innerHTML=`<div class="grid2" styl
    <div class="card"><h3>Contrato</h3><div class="kv"><span>Equipe</span><b>${myTeam().n}</b></div><div class="kv"><span>Equipe de box ${ib("box")}</span><b class="num">${Math.round(crewOf(myTeam()))}/100</b></div><div class="kv"><span>Salário</span><b class="num">${money(me.salary)}/ano</b></div><div class="kv"><span>Ganhos na carreira</span><b class="num">${money(G.money)}</b></div>
     ${G.signed?`<p class="pill good">Assinado com ${teamName(G.signed.team)} para ${G.year+1}</p>`:G.offers.length?G.offers.map((o,i)=>`<div class="card" style="background:var(--panel-2)"><b>${teamName(o.team)}</b><span class="muted">${o.years} ano(s) · ${money(o.salary)}/ano · ${o.role} · meta: ${o.exp}</span><button class="btn sm" data-act="accept" data-k="${i}">Assinar</button></div>`).join(""):`<p class="muted">O mercado de pilotos abre na reta final da temporada. Resultados, popularidade e respeito atraem propostas.</p>`}</div>
    ${sponsorsCard()}
-   <div class="card"><h3>Superlicença ${ib("superlicenca")}</h3>${licBar(licPoints())}<div class="kv"><span>Pontos nos últimos 12 meses</span><b class="num">${licPoints()} de 12</b></div><div class="kv"><span>Advertências na temporada</span><b class="num">${G.reprimands||0} de 3</b></div><div class="kv"><span>Relação com os comissários</span><b class="num">${Math.round(G.stewRep??50)}</b></div>${G.gridPen?`<p class="pill bad">${G.gridPen} posições de punição no grid da próxima corrida</p>`:""}${G.ban?`<p class="pill bad">Suspenso da próxima corrida</p>`:""}</div>
+   <div class="card"><h3>Superlicença ${ib("superlicenca")}</h3>${licBar(licPoints())}<div class="kv"><span>Pontos nos últimos 12 meses</span><b class="num">${licPoints()} de 12</b></div><div class="kv"><span>Advertências na temporada</span><b class="num">${(G.drivers[G.me]&&G.drivers[G.me].repS&&G.drivers[G.me].repS.s===G.season?G.drivers[G.me].repS.n:0)} de 5</b></div><div class="kv"><span>Relação com os comissários</span><b class="num">${Math.round(G.stewRep??50)}</b></div>${(G.gridPen||0)+((G.drivers[G.me]||{}).gridPen||0)?`<p class="pill bad">${(G.gridPen||0)+((G.drivers[G.me]||{}).gridPen||0)} posições de punição no grid da próxima corrida</p>`:""}${G.ban?`<p class="pill bad">Suspenso da próxima corrida</p>`:""}</div>
    <div class="card"><h3>Carreira</h3><div class="kv"><span>Largadas</span><b class="num">${me.stats.starts}</b></div><div class="kv"><span>Vitórias</span><b class="num">${me.stats.wins}</b></div><div class="kv"><span>Pódios</span><b class="num">${me.stats.podiums}</b></div><div class="kv"><span>Poles</span><b class="num">${me.stats.poles}</b></div><div class="kv"><span>Títulos</span><b class="num">${me.stats.titles}</b></div>
     ${G.history.map(h=>`<div class="kv"><span>${h.year} · ${teamName(h.team)}</span><b class="num">${h.pos}º · ${h.pts} pts</b></div>`).join("")}</div>
    <div class="card"><h3>Opções</h3><h4 class="ag">Realismo ${ib("realismo")}</h4><div class="seg">${Object.entries(REAL).map(([k,r])=>`<button data-act="realism" data-k="${k}" class="${(G.settings.real||"real")===k?"on":""}">${r.n}</button>`).join("")}</div><p class="muted" style="font-size:12.5px;margin:6px 0 10px">${esc(REAL[G.settings.real||"real"].d)}</p><label class="toggle"><input type="checkbox" data-act="sndPref" ${G.settings.sound?"checked":""}> Som nas corridas</label><button class="btn sm" data-act="wipe">Apagar carreira</button></div></div></div>`}
@@ -264,9 +264,9 @@ function hudTower(me){const H=hudCfg();if(H.tower==="off")return;const ord=R.ord
   setT("hLap",`VOLTA ${Math.min(R.L,Math.max(1,R.lead+1))}/${R.L}`);setT("hTowerMode",H.tower==="full"?"GRID":"")}
 function secCls(me,k){const t=me.secCur[k];if(t==null)return"";const b=R.secBest[k];if(b&&b.id===me.id&&Math.abs(b.t-t)<1e-6)return"p";if(me.secPB[k]!=null&&Math.abs(me.secPB[k]-t)<1e-6)return"g";return"y"}
 function hudSectors(me){const H=hudCfg();if(!H.sectors)return;const p=R.order.indexOf(me)+1;setT("hPos","P"+p);setT("hPosN","/"+R.cars.length);
-  {setT("hNow",brainNow(me));const fl=Math.max(0,me.fuel||0),f0=me.fuel0||1,per=f0/R.L,mg=(fl-per*Math.max(0,R.L-me.lap))/Math.max(.01,per);
+  {setT("hNow",brainNow(me));const fl=Math.max(0,me.fuel||0),f0=me.fuel0||1,per=f0/R.L,mg=R.qMode?9:(fl-per*Math.max(0,R.L-me.lap))/Math.max(.01,per);/* classificação: tanque para poucas voltas, sem conta de corrida */
     const fe=$("#hFuel");if(fe){fe.style.width=clamp(fl/f0*100,0,100).toFixed(0)+"%";fe.style.background=mg<0?"#FF4D4F":mg<.8?"#FFD400":"#2BD46E"}
-    setT("hFuelT",(mg>=0?"+":"−")+Math.abs(mg).toFixed(1).replace(".",",")+" v");
+    setT("hFuelT",R.qMode?fl.toFixed(1).replace(".",",")+" kg":(mg>=0?"+":"−")+Math.abs(mg).toFixed(1).replace(".",",")+" v");
     const be=$("#hBatt");if(be){be.style.width=clamp(me.batt,0,100).toFixed(0)+"%";be.style.background=me.batt<15?"#FF4D4F":"#B65CFF"}setT("hBattT",Math.round(me.batt)+"%")}
   const cur=me.status==="run"&&R.started?R.t-me.lapStart:0;setT("hCur",fmtT(Math.max(0,cur)).replace(/(\.\d)\d\d$/,"$1"));
   let k=0;while(k<3&&me.secCur[k]!=null)k++;for(let j=0;j<3;j++){const e=$("#hS"+(j+1));if(!e)continue;const c=j<k?secCls(me,j):j===k&&running(me)?"cur":"";if(e.className!==c)e.className=c}
@@ -324,7 +324,7 @@ function directorPick(){const me=R.cars.find(c=>c.isP);const h=R.hl[R.hl.length-
       else{setShot(c,"tv",8,lab);return}}}
   const cur=DIR.subj;if(R.t<DIR.until&&cur&&(running(cur)||DIR.kind==="fixed"))return;
   const r=vrnd();const b=closestBattle();
-  if(me&&running(me)&&(r<.5||!b)){setShot(me,vrnd()<.45?"chase":"tv",9,`Você · P${pos(me)} · ${me.code}`);return}
+  if(me&&running(me)&&(r<.5||!b)){setShot(me,vrnd()<.45?"chase":"tv",9,`Você · P${dpos(me)} · ${me.code}`);return}
   if(b&&r<.85){setShot(b.B,"tv",8,`Briga pelo ${pos(b.A)}º · ${b.A.code} × ${b.B.code}`);return}
   const l=R.order.find(c=>running(c)&&!c.pit);if(l)setShot(l,"tv",7,`Líder · ${l.code}`)}
 function cameraFrame(dt,cw,ch){const me=R.cars.find(c=>c.isP);let foc=me,kind=UI.cam;if(UI.cam==="tv"&&typeof smartPick==="function")return smartPick(dt,cw,ch);
@@ -357,7 +357,7 @@ function gapTxt(c){const i=R.order.indexOf(c);if(i===0)return c.status==="fin"?"
 function setH(sel,h){const e=$(sel);if(e&&e._h!==h){e._h=h;e.innerHTML=h}}
 function updatePanels(now){const me=R.cars.find(c=>c.isP);
   const fl=flagInfo(),fe=$("#flag");if(fl){fe.hidden=false;fe.textContent=fl[0];fe.style.background=fl[1];fe.style.color=fl[2]}else fe.hidden=true;
-  const L=$("#lights");const lights=!R.started&&R.form&&R.form.phase==="lights";if(lights){L.hidden=false;const lit=R.lightsStart==null?0:Math.min(5,Math.max(0,Math.floor(R.t-R.lightsStart)+1));L.querySelectorAll("i").forEach((x,i)=>x.classList.toggle("on",i<lit))}else L.hidden=true;
+  const L=$("#lights");const rsL=!!(R.rs&&R.rs.phase==="lights");const lights=(!R.started&&R.form&&R.form.phase==="lights")||rsL;if(lights){L.hidden=false;const ls=rsL?R.rs.lightsStart:R.lightsStart;const lit=ls==null||R.t<ls?0:Math.min(5,Math.max(0,Math.floor(R.t-ls)+1));L.querySelectorAll("i").forEach((x,i)=>x.classList.toggle("on",i<lit))}else L.hidden=true;
   setT("hWx",`${R.w>.6?"🌧️ Chuva forte":R.w>.25?"🌦️ Pista úmida":R.rain?"🌦️ Garoa":"☀️ Seca"} · pista ${Math.round(R.w*100)}% molhada`);
   if(me){hudSectors(me);hudWheel(me)}
   $("#lapc").textContent=`Volta ${Math.min(R.L,Math.max(1,R.lead+1))} / ${R.L}`;
@@ -514,7 +514,7 @@ function resultsStep(){const res=R.result;const e=res.cls.find(x=>x.d===G.me);co
    <div class="card"><h3>Você: ${e.status==="ok"?e.pos+"º lugar":e.status==="dsq"?"desclassificado":"abandono"}${e.pts?` · +${e.pts} pts`:""}</h3><p>${e.status==="ok"?`Largou em ${res.gridMe}º, ${e.stops} parada(s), melhor volta ${fmtT(e.best)}.`:esc(e.why||"")}</p>
     <div class="kv"><span>Popularidade</span><b class="num">${Math.round(G.fame.pop)}</b></div><div class="kv"><span>Seguidores</span><b class="num">${fmtK(G.fame.followers)}</b></div><div class="kv"><span>Confiança da equipe</span><b class="num">${Math.round(G.trust)}%</b></div>${res.goals&&res.goals.list.length?`<h4 class="ag">Metas da equipe</h4>${goalsHtml(res.goals.list,false)}`:""}${res.shopCr?`<div class="kv"><span>Créditos de oficina</span><b class="num">+${res.shopCr+(res.goals?res.goals.tot:0)} (total ${G.shop?G.shop.cr:0})</b></div>`:""}
     <div class="row"><button class="btn go" data-act="toMixed">Ir para a zona mista</button><button class="btn" data-act="mnLog">Registro da corrida</button></div></div>
-   ${typeof hlCard==="function"?hlCard():""}<div class="card" style="grid-column:1/-1"><h3>Classificação final</h3>${resultTable(res.cls)}</div></div>`;
+   ${typeof hlCard==="function"?hlCard():""}<div class="card" style="grid-column:1/-1"><h3>Classificação final</h3>${resultTable(res.cls)}</div>${typeof stewCard==="function"?stewCard():""}</div>`;
   const cv=$("#pod");const t0=performance.now();const tops=top.map(x=>{const d=G.drivers[x.d],t=teamOf(x.team);return{code:d.code,col:t.c,col2:t.c2}});
   let lastP=0;const loop=n=>{if(!$("#pod"))return;const el=(n-t0)/1000;if(n-lastP>33){lastP=n;drawPodium(cv.getContext("2d"),cv.width,cv.height,el,tops)}if(el<14)requestAnimationFrame(loop)};requestAnimationFrame(loop)}
 function mixedStep(){const el=$("#wk");if(!G.interview&&!UI.mixDone)makeInterview("post");

@@ -224,7 +224,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     // pórtico de largada
     {const a=trackPos(0,-(TW+6*U)),b=trackPos(0,TW+6*U);items.push({d:(a.x+b.x)/2+(a.y+b.y)/2+30*U,draw:()=>{const A0=toScreen(a.x,a.y,0,cw,ch),A1=toScreen(a.x,a.y,34*U,cw,ch),B0=toScreen(b.x,b.y,0,cw,ch),B1=toScreen(b.x,b.y,34*U,cw,ch);
       ctx.strokeStyle="#2B2F36";ctx.lineWidth=Math.max(2,3*U*Z);ctx.beginPath();ctx.moveTo(A0[0],A0[1]);ctx.lineTo(A1[0],A1[1]);ctx.lineTo(B1[0],B1[1]);ctx.lineTo(B0[0],B0[1]);ctx.stroke();
-      const lit=!RS&&!R.started&&R.form&&R.form.phase==="lights"&&R.lightsStart!=null?Math.min(5,Math.max(0,Math.floor(R.t-R.lightsStart)+1)):0;for(let k=0;k<5;k++){const u=.3+k*.1;const x=A1[0]+(B1[0]-A1[0])*u,y=A1[1]+(B1[1]-A1[1])*u;ctx.fillStyle=k<lit?"#FF1A1A":"#3A0000";ctx.beginPath();ctx.arc(x,y+3,Math.max(2,3*U*Z),0,7);ctx.fill();if(k<lit){ctx.fillStyle="rgba(255,40,40,.3)";ctx.beginPath();ctx.arc(x,y+3,Math.max(4,7*U*Z),0,7);ctx.fill()}}}})}
+      const lit=!RS&&!R.started&&R.form&&R.form.phase==="lights"&&R.lightsStart!=null?Math.min(5,Math.max(0,Math.floor(R.t-R.lightsStart)+1)):(!RS&&R.rs&&R.rs.phase==="lights"&&R.t>=R.rs.lightsStart)?Math.min(5,Math.floor(R.t-R.rs.lightsStart)+1):0;for(let k=0;k<5;k++){const u=.3+k*.1;const x=A1[0]+(B1[0]-A1[0])*u,y=A1[1]+(B1[1]-A1[1])*u;ctx.fillStyle=k<lit?"#FF1A1A":"#3A0000";ctx.beginPath();ctx.arc(x,y+3,Math.max(2,3*U*Z),0,7);ctx.fill();if(k<lit){ctx.fillStyle="rgba(255,40,40,.3)";ctx.beginPath();ctx.arc(x,y+3,Math.max(4,7*U*Z),0,7);ctx.fill()}}}})}
   }
   // carros
   const lead=R.order.find(c=>c.status==="run"&&!c.pit&&!c.parked);
@@ -261,13 +261,13 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
   // etiquetas por cima
   const placed=[];const labs=R.cars.filter(c=>WP[c.id]).map(c=>{const s=toScreen(WP[c.id].x,WP[c.id].y,12*CSC,cw,ch);return{c,s}}).sort((a,b)=>(b.c.isP?1:0)-(a.c.isP?1:0)||b.s[1]-a.s[1]);
   const HC=hudCfgR(),lm=HC.labels;const meC=R.cars.find(x=>x.isP),mp=meC?pos(meC):0;const LP={};
-  labs.forEach(({c,s})=>{const p=pos(c);const show=c.isP||c.hum||(lm==="all"&&detail&&Z>.5)||(lm==="near"&&detail&&Z>.42&&(Math.abs(p-mp)<=3||p===1));if(!show)return;
-    if(!onScreen(s,cw,ch,30))return;const lab=RS?c.code:`P${p} ${c.code}`;ctx.font=`700 ${c.isP?12:10.5}px "Titillium Web",sans-serif`;ctx.textAlign="center";const tw=ctx.measureText(lab).width+10;
+  labs.forEach(({c,s})=>{const p=R.qMode&&typeof qPosOf==="function"?qPosOf(c):pos(c);/* classificação: posição pelos tempos (0 = sem tempo) */const show=c.isP||c.hum||(lm==="all"&&detail&&Z>.5)||(lm==="near"&&detail&&Z>.42&&(Math.abs(p-mp)<=3||p===1));if(!show)return;
+    if(!onScreen(s,cw,ch,30))return;const lab=RS||(R.qMode&&!p)?c.code:`P${p} ${c.code}`;ctx.font=`700 ${c.isP?12:10.5}px "Titillium Web",sans-serif`;ctx.textAlign="center";const tw=ctx.measureText(lab).width+10;
     s=[s[0],s[1]];for(let k=0;k<4;k++){const hit=placed.find(q=>Math.abs(q[0]-s[0])<(q[2]+tw)/2&&Math.abs(q[1]-s[1])<16);if(!hit)break;s[1]=hit[1]-17}placed.push([s[0],s[1],tw]);LP[c.id]=[s[0],s[1]-14];
     const hu=c.hum&&!c.isP;ctx.fillStyle=c.isP?"#FFFFFF":hu?"#FFD400":"rgba(12,14,18,.82)";ctx.fillRect(s[0]-tw/2,s[1]-14,tw,15);ctx.fillStyle=c.col;ctx.fillRect(s[0]-tw/2,s[1]-14,3,15);ctx.fillStyle=c.isP||hu?"#0A0C10":"#FFF";ctx.fillText(lab,s[0]+1,s[1]-3);
     if(c.blue&&detail)drawFlag(ctx,[s[0]+tw/2+3,s[1]+2],"#1E88E5",Z,now);
     if(c.dyn&&c.dyn.spin){ctx.fillStyle="#FFD400";ctx.font="700 10px 'Titillium Web',sans-serif";ctx.fillText("RODOU!",s[0],s[1]-18)}
-    if(c._stopped){ctx.fillStyle="#FFD400";ctx.font="700 10px 'Titillium Web',sans-serif";ctx.fillText("PIT STOP",s[0],s[1]-18)}});
+    if(c._stopped){ctx.fillStyle="#FFD400";ctx.font="700 10px 'Titillium Web',sans-serif";ctx.fillText(R.qMode?"BOX":"PIT STOP",s[0],s[1]-18)}});
   if(HC.bubbles&&R.bubbles&&!RS&&!opts.pip)drawBubbles(ctx,cw,ch,WP,LP);
 }
 // configuração da tela (lida pelo desenho)

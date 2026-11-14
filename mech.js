@@ -67,7 +67,7 @@ function crewAfterRace(){if(!G||!G.teams)return;for(const t of G.teams){const cr
 // liberação: a equipe olha o pit lane; se vem carro, segura ou libera arriscando
 function pitRelease(c){const PL=R.pitLane,P=c.pit;if(!P)return 0;const cr=crewOf(c.t);
   const near=R.cars.find(o=>o!==c&&o.pit&&o.pit.phase==="in"&&o.pit.s<P.gar&&P.gar-o.pit.s<26);
-  if(!near)return 0;if(rnd()<(100-cr)/100*.55){c.pen+=5;c.penServe=false;rcMsg(`${c.code}: liberação insegura na frente de ${near.code}. Punição de 5 s.`,"warn","punicao");if(c.hum)radio(c,`Liberação insegura: soltaram o carro na frente do ${near.code}. 5 segundos de punição.`,{k:"punicao"});R.nUnsafe=(R.nUnsafe||0)+1;return 0}
+  if(!near)return 0;if(rnd()<(100-cr)/100*.55){c.pen+=5;c.penServe=true;rcMsg(`${c.code}: liberação insegura na frente de ${near.code}. Punição de 5 s.`,"warn","punicao");if(typeof stewReport==="function")stewReport(c,"5 s","liberação insegura no pit lane",`${near.code} vinha a ${Math.round(P.gar-near.pit.s)} m`);if(c.hum)radio(c,`Liberação insegura: soltaram o carro na frente do ${near.code}. 5 segundos de punição.`,{k:"punicao"});R.nUnsafe=(R.nUnsafe||0)+1;return 0}
   if(c.hum)radio(c,`Seguramos um instante para o ${near.code} passar no pit lane.`,{k:"pitlane"});return rr(.5,1.3)}
 
 // ---------- medidor de risco (mesma conta do erro, sem o sorteio)

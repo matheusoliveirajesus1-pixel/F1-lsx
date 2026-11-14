@@ -45,8 +45,13 @@ function contactRisk(c,ev,i,push){if(R.sc||R.red||inYellow(c)||!R.started)return
 // fora da linha no fim da corrida tem sujeira (marbles): escorrega mais
 function offLineK(c,ev,i){if(ev==="brake"||(R.marb||0)<.25)return 1;const off=Math.abs((c.y||0)-R.geo.line[i]*(c.lineK||1))>2.2;return off?1+R.marb*.6:1}
 function crowdEv(f,a){if(!R)return;R.crowd=R.crowd||[];R.crowd.push({f:fr(f),t:R.t,a});if(R.crowd.length>30)R.crowd.shift()}
-function trackLimit(c){if(R.sc)return;c.warn=(c.warn||0)+1;if(c.warn===3&&c.hum)radio(c,"Terceira advertência por limite de pista. Mais uma e vem punição!",{pause:false});
-  if(c.warn>=4){c.warn=0;c.pen+=5;rcMsg(`${c.code}: 5s de punição por limites de pista.`,"warn","limites");if(c.hum)radio(c,"Recebemos 5 segundos por limites de pista.",{k:"limites"})}}
+// limites de pista (regulamento): cada vez apaga a volta; na 3ª, bandeira preta e branca; 4ª = 5 s, 5ª = 10 s, a partir da 6ª = drive-through.
+// Contador próprio (não se mistura com as advertências dos comissários).
+function trackLimit(c){if(R.sc||R.red)return;c.tl=(c.tl||0)+1;c.lapDel=1;if(typeof qTrackLimit==="function"&&R.qMode){qTrackLimit(c);return}const n=c.tl;
+  if(n<=3){if(c.isP||n===3)rcMsg(`${c.code}: volta apagada por limites de pista (${n}ª vez)${n===3?". Bandeira preta e branca":""}.`,"","limites");if(c.hum)radio(c,n===3?"Bandeira preta e branca: terceira vez fora dos limites. Na próxima é punição!":`Passamos dos limites de pista (${n}ª vez). A volta foi apagada.`,{k:"limites"})}
+  else if(n===4)penalize(c,5,"limites de pista (4ª vez)",0,"centro do carro mais de 1 m além da linha branca");
+  else if(n===5)penalize(c,10,"limites de pista (5ª vez)",0,"centro do carro mais de 1 m além da linha branca");
+  else if(typeof penDrive==="function"&&!c.penDue)penDrive(c,"dt","limites de pista (repetidos)",0,`${n}ª vez`)}
 function errorOutcome(c,ev,kind,ro,fast,cn,saved){const f=fr(c.prog),nm=cn?cn.n:"curva";const kk=1.6-(c.d.a.kerb||75)/100;
   // O risco decidiu QUE o piloto erra. Aqui o erro vira um comando errado (frear tarde, entrar rápido, acelerar cedo, não corrigir a tempo).
   // O resultado (travar, alargar, sair da pista, segurar, rodar, bater) sai dos pneus e do carro no núcleo de dinâmica (dyn.js),

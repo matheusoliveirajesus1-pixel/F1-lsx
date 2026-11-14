@@ -46,7 +46,7 @@ const VOX={
  eng_info:["Volta {V}: {T}. Você está em P{P}.","P{P}, {L} voltas para o fim.","{T} na última volta. O {A} está a {G} s.","Tudo certo, P{P}. Os pneus estão em {W}%.","Pneus em {W}%. Temos margem.","{L} voltas para o fim. Mantém esse ritmo.","Sua última volta: {T}. Continua assim.","P{P}. O {A} está a {G} s à sua frente.","Faltam {L} voltas. Concentração.","P{P}. Cada posição conta."],
  eng_crash:["Cuidado! Carro batido na {C}, bandeira amarela!","Acidente do {A} à frente, na {C}. Cuidado!","Atenção: {A} parado na {C}. Reduz ali."],
  eng_restart:["Safety car entrando. Relargada, prepare os pneus!","O safety car sai nesta volta. Aquece os pneus!"],
- eng_box:["Box, box nesta volta. Pneus {X}.","Vamos parar nesta volta. Pneus {X}.","Box, box! Confirma, pneus {X}."],
+ eng_box:["Box, box nesta volta. Pneu {X}.","Vamos parar nesta volta. Pneu {X}.","Box, box! Confirma, pneu {X}."],
  eng_threat:["O {A} está chegando com o modo de ultrapassagem. Defende!","Atenção: {A} vai atacar na próxima reta.","Cuidado com o {A} atrás, ele tem mais bateria."],
  eng_lead:["Mudança na liderança: {A} é o novo líder.","O {A} passou para a ponta da corrida."],
  eng_fast:["Volta mais rápida da corrida! {T}. Fantástico!","Roxo! Volta mais rápida: {T}. Continua assim!","{T}! Ninguém andou mais rápido hoje!"],
@@ -99,7 +99,7 @@ function voxFinish(me){const p=pos(me),exp=typeof expectedPos==="function"?expec
   else{vox("eng_fin_bad",me,v,3,"eng");setTimeout(()=>vox("me_bad",me,v,3),2600)}}
 
 // ---------- observando o carro do jogador (1 vez a cada meio segundo de corrida)
-function voxTick(){if(!R||!R.vox||!R.started)return;const me=R.cars.find(c=>c.isP);if(!me)return;
+function voxTick(){if(!R||!R.vox||!R.started||R.qMode)return;const me=R.cars.find(c=>c.isP);if(!me)return;
   if(me.status==="fin"&&!R.vox.meta.finSaid){R.vox.meta.finSaid=1;voxFinish(me);return}
   if(R.over||!running(me))return;const V=R.vox,M=V.meta;if(R.t<(M.tk||0))return;M.tk=R.t+.5;voxFlush();
   const i=R.order.indexOf(me),A=R.order[i-1],B=R.order[i+1];const ok=x=>x&&running(x)&&!x.pit;

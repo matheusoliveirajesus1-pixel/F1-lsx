@@ -152,6 +152,7 @@ function stewContact(rear,front,mode,E,g,sev){const P=g.pre||{};let cul=null,cla
       if(behind&&g.ds>2.2&&ph!==0){cul=mv;clar=.62+Math.min(.25,(mvv-othv)*.06);why="mergulho sem estar ao lado (ultrapassagem otimista)"}
       else if(!behind&&g.ds<2.2){cul=mv;clar=.66+Math.min(.25,(mvv-othv)*.06);why="fechar a porta com o carro ao lado"}
       else{cul=mv;clar=.18+(mvv-othv)*.09;why=ph===0?"mudar de linha em cima do outro carro":"forçar o outro carro na curva"}}}
+  clar=clamp(clar,0,.95);/* culpa medida: nunca acima de 95% (antes passava de 100% com diferença lateral grande) */
   const vic=cul?(cul===rear?front:rear):null;const S=vic?sev[vic.id]:0;
   const inc={cul:cul&&cul.id,vic:vic&&vic.id,clar,why,S,mode,E:+E.toFixed(1),at:R.t+18,kind:"contact",lap:Math.max(1,R.lead+1)};
   if(!cul||clar<.45){R.stewLog=R.stewLog||[];R.stewLog.push(Object.assign(inc,{verdict:"Incidente de corrida"}));return}
@@ -160,10 +161,11 @@ function stewContact(rear,front,mode,E,g,sev){const P=g.pre||{};let cul=null,cla
 // decisão dos comissários (chamada pelo stewTick)
 function stewVerdict(s){const c=R.cars.find(x=>x.id===s.cul),v=R.cars.find(x=>x.id===s.vic);if(!c)return;const vS=v&&!running(v)&&v.status==="dnf"?3:s.S;
   R.stewLog=R.stewLog||[];
-  if(vS<=0){if(s.clar>.8){rcMsg(`Comissários: advertência para ${c.code} por ${s.why}.`,"","punicao");c.warn=(c.warn||0)+1;if(c.hum)radio(c,`Advertência dos comissários: ${s.why}.`,{k:"punicao"})}else rcMsg(`Comissários: toque entre ${c.code} e ${v?v.code:"?"} sem consequência, nenhuma ação.`,"","punicao");s.verdict="Sem punição";R.stewLog.push(s);return}
-  if(vS===1){if(s.clar>=.9){penalize(c,5,s.why,1);s.verdict="5 s"}else{rcMsg(`Comissários: toque entre ${c.code} e ${v?v.code:"?"} analisado, incidente de corrida.`,"","punicao");s.verdict="Sem punição"}}
-  else if(vS===2){if(s.clar<.7){rcMsg(`Comissários: lance entre ${c.code} e ${v?v.code:"?"} foi incidente de corrida.`,"","punicao");s.verdict="Sem punição";R.stewLog.push(s);return}const t=s.clar>=.85?10:5;penalize(c,t,s.why,t===10?2:1);s.verdict=t+" s"}
-  else{if(s.clar>.8&&running(c)){penalize(c,30,`${s.why} (stop and go de 10 s, convertido em 30 s)`,3);s.verdict="Stop and go"}else{penalize(c,20,`${s.why} (drive-through, convertido em 20 s)`,3);s.verdict="Drive-through"}
-    if(!running(c)&&c.d){c.d.gridPen=(c.d.gridPen||0)+3;rcMsg(`${c.code} perde 3 posições no grid da próxima corrida.`,"warn","punicao");s.verdict+=" + 3 posições no grid"}}
+  const ev=`toque com ${v?v.code:"outro carro"}, ${s.mode==="long"?"batida na traseira":"toque de lado"}, diferença de ${Math.round((s.E||0)*3.6)} km/h, culpa ${Math.round(s.clar*100)}%`;
+  if(vS<=0){if(s.clar>.8){if(typeof repAdd==="function")repAdd(c,s.why,true);s.verdict="Advertência"}else{rcMsg(`Comissários: toque entre ${c.code} e ${v?v.code:"?"} sem consequência, nenhuma ação.`,"","punicao");s.verdict="Sem punição";if(typeof stewReport==="function"&&(c.isP||(v&&v.isP)))stewReport(c,"Sem punição",s.why,ev)}R.stewLog.push(s);return}
+  if(vS===1){if(s.clar>=.9){penalize(c,5,s.why,1,ev);s.verdict="5 s"}else{rcMsg(`Comissários: toque entre ${c.code} e ${v?v.code:"?"} analisado, incidente de corrida.`,"","punicao");s.verdict="Sem punição";if(typeof stewReport==="function"&&(c.isP||(v&&v.isP)))stewReport(c,"Sem punição",s.why,ev)}}
+  else if(vS===2){if(s.clar<.7){rcMsg(`Comissários: lance entre ${c.code} e ${v?v.code:"?"} foi incidente de corrida.`,"","punicao");s.verdict="Sem punição";if(typeof stewReport==="function"&&(c.isP||(v&&v.isP)))stewReport(c,"Sem punição",s.why,ev);R.stewLog.push(s);return}const t=s.clar>=.85?10:5;penalize(c,t,s.why,t===10?2:1,ev);s.verdict=t+" s"}
+  // dano grave ou abandono da vítima: drive-through (culpa clara: stop-and-go), cumprido no pit lane em até 3 voltas
+  else{const k=s.clar>.8?"sg":"dt";if(typeof penDrive==="function")penDrive(c,k,s.why,3,ev);else penalize(c,k==="sg"?30:20,s.why,3,ev);s.verdict=k==="sg"?"Stop and go":"Drive-through"}
   R.stewLog.push(s)}
 // ---------- comando: recuar (desiste do ataque e volta para trás do carro da frente)

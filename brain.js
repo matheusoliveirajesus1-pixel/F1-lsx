@@ -42,7 +42,7 @@ function driverBrain(c){if(!running(c)||c.pit||R.over)return;const I=intentOf(c)
   const st=c.plan&&c.plan.stops&&c.plan.stops[c.planIdx];const stintLeft=dry?(st?Math.max(1,st.lap-c.lap):left):left;const proj=c.tyre.wear+wearRate(c)*stintLeft;
   // combustível: sobra real (em voltas de consumo) até a bandeira, já descontando 1 kg para a amostra da FIA.
   // O carro larga com o justo: sobra perto de zero é o normal; só abaixo de zero é preciso tirar o pé.
-  const perLap=c.fuel0/R.L,leftF=Math.max(0,R.L-c.prog),fm=(c.fuel-1-perLap*leftF)/Math.max(.01,perLap);// distância contínua até a bandeira
+  const perLap=c.fuel0/R.L,leftF=R.qMode?2:Math.max(0,R.L-c.prog),/* classificação: o tanque é para a saída, a volta rápida e a entrada */fm=(c.fuel-1-perLap*leftF)/Math.max(.01,perLap);// distância contínua até a bandeira
   const mc=c.mc||{},engHot=(mc.tEng||0)>124||(mc.hEng!=null&&mc.hEng<.45)||(mc.hGbx!=null&&mc.hGbx<.32),brkHot=(mc.tBrk||0)>960||c.brakeHot;
   const b=c.br||(c.br={});b.gA=gA;b.gB=gB;
   // 1ª volta: todos colados e com o pneu frio. O piloto larga no ritmo normal e com a energia no automático,

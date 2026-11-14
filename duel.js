@@ -54,7 +54,7 @@ function squeezeOut(c,o,ph){if(!o||c.ex||(c.dyn&&dynCmd(c,"pushOut"))||(c.forced
     dynError(c,"pushOut",{dir:out,t:1.3});c.offAt=R.t;c.offRef={o:o.id,t:R.t};R.nKeepOut=(R.nKeepOut||0)+1;if(c.hum)radio(c,`Não tinha espaço na ${nm}, passei por fora da pista.`,{me:1,k:"vantagem"})}}
 
 // ---------- vantagem fora da pista e devolução de posição
-function advGain(B,A,why){if(B.gb||R.sc||R.red||!running(B)||!running(A))return;why=why||"fora";const msg=why==="amarela"?"ultrapassou sob bandeira amarela":"ganhou a posição fora da pista";
+function advGain(B,A,why){why=why||"fora";if(B.gb||(R.sc&&why!=="sc")||R.red||!running(B)||!running(A))return;const msg=why==="amarela"?"ultrapassou sob bandeira amarela":why==="sc"?"ultrapassou sob safety car":"ganhou a posição fora da pista";
   R.nAdv=(R.nAdv||0)+1;rcMsg(`Direção de prova: ${B.code} ${msg} sobre ${A.code} e deve devolver a posição.`,"warn","vantagem");
   B.gb={to:A.id,why,t:R.t,mode:null,deadline:R.t+32};bubble(B,"Precisa devolver!","order",3);
   if(A.hum)radio(A,`${B.code} ${msg}. Ele tem que devolver a posição.`,{k:"vantagem"});
@@ -79,15 +79,21 @@ function gbDone(B,A){const g=B.gb;B.gb=null;B.yieldTo=null;B.yielded=null;B.gbTo
   if(g&&g.mode==="line"){B.gbLine=R.t;if(B.hum)radio(B,"Devolvi perto da linha: vou ganhar o modo de ultrapassagem na próxima volta. Agora é atacar!",{me:1,k:"overtake"})}}
 
 // ---------- comissários durante a corrida (vantagem, jogar para fora, bandeira amarela)
-function stewAdd(o){R.stewQ=R.stewQ||[];o.at=o.at||R.t+rr(12,20);R.stewQ.push(o)}
+function stewAdd(o){R.stewQ=R.stewQ||[];o.at=o.at||R.t+rr(12,20);
+  /* toques seguidos entre os mesmos dois carros (até 8 s) são um incidente só: vale a gravidade do pior, uma punição */
+  if(o.kind==="contact"){const same=R.stewQ.find(s=>s.kind==="contact"&&((s.cul===o.cul&&s.vic===o.vic)||(s.cul===o.vic&&s.vic===o.cul))&&R.t-(s.t0??-99)<8);if(same){if((o.clar||0)>(same.clar||0)||(o.S||0)>(same.S||0)){const at=same.at,t0=same.t0;Object.assign(same,o,{at,t0})}return}o.t0=R.t}
+  R.stewQ.push(o)}
 function stewTick(){if(!R.stewQ||!R.stewQ.length)return;for(let i=R.stewQ.length-1;i>=0;i--){const s=R.stewQ[i];if(R.t<s.at)continue;R.stewQ.splice(i,1);const c=R.cars.find(x=>x.id===s.cul),v=R.cars.find(x=>x.id===s.vic);if(!c)continue;
   if(s.kind==="contact"){stewVerdict(s)}
-  else if(s.kind==="adv"){penalize(c,5,s.why==="amarela"?"ultrapassagem sob bandeira amarela":"ganhar vantagem fora da pista",1)}
-  else if(s.kind==="forced"){if(rnd()<.35+s.clear*.5)penalize(c,5,`forçar ${v?v.code:"outro piloto"} para fora da pista`,2);else{rcMsg(`Comissários: lance entre ${c.code} e ${v?v.code:"?"} na ${s.nm} foi incidente de corrida, sem punição.`,"","direito");if(c.hum)radio(c,"Sem punição no lance da curva. Seguimos.",{k:"direito"})}}
-  else if(s.kind==="yellow"){if(rnd()<(s.dbl?.75:.45))penalize(c,s.dbl?10:5,s.dbl?"não reduzir sob bandeira amarela dupla":"não reduzir sob bandeira amarela",s.dbl?3:2)}}}
-function penalize(c,secs,why,lic){if(c.status!=="run"&&c.status!=="fin")return;c.pen+=secs;R.nPen=(R.nPen||0)+1;rcMsg(`${c.code}: ${secs} s de punição por ${why}.`,"warn","punicao");
-  if(c.hum)radio(c,`Punição de ${secs} segundos por ${why}.${secs===5?" Dá para descontar abrindo 5 s ou cumprir no pit stop.":""}`,{pause:true,k:"punicao"});
-  if(c.isP&&!R.mp&&lic&&typeof G!=="undefined"&&G){G.lic=G.lic||[];G.lic.push({pts:lic,s:G.season,r:G.round});rcMsg(`${c.code} recebe ${lic} ponto(s) na superlicença.`,"","superlicenca")}
+  else if(s.kind==="adv"){const w=s.why==="amarela"?"ultrapassagem sob bandeira amarela":s.why==="sc"?"ultrapassagem sob safety car":"ganhar vantagem fora da pista";penalize(c,5,w,s.why==="fora"?0:1,`não devolveu a posição para ${v?v.code:"o outro piloto"}`)}
+  // jogar para fora: decide pelo quanto a vítima estava à frente no ápice (medido), sem sorteio
+  else if(s.kind==="forced"){const ev=`${v?v.code:"o outro"} estava ${(s.clear*2).toFixed(1)} m à frente no ápice`;if(s.clear>=.35)penalize(c,5,`forçar ${v?v.code:"outro piloto"} para fora da pista`,1,ev);else if(s.clear>=.15&&typeof repAdd==="function")repAdd(c,`deixar pouco espaço para ${v?v.code:"outro piloto"} na ${s.nm}`,true);else{rcMsg(`Comissários: lance entre ${c.code} e ${v?v.code:"?"} na ${s.nm} foi incidente de corrida, sem punição.`,"","direito");if(typeof stewReport==="function")stewReport(c,"Sem punição",`lance com ${v?v.code:"?"} na ${s.nm}`,ev);if(c.hum)radio(c,"Sem punição no lance da curva. Seguimos.",{k:"direito"})}}
+  // bandeira amarela: só com a velocidade medida na zona (quem não tirou o pé)
+  else if(s.kind==="yellow"){const ev=`passou a ${Math.round((s.ratio||1)*100)}% da velocidade normal na zona`;penalize(c,s.dbl?10:5,s.dbl?"não reduzir sob bandeira amarela dupla":"não reduzir sob bandeira amarela",s.dbl?2:1,ev)}}}
+function penalize(c,secs,why,lic,ev){if(c.status!=="run"&&c.status!=="fin")return;c.pen+=secs;c.penServe=true;R.nPen=(R.nPen||0)+1;rcMsg(`${c.code}: ${secs} s de punição por ${why}.`,"warn","punicao");
+  if(typeof stewReport==="function")stewReport(c,`${secs} s`,why,ev);
+  if(c.hum)radio(c,`Punição de ${secs} segundos por ${why}.${c.status==="run"?" Cumprimos parados na próxima parada; se não pararmos mais, entra no tempo final.":""}`,{pause:true,k:"punicao"});
+  if(lic&&c.d&&typeof licAdd==="function")licAdd(c.d,lic,why);
   // quem está perto da punição de alguém sabe que basta ficar a menos de 5 s
   for(const o of R.cars){if(!o.hum||o===c||!running(o))continue;const gap=(c.prog-o.prog)*o.L;if(gap>0&&gap<secs+3)radio(o,`${c.code} levou ${secs} s de punição. Se você terminar a menos de ${secs} s dele, fica na frente.`,{k:"punicao"})}}
 

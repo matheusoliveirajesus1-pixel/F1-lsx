@@ -36,7 +36,7 @@ function aiSense(){const L=R.geo.len;const arr=R.cars.filter(c=>running(c)&&!c.p
       if(!c.ahead){c.ahead=o;c.dA=d}if(!c.aheadO&&dy<CARW+.3){c.aheadO=o;c.dAO=d}if(!c.aheadQ&&dy<4.6){c.aheadQ=o;c.dAQ=d}if(d<CARL+2+Math.max(0,c.v-o.v)*.6){c.alongs.push(o);if(d<CARL+2&&!c.along)c.along=o}}
     for(let q=1;q<Math.min(n,7);q++){const o=arr[(j-q+n)%n];let d=c.fs-o.fs;if(d<0)d+=L;if(d>160)break;if(!c.behind){c.behind=o;c.dB=d}if(d<CARL+2+Math.max(0,o.v-c.v)*.6){c.alongs.push(o);if(d<CARL+2&&!c.along)c.along=o}}}
   // distância (s) para o carro da frente na ordem da corrida (fila do safety car)
-  for(let i=0;i<R.order.length;i++){const c=R.order[i],A=R.order[i-1];if(!running(c))continue;c.scGap=A&&running(A)?(A.prog-c.prog)*c.L:9}
+  for(let i=0;i<R.order.length;i++){const c=R.order[i],A=R.order[i-1];if(!running(c))continue;c.scGap=A&&running(A)?(A.prog-c.prog)*c.L:0/* o líder anda no ritmo do safety car; antes ganhava o ritmo de "alcançar a fila" e a fila nunca se juntava */}
   R.phys=arr}
 // o caminho de c até a faixa yT está livre de carros andando ao lado (ignora o obstáculo parado Q)
 function sideFree(c,yT,Q){const L=R.geo.len,y0=Math.min(c.y||0,yT)-CARW*.6,y1=Math.max(c.y||0,yT)+CARW*.6;for(const o of R.phys||[]){if(o===c||o===Q)continue;let ds=(o.fs??fr(o.prog)*L)-(c.fs??fr(c.prog)*L);if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;if(ds<-CARL-1||ds>CARL+6)continue;if((o.y||0)>y0&&(o.y||0)<y1&&((o.v||0)>3||ds>0))return false}return true}
@@ -78,7 +78,7 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   else if(c.crippled){yT=-Math.sign(ideal||c.y||1)*4.6}
   else if(!neutral&&A&&dA<120){
     const lapped=A.prog<c.prog-.5,lapping=A.prog>c.prog+.5;
-    const slowA=!A.ex&&(lapped||A.lose>0||A.crippled)||(A.pitCall&&pitDist(A)<330)||(A.pitExit&&R.t-A.pitExit<8)||A.yieldTo===c.id;
+    const slowA=!A.ex&&(lapped||A.lose>0||A.crippled)||(A.pitCall&&pitDist(A)<330)||(A.pitExit&&R.t-A.pitExit<8)||A.yieldTo===c.id||(R.qMode&&A.q&&c.q&&c.q.st==="push"&&A.q.st!=="push");/* classificação: quem não está em volta rápida é carro lento */
     if(slowA){c.bypass=true;if(dA<85&&Math.abs(A.y-c.y)<3.4){const s=A.pitCall?-g.pitSide:A.blue?(A.blueSide?-A.blueSide.s:(-Math.sign(A.y)||1)):sideRoom(A.y,c.y);yT=clamp(A.y+s*3.4,-YMAX,YMAX)}}
     else if(!lapping)battle(c,A,dA,ph,ins,nb);
   }else if(c.att)c.att=null;
@@ -104,7 +104,9 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
       const sep=Math.max(2.22,sep0-aggrEff(c,o)*.16-feud(c.d.id,o.d.id)*.002);const lim=o.y-s*sep;
       if(s>0){if(yT>lim)yT=lim}else{if(yT<lim)yT=lim}if(Math.abs(lim)>YATK&&Math.sign(lim)===-s){squeezed=true;c.sqBy=o}
       const inside=c.att&&c.att.commit&&c.att.side===ins&&c.y*ins>o.y*ins;
-      const lappedO=o.blue&&o.prog<c.prog-.5,lappingO=c.blue&&o.prog>c.prog+.5;
+      const qSlow=x=>R.qMode&&x.q&&x.q.st!=="push";const lappedO=o.blue&&(o.prog<c.prog-.5||(qSlow(o)&&!qSlow(c))),lappingO=c.blue&&(o.prog>c.prog+.5||(qSlow(c)&&!qSlow(o)));
+      // amarela (ou safety car): lado a lado, quem está atrás tira o pé e fica atrás (proibido completar a ultrapassagem)
+      if((R.sc||(R.yellows.length&&inYellow(c)))&&R.started&&ds>-.3&&Math.abs(ds)<CARL*1.6&&running(o)&&!o.ex&&!(o.lose>0)&&!o.pit&&(o.v||0)>12&&!c.unlap){m*=.95;c.hard=true}
       if(lappingO&&Math.abs(o.y-c.y)<3.6&&Math.abs(ds)<CARL*1.5){m*=ph===0?.97:.95;c.hard=true}/* retardatário: tira o pé e deixa o líder passar */
       else if(ds>1.2&&ph!==0&&!inside&&!lappedO&&Math.abs(o.y-c.y)<3.2){m*=.975;c.hard=true}}
     if(squeezed){squeezeOut(c,c.sqBy,ph);m*=.95;c.hard=true}yT=clamp(yT,-YATK,YATK)}
@@ -131,7 +133,9 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   // reflexo: carro rodado, parado ou destroços à frente (desvia para o lado livre ou freia)
   {const hz=hazardAvoid(c);c.emerg=false;c.hzYT=null;if(hz&&!hz.late){if(hz.yT!=null){yT=hz.yT;c.hzYT=hz.yT;c.emerg=true;c.bypass=true}if(hz.cap!=null){c.hzCap=hz.cap;c.emerg=true}else c.hzCap=null}else c.hzCap=null}
   // seguir sem atravessar o carro da frente (fila apertada em bandeira amarela / safety car)
-  const free=c.bypass||(c.att&&c.att.commit);const wide=!free||(neutral&&!c.emerg);/* desviando de um obstáculo: só o carro que está na mesma faixa conta, mesmo na amarela */const Q=wide?c.aheadQ:F,dQ=wide?c.dAQ:dF;
+  const free=c.bypass||(c.att&&c.att.commit);const wide=!free||(neutral&&!c.emerg);/* desviando de um obstáculo: só o carro que está na mesma faixa conta, mesmo na amarela */let Q=wide?c.aheadQ:F,dQ=wide?c.dAQ:dF;
+    // bandeira amarela: proibido ultrapassar; o carro da frente conta em qualquer lado da pista (só se passa carro com problema)
+    if(R.started&&!R.red&&((R.sc&&!R.sc.unlapOn&&!c.unlap)||(!R.sc&&R.yellows.length&&inYellow(c)))&&!c.emerg){/* safety car e VSC: mantém a posição igual */const H=c.ahead;if(H&&c.dA<(Q?dQ:1e9)&&running(H)&&!H.pit&&!H.ex&&!(H.lose>0)&&(H.v||0)>12&&c.dA<60){Q=H;dQ=c.dA}}
   if(Q&&!(c.lateBrake&&c.lateBrake.id===Q.id)){const close=!neutral&&ph===0&&c.att&&c.att.commit&&Q===A;const tw=!neutral&&ph===0&&Q===A&&(c.tow||0)>.3;const dmin=CARL+(close?1.2+c.v*.045:tw?.8+c.v*.08/* no vácuo encosta mais */:.8+c.v*(R.sc&&R.sc.type==="sc"?.38:neutral?.15:.13));// reação: o piloto percebe a velocidade do carro da frente com um pequeno atraso
     const tau=(.1+(1-clamp((sk(c,"craft")-55)/45,0,1))*.28)*(1+(c.spray||0)*1.6);if(c.pqId!==Q.id){c.pqId=Q.id;c.pqv=Q.v}else c.pqv+=(Q.v-c.pqv)*Math.min(1,dt/tau);const qv=neutral?Q.v:Math.max(Q.v,c.pqv);const qa=Math.min(0,Q.acc||0);/* freada fora do normal do carro da frente (desviando, travando, batendo): o de trás reage a ela */let qx=0;if(Q.prof&&qa<-8){const N=g.N,j=Math.floor(fr(Q.prof?Q.prog:0)*N)%N,v0=Q.prof.v[j],v1=Q.prof.v[(j+1)%N];const exp=Math.min(0,(v1*v1-v0*v0)/(2*DS));qx=qa-exp}
     const dec=neutral||c.spray>.3?28:(c.v||0)>45?34:30;/* em corrida o piloto confia na própria freada: não freia antes só porque o da frente está freando para a curva */let cap=dQ>dmin?Math.sqrt(Math.max(0,qv*qv+2*dec*(dQ-dmin)+(qa<-8&&(neutral||qx<-6)?qa*Q.v*.35:0))):qv-(dmin-dQ)/.6;cap=Math.max(cap,dQ<CARL+1.5?0:dQ<dmin*.6?Q.v*.5:Q.v*.8-1.5);// colado demais: pode frear até parar (antes havia um piso que fazia o de trás bater no da frente)

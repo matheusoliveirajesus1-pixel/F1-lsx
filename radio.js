@@ -191,7 +191,7 @@ function qVoxTick(){const me=R.cars.find(c=>c.isP);if(!me||!me.q||!running(me))r
   const cn=()=>{const k=typeof nextCorner==="function"&&nextCorner(me);return k?k.n:"curva 1"};const L=R.geo.len;const st=me.q.st;
   // volta de saída: instrução do engenheiro e comentário do piloto
   if(st==="out"&&M.qOut!==me.q.runs){M.qOut=me.q.runs;const a=R.cars.filter(x=>running(x)&&!x.pit&&x!==me).map(x=>({x,d:fr(x.prog-me.prog)*L})).filter(o=>o.d<500).sort((p,q)=>p.d-q.d)[0];
-    setTimeout(()=>{if(R&&R.vox&&me.q.st==="out")vox("q_eng_out",me,{A:a?a.x.code:undefined,B:Math.round(me.batt),C:cn()},2,"eng")},3500);setTimeout(()=>{if(R&&R.vox&&me.q.st==="out"&&vrnd()<.6)vox("q_me_out",me,{C:cn()},1)},11000)}
+    setTimeout(()=>{if(R&&R.qMode&&R.vox&&me.q.st==="out")vox("q_eng_out",me,{A:a?a.x.code:undefined,B:Math.round(me.batt),C:cn()},2,"eng")},3500);setTimeout(()=>{if(R&&R.vox&&me.q.st==="out"&&vrnd()<.6)vox("q_me_out",me,{C:cn()},1)},11000)}
   // tráfego à frente na volta rápida
   if(st==="push"){const a=R.cars.find(x=>running(x)&&!x.pit&&x!==me&&x.q&&x.q.st!=="push"&&fr(x.prog-me.prog)*L<180&&fr(x.prog-me.prog)*L>20);if(a&&M.qTr!==me.q.runs*10+me.q.push){M.qTr=me.q.runs*10+me.q.push;M.qImp=a.code;vox("q_me_traffic",me,{C:cn()},2)}}
   // carro em volta rápida atrás de você (você precisa abrir)
@@ -203,7 +203,7 @@ function qVoxTick(){const me=R.cars.find(c=>c.isP);if(!me||!me.q||!running(me))r
   // relógio: avisos de tempo com o jogador na garagem
   if(Q.phase==="run"&&st==="gar"&&Q.pool.includes(me.d.id)){for(const s of[300,180]){if(Q.clock<s&&Q.clock>s-30&&M.qClk!==Q.sess*1000+s){M.qClk=Q.sess*1000+s;vox("q_eng_clock",me,{X:qClock(s)},1,"eng")}}}
   // de volta à garagem depois de uma saída
-  if(st==="gar"&&M.qGar!==me.q.runs&&me.q.runs>0&&Q.phase==="run"){M.qGar=me.q.runs;if(vrnd()<.55)setTimeout(()=>{if(R&&R.vox&&me.q.st==="gar")vox("q_eng_garage",me,{X:COMP[qComp()].n.toLowerCase()+"s novos"},1,"eng")},4000)}}
+  if(st==="gar"&&M.qGar!==me.q.runs&&me.q.runs>0&&Q.phase==="run"){M.qGar=me.q.runs;if(vrnd()<.55)setTimeout(()=>{if(R&&R.qMode&&R.vox&&me.q.st==="gar")vox("q_eng_garage",me,{X:COMP[qComp()].n.toLowerCase()+"s novos"},1,"eng")},4000)}}
 // setores da volta rápida: o engenheiro fala uma vez por volta (como na TV, sem encher o rádio)
 (function(){const base=secMark;globalThis.secMark=function(c,k,tc){base(c,k,tc);try{if(R&&R.qMode&&c.q&&k<=1){(c._qsec=c._qsec||[])[k]=tc-c.lapStart}if(!R||!R.qMode||!c.isP||!c.q||c.q.st!=="push"||k>1||!R.vox)return;const M=R.vox.meta;const key=c.q.runs*10+c.q.push;if(M.qSec===key||vrnd()<.45)return;
   const ref=qRefSplits();const cum=tc-c.lapStart;M.qSec=key;
@@ -219,11 +219,11 @@ function qRefSplits(){const Q=R.qMode;if(!Q||!Q.splits)return null;const o=qOrde
   const rd=globalThis.radio;if(c.isP)globalThis.radio=function(){};try{base(c,lt,del)}finally{globalThis.radio=rd}
   if(typeof tvQLap==="function")tvQLap(c,lt,del,prev);
   if(!c.isP)return;const eng="eng",cnm=(()=>{const k=typeof nextCorner==="function"&&nextCorner(c);return k?k.n:"curva 1"})();
-  if(del){const why=c.qDelWhyLast||"limite de pista";qSay("q_eng_lapDel",c,{T:fmtT(lt),X:why});setTimeout(()=>{if(R&&R.vox)vox("q_me_del",c,{C:cnm},2)},2600);return}
-  const now=Q.res[c.d.id]&&Q.res[c.d.id][key];if(hadT&&lt>=prev){qSay("q_eng_lapNo",c,{T:fmtT(lt),X:fmtT(prev)});if(M_imp(c))qSay("q_eng_impeded",c,{A:M_imp(c)},2);else setTimeout(()=>{if(R&&R.vox)vox("q_me_meh",c,{C:cnm},2)},2600);return}
+  if(del){const why=c.qDelWhyLast||"limite de pista";qSay("q_eng_lapDel",c,{T:fmtT(lt),X:why});setTimeout(()=>{if(R&&R.qMode&&R.vox)vox("q_me_del",c,{C:cnm},2)},2600);return}
+  const now=Q.res[c.d.id]&&Q.res[c.d.id][key];if(hadT&&lt>=prev){qSay("q_eng_lapNo",c,{T:fmtT(lt),X:fmtT(prev)});if(M_imp(c))qSay("q_eng_impeded",c,{A:M_imp(c)},2);else setTimeout(()=>{if(R&&R.qMode&&R.vox)vox("q_me_meh",c,{C:cnm},2)},2600);return}
   const o=qOrder(),p=o.indexOf(c)+1,lead=o[0],t0=qTime(lead);const cut=QKEEP[Q.sess];
   if(p===1)qSay("q_eng_lapPole",c,{T:fmtT(lt)});else qSay("q_eng_lapGood",c,{T:fmtT(lt),P:p,A:lead.code,D:`${(lt-t0).toFixed(3).replace(".",",")} s`});
-  if(cut){setTimeout(()=>{if(!R||!R.vox)return;const o2=qOrder(),p2=o2.indexOf(c)+1;const tk=qTime(o2[cut-1]),tc=qTime(o2[cut]);if(p2<=cut)vox("q_eng_safe",c,{P:p2,K:cut,D:tc!=null?`${(tc-lt).toFixed(3).replace(".",",")} s`:undefined},2,eng);else vox("q_eng_danger",c,{P:p2,K:cut,D:tk!=null?`${(lt-tk).toFixed(3).replace(".",",")} s`:undefined},2,eng)},5200)}
+  if(cut){setTimeout(()=>{if(!R||!R.vox||!R.qMode)return;const o2=qOrder(),p2=o2.indexOf(c)+1;const tk=qTime(o2[cut-1]),tc=qTime(o2[cut]);if(p2<=cut)vox("q_eng_safe",c,{P:p2,K:cut,D:tc!=null?`${(tc-lt).toFixed(3).replace(".",",")} s`:undefined},2,eng);else vox("q_eng_danger",c,{P:p2,K:cut,D:tk!=null?`${(lt-tk).toFixed(3).replace(".",",")} s`:undefined},2,eng)},5200)}
   setTimeout(()=>{if(R&&R.vox)vox(M_imp(c)?"q_me_impeded":"q_me_good",c,{C:cnm},1)},2600)}})();
 function M_imp(c){const M=R.vox&&R.vox.meta;if(!M||!M.qImp)return null;const a=M.qImp;M.qImp=null;return a}
 // mensagens fixas restantes do quali.js (saída, volta rápida, bandeira, vermelha, fim de sessão) → banco
@@ -236,8 +236,8 @@ function M_imp(c){const M=R.vox&&R.vox.meta;if(!M||!M.qImp)return null;const a=M
   const me=R.cars.find(c=>c.isP&&running(c));if(!was&&Q.red&&me&&Q.pool.includes(me.d.id))qSay("q_eng_red",me,{})}})();
 (function(){const base=qEndSession;globalThis.qEndSession=function(){const Q=R.qMode,n=Q.sess;const me=R.cars.find(c=>c.isP);const inPool=me&&Q.pool.includes(me.d.id);const pool0=Q.pool.slice();const rd=globalThis.radio;globalThis.radio=function(m,t,o){if(m&&m.isP)return;return rd(m,t,o)};try{base()}finally{globalThis.radio=rd}
   if(!me||!inPool)return;const key="q"+n;const tm=x=>{const r=Q.res[x.d.id];return r&&r[key]!=null?r[key]:999};const sorted=pool0.map(id=>R.cars.find(x=>x.d.id===id)).filter(Boolean).sort((a,b)=>tm(a)-tm(b));const p=sorted.indexOf(me)+1;const keep=QKEEP[n];
-  if(keep){if(Q.pool.includes(me.d.id)){qSay("q_eng_through",me,{X:n+1,P:p});setTimeout(()=>{if(R&&R.vox)vox("q_me_through",me,{},2)},2800)}
-    else{const cutT=tm(sorted[keep-1]);qSay("q_eng_elim",me,{X:n,P:p,D:tm(me)<999?`${(tm(me)-cutT).toFixed(3).replace(".",",")} s`:"um tempo válido"});setTimeout(()=>{if(R&&R.vox)vox("q_me_elim",me,{},2)},2800)}}
-  else{if(p===1){qSay("q_eng_poleWin",me,{});setTimeout(()=>{if(R&&R.vox)vox("q_me_pole",me,{},3)},2600)}else{qSay("q_eng_final",me,{P:p,D:tm(me)<999?`${(tm(me)-tm(sorted[0])).toFixed(3).replace(".",",")} s`:"sem tempo"});if(p<=3)setTimeout(()=>{if(R&&R.vox)vox("q_me_front",me,{},2)},2600)}}}})();
+  if(keep){if(Q.pool.includes(me.d.id)){qSay("q_eng_through",me,{X:n+1,P:p});setTimeout(()=>{if(R&&R.qMode&&R.vox)vox("q_me_through",me,{},2)},2800)}
+    else{const cutT=tm(sorted[keep-1]);qSay("q_eng_elim",me,{X:n,P:p,D:tm(me)<999?`${(tm(me)-cutT).toFixed(3).replace(".",",")} s`:"um tempo válido"});setTimeout(()=>{if(R&&R.qMode&&R.vox)vox("q_me_elim",me,{},2)},2800)}}
+  else{if(p===1){qSay("q_eng_poleWin",me,{});setTimeout(()=>{if(R&&R.qMode&&R.vox)vox("q_me_pole",me,{},3)},2600)}else{qSay("q_eng_final",me,{P:p,D:tm(me)<999?`${(tm(me)-tm(sorted[0])).toFixed(3).replace(".",",")} s`:"sem tempo"});if(p<=3)setTimeout(()=>{if(R&&R.qMode&&R.vox)vox("q_me_front",me,{},2)},2600)}}}})();
 // confirmação do piloto às perguntas do engenheiro na classificação
-(function(){const base=answerAskObj;globalThis.answerAskObj=function(a,k,auto){const r=base(a,k,auto);try{if(a&&a.cb&&a.c&&a.c.isP&&!auto&&R&&R.vox&&vrnd()<.5)setTimeout(()=>{if(R&&R.vox)vox("q_me_ack",a.c,{},1)},1600)}catch(e){}return r}})();
+(function(){const base=answerAskObj;globalThis.answerAskObj=function(a,k,auto){const r=base(a,k,auto);try{if(a&&a.cb&&a.c&&a.c.isP&&!auto&&R&&R.vox&&vrnd()<.5)setTimeout(()=>{if(R&&R.qMode&&R.vox)vox("q_me_ack",a.c,{},1)},1600)}catch(e){}return r}})();

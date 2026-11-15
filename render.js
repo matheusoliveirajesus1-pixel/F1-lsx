@@ -186,6 +186,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
   // efeitos no chão
   const life=e=>e.type==="skid"?900:e.type==="debris"?60:e.type==="smoke"?40:e.type==="sparks"?1.8:e.type==="parts"?7:e.type==="puff"?1.6:e.type==="tyres"?40:4;if(!RS)R.fxq=R.fxq.filter(e=>T-e.t0<life(e));
   R.fxq.forEach(e=>{if(e.t0>T||T-e.t0>life(e))return;const q=trackPos(e.f,(e.lat||0)*WS);const s=toScreen(q.x,q.y,0,cw,ch);if(!onScreen(s,cw,ch,60*U))return;const age=T-e.t0;
+    if(typeof FX2!=="undefined"){if(FX2.evento(ctx,e,s,q,age,Z,cw,ch))return;if(e.type==="parts"||e.type==="debris")FX2.clarao(ctx,e,s,age,Z)}// efeitos 2.0 (fx2.js)
     if(e.type==="skid")return;// marca antiga desenhada por fórmula: substituída pelas marcas reais das rodas (R.marks)
     if(e.type==="sparks"){const k=age/1.8;for(let j=0;j<16;j++){const a=j*2.39+e.t0,r=(4+k*30*(.5+((j*7)%5)/5))*U*Z;ctx.strokeStyle=`rgba(255,${180+((j*37)%70)},60,${1-k})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(s[0]+Math.cos(a)*r*.6,s[1]-4*Z+Math.sin(a)*r*.35);ctx.lineTo(s[0]+Math.cos(a)*r,s[1]-4*Z+Math.sin(a)*r*.55-k*6*Z);ctx.stroke()}return}
     if(e.type==="parts"){// pedaços de asa voando e caindo na pista

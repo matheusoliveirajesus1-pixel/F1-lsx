@@ -48,10 +48,10 @@ const HLR={i:0,t:0,raf:0,last:0};
 function momentosStep(){const el=$("#wk");const C=(R.clips||[]).slice().sort((a,b)=>a.t0-b.t0);
   el.innerHTML=`<div class="card"><h3>Melhores momentos</h3><canvas id="mmcv" style="width:100%;border-radius:6px;background:#0E1116"></canvas><div class="mmcap" id="mmcap"></div>
    <div class="row" style="margin-top:8px"><span class="muted num" id="mmidx"></span><button class="btn sm" data-act="hlNext">Próximo lance</button><button class="btn go" data-act="hlEnd">Ver o resultado</button></div></div>`;
-  cancelAnimationFrame(HLR.raf);HLR.i=0;HLR.t=C.length?C[0].t0:0;HLR.last=performance.now();if(typeof sndRadio==="function"&&UI.sound)sndRadio(.6);
+  cancelAnimationFrame(HLR.raf);HLR.i=0;HLR.p2=0;HLR.t=C.length?C[0].t0:0;HLR.last=performance.now();if(typeof sndRadio==="function"&&UI.sound)sndRadio(.6);
   const cv=$("#mmcv");const step=now=>{if(W.step!=="momentos"||!document.getElementById("mmcv"))return;const dt=Math.min(.1,(now-HLR.last)/1000);HLR.last=now;const c=C[HLR.i];if(!c){hlEnd();return}
-    const slow=(c.type==="crash"||c.type==="contact")&&Math.abs(HLR.t-c.t)<1.6?.45:1;HLR.t+=dt*slow;if(HLR.t>c.t1){HLR.i++;const n=C[HLR.i];if(!n){hlEnd();return}HLR.t=n.t0}
-    const cc=C[HLR.i];try{drawReplay(cv,{frames:cc.frames,me:cc.ids[0],other:cc.ids[1],t:cc.t},HLR.t)}catch(e){}
+    const slow=(c.type==="crash"||c.type==="contact")&&Math.abs(HLR.t-c.t)<1.6?.45:1;HLR.t+=dt*slow;if(HLR.t>c.t1){/* segunda passada do lance na câmera onboard (3D) */if(!HLR.p2&&typeof P3D!=="undefined"&&P3D.on&&c.ids&&c.ids[0]!=null){HLR.p2=1;HLR.t=Math.max(c.t0,c.t-3.2);HLR.fx=performance.now()}else{HLR.p2=0;HLR.fx=performance.now();HLR.i++;const n=C[HLR.i];if(!n){hlEnd();return}HLR.t=n.t0}}
+    const cc=C[HLR.i];try{drawReplay(cv,{frames:cc.frames,me:cc.ids[0],other:cc.ids[1],t:cc.t,cam3d:HLR.p2?{tipo:"onboard",id:cc.ids[0],chave:"mm"}:null},HLR.t);const a=HLR.fx?1-(performance.now()-HLR.fx)/900:0;if(a>0){const x=cv.getContext("2d");x.save();x.setTransform(1,0,0,1,0,0);x.fillStyle=`rgba(10,12,16,${a*.95})`;x.fillRect(0,0,cv.width,cv.height);x.restore()}}catch(e){}
     const cap=$("#mmcap"),txt=clipLine(cc);if(cap&&cap.textContent!==txt){cap.textContent=txt;if(typeof ttsSay==="function")ttsSay("narr",txt,2)}const ix=$("#mmidx");if(ix)ix.textContent=`Lance ${HLR.i+1} de ${C.length}`;
     HLR.raf=requestAnimationFrame(step)};HLR.raf=requestAnimationFrame(step)}
 function hlEnd(){cancelAnimationFrame(HLR.raf);if(W.step==="momentos"){W.step="results";render()}}

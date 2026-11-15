@@ -298,8 +298,10 @@ function trackPattern(ctx,cw,ch){const T=texInit(ctx);return wpat(ctx,T.asph,.12
 function gravelPattern(ctx,cw,ch){const T=texInit(ctx);return wpat(ctx,T.gravel,.18,cw,ch)}
 
 // muros, alambrado, guard-rail e zebras
-function drawBarriers(ctx,cw,ch,street){const g=TRACKGEO,S=g.scn,M=g.M,Z=CAM.z;if(Z<.3)return;const step=Z>.8?1:2;
-  for(const sg of[1,-1]){const a=S.wl[sg];let run=[];const flush=()=>{if(run.length<2){run=[];return}
+// muro só para desenho: tira o laço que a linha paralela faz por dentro de curva fechada (os dados do jogo não mudam)
+function barreiraSemLaco(g,S){const o={},M=g.M;for(const sg of[1,-1]){const a=S.wl[sg];if(!a){o[sg]=a;continue}const b=a.slice();for(let i=0;i<M;i++){const L=a[i];if(L==null)continue;const p0=g.path[i],h=g.heading[i];const x=p0.x-Math.sin(h)*sg*L,y=p0.y+Math.cos(h)*sg*L;for(let k=-120;k<=120;k+=2){const q=g.path[((i+k)%M+M)%M];if(Math.hypot(q.x-x,q.y-y)<L*.9){b[i]=null;break}}}o[sg]=b}return o}
+function drawBarriers(ctx,cw,ch,street){const g=TRACKGEO,S=g.scn,M=g.M,Z=CAM.z;if(Z<.3)return;const step=Z>.8?1:2;if(!S.wlD)S.wlD=barreiraSemLaco(g,S);
+  for(const sg of[1,-1]){const a=S.wlD[sg]||S.wl[sg];let run=[];const flush=()=>{if(run.length<2){run=[];return}
       const base=run.map(r=>r[0]),top=run.map(r=>r[1]);
       if(street){ctx.beginPath();base.forEach((s,i)=>i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1]));for(let i=top.length-1;i>=0;i--)ctx.lineTo(top[i][0],top[i][1]);ctx.closePath();ctx.fillStyle="rgba(205,215,225,.10)";ctx.fill();
         ctx.beginPath();top.forEach((s,i)=>i?ctx.lineTo(s[0],s[1]):ctx.moveTo(s[0],s[1]));ctx.strokeStyle="rgba(170,180,190,.55)";ctx.lineWidth=1;ctx.stroke();

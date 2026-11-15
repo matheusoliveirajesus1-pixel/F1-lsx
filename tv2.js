@@ -24,7 +24,7 @@ function bcOn(){return typeof UI!=="undefined"&&(UI.cam==="tv"||UI.cam==="direct
 const BCX={openT:null,opened:false,cardId:null,cardT:-99,spdT:-99,spdNext:0,tw:null,twNext:30,twPos:{},twFast:null,twCv:null,twDraw:0,box:null,boxT:0};
 function bcReset(){Object.assign(BCX,{openT:null,opened:false,cardId:null,cardT:-99,spdT:-99,spdNext:0,tw:null,twNext:30,twPos:{},twFast:null,twDraw:0,box:null,boxT:0})}
 function bcOff(){if(BCX.twCv)BCX.twCv.style.display="none";BCX.tw=null}
-const bcEase=k=>1-Math.pow(1-Math.max(0,Math.min(1,k)),3);
+const BC_LENTO=.5;/* gráficos da TV entram e saem mais devagar */const bcEase=k=>1-Math.pow(1-Math.max(0,Math.min(1,k*BC_LENTO)),3);
 function bcFit(ctx,t,font,maxW){ctx.font=font;let s=String(t);while(s.length>3&&ctx.measureText(s).width>maxW)s=s.slice(0,-2)+"…";return s}
 // ---------- abertura do evento: aparece uma vez, antes da largada (ou logo no começo), e esconde os outros gráficos enquanto está na tela
 function tvOpening(ctx,cw,ch,now){if(BCX.opened&&BCX.openT==null)return false;if(BCX.rRef!==R){bcReset();BCX.rRef=R}
@@ -76,7 +76,7 @@ function towerCamRow(cars,me){if(!bcOn()||!R.started||R.over){BCX.tw=null;return
       if(pv!=null&&p<pv&&R.t-(c.pitExit||-99)>10){pick={c,lab:R.qMode?`SUBIU NA TABELA · P${p}`:`GANHOU POSIÇÃO · P${p}`};break}
       if(c.pitExit&&t-c.pitExit<4){pick={c,lab:"SAIU DO BOX"};break}
       if(c.att&&c.att.commit){const A=R.cars.find(x=>x.id===c.att.id);pick={c,lab:A?`ATACANDO ${A.code}`:"ATACANDO"};break}}
-    if(pick){tw=BCX.tw={id:pick.c.id,lab:pick.lab,t0:t,dur:6.5};BCX.twNext=t+20}}
+    if(pick){tw=BCX.tw={id:pick.c.id,lab:pick.lab,t0:t,dur:8.5};BCX.twNext=t+20}}
   for(const c of cars)BCX.twPos[c.id]=pos(c);BCX.twFast=R.fast&&R.fast.c&&R.fast.c.id;
   if(!tw)return null;return{id:tw.id,lab:tw.lab,h:towerCamH()}}
 function towerCamH(){const tw=BCX.tw;if(!tw)return 0;const full=(typeof innerWidth!=="undefined"&&innerWidth<640)?78:104;const a=R.t-tw.t0,d=tw.dur;return Math.round(full*Math.min(bcEase(a/.4),bcEase((d-a)/.4)))}
@@ -89,4 +89,4 @@ function towerCamFrame(){const sp=document.getElementById("hTwSp"),tower=documen
   if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(hh*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(hh*dpr)}
   const pc=cv.getContext("2d");pc.setTransform(dpr,0,0,dpr,0,0);const sv={x:CAM.x,y:CAM.y,z:CAM.z,sx:CAM.sx,sy:CAM.sy};
   const[ix,iy]=iso(c._w.x,c._w.y);CAM.x=ix;CAM.y=iy;CAM.z=w/(WS*14*1.6);CAM.sx=0;CAM.sy=0;
-  try{drawScene(pc,w,hh,{pip:true})}catch(e){}finally{Object.assign(CAM,sv)}}
+  try{drawScene(pc,w,hh,{pip:true,cam3d:{tipo:"onboard",id:c.id,chave:"torre"}})}catch(e){}finally{Object.assign(CAM,sv)}}

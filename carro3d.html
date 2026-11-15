@@ -26,6 +26,8 @@ button.on{border-color:var(--ac);background:rgba(255,77,46,.16)}
  <div class="row" id="vi"><b>Vista</b></div>
 </div>
 <div id="err">Este aparelho não conseguiu abrir o 3D (WebGL2 indisponível).</div>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,700;0,800;0,900;1,900&display=swap">
+<script src="sponsors.js"></script>
 <script src="carro3d.js"></script>
 <script>
 (function(){
@@ -37,7 +39,10 @@ const hex=h=>{h=String(h);if(h.length===4)h="#"+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];re
 const cv=document.getElementById("v");let R;
 try{const D=CARRO.construir({cor:"#FF0000",cor2:"#00FF00"});R=new Render3D(cv,D)}catch(e){document.getElementById("err").style.display="grid";return}
 const st={yaw:-2.36,pit:.26,dist:8300,auto:true,alvo:[1550,0,240]};let sujo=true;
-function cor(e){R.cores={cor:hex(e[2]),cor2:hex(e[3]),comp:R.cores?R.cores.comp:hex("#F5C518")};document.getElementById("nome").firstChild.nodeValue=e[1];sujo=true}
+const NUMS=[26,63,16,1,4,22,10,31,5,23,14,77];const tcv=document.createElement("canvas");let eqAt=null;
+function pinta(){const e=eqAt;if(!e)return;const sp=e[0]==="paddock"?DECAL.patrocinios(null,null):DECAL.patrocinios(e[0]==="liga"?null:e[0],e[1]);
+  DECAL.textura({canvas:tcv,m:sp.m,s:sp.s,num:NUMS[EQ.indexOf(e)%NUMS.length],equipe:e[1]},2048,()=>pinta());R.decal(tcv);sujo=true}
+function cor(e){eqAt=e;R.cores={cor:hex(e[2]),cor2:hex(e[3]),comp:R.cores?R.cores.comp:hex("#F5C518")};document.getElementById("nome").firstChild.nodeValue=e[1];pinta()}
 // equipe da liga via parâmetros (?nome=&c1=&c2=)
 if(qs.get("c1"))EQ.unshift(["liga",qs.get("nome")||"Equipe","#"+qs.get("c1").replace("#",""),"#"+(qs.get("c2")||"F2F2F2").replace("#","")]);
 const mk=(box,list,fn,sel)=>{const el=document.getElementById(box);list.forEach((it,i)=>{const b=document.createElement("button");b.innerHTML=(it.dot?`<span class="dot" style="background:${it.dot}"></span>`:"")+it.t;b.onclick=()=>{[...el.querySelectorAll("button")].forEach(x=>x.classList.remove("on"));b.classList.add("on");fn(i)};if(i===sel)b.classList.add("on");el.appendChild(b)})};
@@ -59,6 +64,7 @@ cv.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;const q=pt
   if(pts.size===1){st.yaw-=dx*.006;st.pit=Math.max(.02,Math.min(1.5,st.pit+dy*.005))}else if(pts.size===2){const[a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(d0)st.dist=Math.max(3200,Math.min(16000,st.dist*d0/d));d0=d}sujo=true});
 const solta=e=>{pts.delete(e.pointerId);d0=0};cv.addEventListener("pointerup",solta);cv.addEventListener("pointercancel",solta);
 cv.addEventListener("wheel",e=>{e.preventDefault();st.dist=Math.max(3200,Math.min(16000,st.dist*Math.exp(e.deltaY*.001)));st.auto=false;sujo=true},{passive:false});
+(document.fonts&&document.fonts.load?Promise.all([document.fonts.load("700 40px 'Titillium Web'"),document.fonts.load("italic 900 40px 'Titillium Web'")]).catch(()=>{}):Promise.resolve()).then(()=>pinta());
 quadro();
 })();
 </script></body></html>

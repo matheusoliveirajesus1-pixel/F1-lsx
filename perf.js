@@ -48,15 +48,23 @@ if(typeof window!=="undefined"){const idle=window.requestIdleCallback||(f=>setTi
 // Alta: tela nítida (até 2x). Média: 1,5x. Leve: 1x, metade das árvores, sem vinheta e sem a janelinha no canto.
 // Automática: começa na alta e desce um degrau se a corrida ficar abaixo de ~40 quadros por segundo.
 const QL={lvl:2,auto:true,autoLvl:2,checkT:0,slow:0};
-function qualityApply(user){const q=typeof PREFS!=="undefined"?PREFS.q:"auto";QL.auto=q==="auto";if(user&&QL.auto)QL.autoLvl=2;QL.lvl=QL.auto?QL.autoLvl:q==="leve"?0:q==="medio"?1:2;if(typeof GCH!=="undefined"&&GCH&&GCH.map)GCH.map.clear()}
+function qualityApply(user){const q=typeof PREFS!=="undefined"?PREFS.q:"auto";QL.auto=q==="auto";if(user&&QL.auto){QL.autoLvl=2;QL.e3=0;if(typeof P3D!=="undefined"&&P3D)P3D.esc=1}QL.lvl=QL.auto?QL.autoLvl:q==="leve"?0:q==="medio"?1:2;if(typeof GCH!=="undefined"&&GCH&&GCH.map)GCH.map.clear()}
 // mapa simples: sem imagens guardadas de prédios e árvores, sem janelas, tela em resolução 1x e menos blocos de chão na memória.
 // Fica ligado sozinho em celulares e aparelhos com pouca memória (pode ser trocado em Configurações > Mapa).
 function devLow(){try{return (navigator.deviceMemory||8)<=4||matchMedia("(pointer:coarse)").matches}catch(e){return false}}
 function mapSimple(){const m=(typeof PREFS!=="undefined"&&PREFS.map)||"auto";return m==="simples"||(m!=="completo"&&devLow())}
 function qDpr(){if(mapSimple())return 1;const d=(typeof window!=="undefined"&&window.devicePixelRatio)||1;return QL.lvl>=2?Math.min(2,d):QL.lvl===1?Math.min(1.5,d):1}
-function qualityTick(now){if(!QL.auto||typeof R==="undefined"||!R||!R.started||R.over||document.hidden||QL.autoLvl===0)return;if(now-QL.checkT<4000)return;QL.checkT=now;
-  let s=0,n=0;for(const g of PERF.gaps){if(g>0&&g<250){s+=g;n++}}if(n<120)return;const avg=s/n;
-  if(avg>25){QL.slow++;if(QL.slow>=2){QL.autoLvl--;QL.slow=0;qualityApply();PERF.gaps.fill(0);if(typeof rcMsg==="function")rcMsg(`Qualidade gráfica ajustada para "${QL.lvl===1?"média":"leve"}" para o jogo ficar mais fluido (Configurações no menu).`,"")}}else QL.slow=0}
+// Automática: primeiro reduz a resolução da camada 3D (100% → 85% → 70%), só depois a qualidade 2D (alta → média → leve).
+// Os efeitos da corrida (vácuo, ar sujo, faíscas, fumaça) nunca são desligados por aqui. Quando sobra folga, a qualidade volta a subir.
+const ESC3D=[1,.85,.7];
+function qualityTick(now){if(!QL.auto||typeof R==="undefined"||!R||!R.started||R.over||document.hidden)return;if(now-QL.checkT<4000)return;QL.checkT=now;
+  let s=0,n=0;for(const g of PERF.gaps){if(g>0&&g<250){s+=g;n++}}if(n<120)return;const avg=s/n;const P3=typeof P3D!=="undefined"&&P3D&&P3D.on?P3D:null;QL.e3=QL.e3||0;
+  if(avg>25){QL.fast=0;QL.slow++;if(QL.slow<2)return;QL.slow=0;PERF.gaps.fill(0);if(now-(QL.subiuT||0)<12000)QL.bloq=now+90000;// subir não deu certo: espera antes de tentar de novo
+    if(P3&&QL.e3<ESC3D.length-1){QL.e3++;P3.esc=ESC3D[QL.e3]}
+    else if(QL.autoLvl>0){QL.autoLvl--;qualityApply();if(typeof rcMsg==="function")rcMsg(`Qualidade gráfica ajustada para "${QL.lvl===1?"média":"leve"}" para o jogo ficar mais fluido (Configurações no menu).`,"")}}
+  else if(avg<18.5){QL.slow=0;QL.fast=(QL.fast||0)+1;if(QL.fast<3||now<(QL.bloq||0))return;QL.fast=0;
+    if(QL.autoLvl<2){QL.autoLvl++;qualityApply();QL.subiuT=now;PERF.gaps.fill(0)}else if(P3&&QL.e3>0){QL.e3--;P3.esc=ESC3D[QL.e3];QL.subiuT=now;PERF.gaps.fill(0)}}
+  else{QL.slow=0;QL.fast=0}}
 if(typeof window!=="undefined")qualityApply();
 // ===================== SÓ DESENHA O QUE ESTÁ NA TELA =====================
 // Se a pista sai da tela (por exemplo, quando você rola até os botões do rádio no celular), a corrida continua,

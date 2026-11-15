@@ -1,10 +1,11 @@
 // ===================== EFEITOS VISUAIS 2.0 =====================
 // Fogo, fumaça de pneu, faíscas, poeira, spray de chuva e clarão de batida feitos com partículas suaves
 // (imagens desfocadas desenhadas uma vez e reaproveitadas) e brilho somado ("lighter").
-// É só desenho: não usa o sorteio da física (RNG) nem muda nada da corrida. Em qualidade "leve" volta ao desenho antigo.
+// É só desenho: não usa o sorteio da física (RNG) nem muda nada da corrida. Em qualidade "leve" só desenha menos partículas.
 const FX2 = { sp: null, tentou: false };
 function fx2Hash(i) { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x) }
-function fx2Nivel() { return typeof QL !== "undefined" && QL ? QL.lvl : 2 }
+// a qualidade "leve" só reduz a quantidade de partículas: os efeitos continuam aparecendo
+function fx2Nivel() { return typeof QL !== "undefined" && QL ? Math.max(1, QL.lvl) : 2 }
 function fx2Sprites() {
   if (FX2.sp || FX2.tentou) return FX2.sp; FX2.tentou = true;
   try {

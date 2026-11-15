@@ -452,14 +452,14 @@ C3D.amostra=ms=>{AM.push(ms);if(AM.length>120)AM.shift()};
 function medidor(){if(!C3D.medidor)return;if(!el){el=document.createElement("div");el.id="c3dMed";el.style.cssText="position:fixed;left:8px;top:8px;z-index:99999;background:rgba(10,12,16,.86);color:#E8EAEE;font:600 12px/1.45 ui-monospace,Menlo,monospace;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.14);min-width:190px;pointer-events:auto";document.body.appendChild(el);
   el.addEventListener("click",e=>{const b=e.target.closest("[data-c3d]");if(!b)return;const a=b.dataset.c3d;if(a==="modo"){C3D.on=!C3D.on;AM.length=0}if(a==="pista"){P3D.on=!P3D.on;P3D.erro=null;AM.length=0}if(a==="cam"){P3D.cam=(P3D.cam+1)%P3D.nomes.length;P3D._corte=true}if(a==="larg"){const L=[1,1.15,1.3,1.45];C3D.larg=L[(L.indexOf(C3D.larg)+1)%L.length]}if(a==="lod"){const L=[.2,.3,.5];C3D.lod=L[(L.indexOf(C3D.lod)+1)%L.length];C3D.ok=false;C3D.erro=null;AM.length=0}if(a==="ver"){window.open(window.C3D_VISOR||"carro3d.html","_blank")}if(a==="ir")atalho()})}
   qn++;const t=performance.now();if(t-ult>=1000){fps=qn*1000/(t-ult);qn=0;ult=t;const m=AM.length?AM.reduce((a,b)=>a+b,0)/AM.length:0;const p95=AM.length?[...AM].sort((a,b)=>a-b)[Math.floor(AM.length*.95)]:0;
-    el.innerHTML=`<div style="color:#FF6A4D;letter-spacing:.08em">DESEMPENHO 3D</div><div>FPS: <b>${fps.toFixed(0)}</b>${window.P3D&&P3D.on?` · pista ${((P3D.tris||0)/1000).toFixed(0)}k tri · ${P3D.nv||0} carros`:" · 2D (sem WebGL2)"}</div><div>quadro: ${m.toFixed(1)} ms (p95 ${p95.toFixed(1)})</div>${window.P3D&&P3D.erro?`<div style="color:#f66">${P3D.erro}</div>`:""}`}
+    el.innerHTML=`<div style="color:#FF6A4D;letter-spacing:.08em">DESEMPENHO 3D</div><div>FPS: <b>${fps.toFixed(0)}</b>${window.P3D&&P3D.on?` · pista ${((P3D.stat?P3D.stat.tris:P3D.tris||0)/1000).toFixed(0)}k de ${((P3D.tris||0)/1000).toFixed(0)}k tri desenhados · ${P3D.stat?P3D.stat.carros:P3D.nv||0} carros na tela · resolução ${Math.round((P3D.esc||1)*100)}%`:" · 2D (sem WebGL2)"}</div><div>quadro: ${m.toFixed(1)} ms (p95 ${p95.toFixed(1)})</div>${window.P3D&&P3D.erro?`<div style="color:#f66">${P3D.erro}</div>`:""}`}
   }
 (function loop(){try{instala();if(window.P3D)P3D.quadro();medidor()}catch(e){}requestAnimationFrame(loop)})();
 })();
 
 // ---------- PISTA 3D (TESTE): a corrida do jogo desenhada numa cena 3D com câmera em perspectiva
 (function(){if(typeof window==="undefined"||typeof document==="undefined"||typeof location==="undefined")return;
-const P3=window.P3D={on:true,cam:0,ms:0,tris:0,erro:null};
+const P3=window.P3D={on:true,cam:0,ms:0,tris:0,erro:null,esc:1};
 const CAMS=["Isométrica","Perseguição","TV","Onboard","Aérea"];P3.nomes=CAMS;
 const hex=h=>{h=String(h||"#888");if(h.length===4)h="#"+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];return[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255]};
 const VS=`#version 300 es
@@ -517,10 +517,32 @@ const CX={};
 function criaCtx(id,alpha){const c=document.createElement("canvas");c.id=id;c.style.cssText="position:absolute;left:0;top:0;pointer-events:none;display:none";
   const g=c.getContext("webgl2",{antialias:true,alpha,premultipliedAlpha:true,stencil:true});if(!g)throw new Error("sem WebGL2");const o={cv:c,gl:g,UN:{},tex:new Map()};usa(o);o.P=P=prog(VS,FS);
   for(const n of["uVP","uMod","uNM","uCor","uCor2","uComp","uEye","uSol","uLuz","uCeu","uNeb","uMolh","uDT","uDN","uDA","uDB","uDR","uT","uExc","uGT","uVS","uNoite","uSobre","uOculta","uVivo","uRol","uRoda","uProj","uProjOn","uAT","uDbg"])o.UN[n]=g.getUniformLocation(P,n);
-  const D=CARRO.construir({lod:.5,cor:"#FF0000",cor2:"#00FF00"});o.car=sobe(D.mesh);P3.trisCarro=D.mesh.i.length/3;
+  o.car=sobe(malhaCarro(.5));o.carM=sobe(malhaCarro(.2));o.carB=sobe(malhaCarro(.05));P3.trisCarro=malhaCarro(.5).i.length/3;
   const S=new MB();S.quad([-1150,-1000,4],[4350,-1000,4],[4350,1000,4],[-1150,1000,4],[0,0,0],19);o.sombra=sobe(S);const K=new MB();for(const t of ICO)for(const q of t){const b=K.p.length/3;}const Kc=new MB();Kc.copa(0,0,0,1,1,[1,1,1],22,0);o.ceu=sobe(Kc);return o}
-function usa(o){gl=o.gl;P=o.P;UN=o.UN;cv=o.cv;car=o.car;sombra=o.sombra;TEXA=o.tex}
-let TEXA=null;
+function usa(o){CTX=o;gl=o.gl;P=o.P;UN=o.UN;cv=o.cv;car=o.car;sombra=o.sombra;TEXA=o.tex}
+let TEXA=null,CTX=null;
+// malhas do carro (feitas uma vez e reaproveitadas em todas as janelas 3D): perto 0,5 · médio 0,2 · longe 0,05
+const MCAR={};function malhaCarro(l){return MCAR[l]||(MCAR[l]=CARRO.construir({lod:l,cor:"#FF0000",cor2:"#00FF00"}).mesh)}
+// ---------- só desenhar o que a câmera vê: a pista é dividida em blocos com caixa envolvente
+const CUR={VP:null,eye:null,far:0,hpx:1,dpr:1,iso:true,stat:{tris:0,blocos:0,total:0,carros:0}};P3._cur=CUR;
+function ladrilha(M,N){const p=M.p,I=M.i,nt=I.length/3;if(!nt)return{i:new Uint32Array(0),t:[]};let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;
+  for(let k=0;k<p.length;k+=3){const x=p[k],y=p[k+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  const sx=(x1-x0)/N||1,sy=(y1-y0)/N||1,cel=new Int32Array(nt),cnt=new Int32Array(N*N);
+  for(let t=0;t<nt;t++){const a=I[3*t]*3,b=I[3*t+1]*3,c=I[3*t+2]*3;const ix=Math.min(N-1,Math.max(0,(((p[a]+p[b]+p[c])/3-x0)/sx)|0)),iy=Math.min(N-1,Math.max(0,(((p[a+1]+p[b+1]+p[c+1])/3-y0)/sy)|0));
+    // ordem em serpentina: blocos vizinhos ficam juntos no buffer e viram uma chamada só
+    const k=iy*N+(iy&1?N-1-ix:ix);cel[t]=k;cnt[k]++}
+  const off=new Int32Array(N*N+1);for(let k=0;k<N*N;k++)off[k+1]=off[k]+cnt[k];const pos=off.slice(0,N*N),out=new Uint32Array(I.length),bb=new Float32Array(N*N*6);
+  for(let k=0;k<N*N;k++)bb.set([1e18,1e18,1e18,-1e18,-1e18,-1e18],k*6);
+  for(let t=0;t<nt;t++){const k=cel[t],d=pos[k]++,B=k*6;for(let j=0;j<3;j++){const v=I[3*t+j];out[3*d+j]=v;const q=v*3;for(let e=0;e<3;e++){const w=p[q+e];if(w<bb[B+e])bb[B+e]=w;if(w>bb[B+3+e])bb[B+3+e]=w}}}
+  const t=[];for(let k=0;k<N*N;k++)if(cnt[k])t.push({o:off[k]*3,n:cnt[k]*3,b:bb.subarray(k*6,k*6+6)});return{i:out,t}}
+// caixa [x0,y0,z0,x1,y1,z1] dentro do campo de visão? (teste exato por plano, vale para câmera isométrica e em perspectiva)
+function caixaVis(VP,b){let m=63;for(let c=0;c<8;c++){const x=b[c&1?3:0],y=b[c&2?4:1],z=b[c&4?5:2];
+  const X=VP[0]*x+VP[4]*y+VP[8]*z+VP[12],Y=VP[1]*x+VP[5]*y+VP[9]*z+VP[13],Z=VP[2]*x+VP[6]*y+VP[10]*z+VP[14],W=VP[3]*x+VP[7]*y+VP[11]*z+VP[15];
+  let f=0;if(X<-W)f|=1;if(X>W)f|=2;if(Y<-W)f|=4;if(Y>W)f|=8;if(Z<-W)f|=16;if(Z>W)f|=32;m&=f;if(!m)return true}return false}
+function longe(b,e,far){if(!far||!e)return false;const dx=Math.max(b[0]-e[0],0,e[0]-b[3]),dy=Math.max(b[1]-e[1],0,e[1]-b[4]),dz=Math.max(b[2]-e[2],0,e[2]-b[5]);return dx*dx+dy*dy+dz*dz>far*far}
+function desenhaMalha(M){gl.bindVertexArray(M.vao);CUR.stat.total+=M.n/3;if(!M.t||!CUR.VP||P3.semCorte){gl.drawElements(gl.TRIANGLES,M.n,gl.UNSIGNED_INT,0);CUR.stat.tris+=M.n/3;return}
+  let a=-1,n=0;const go=()=>{gl.drawElements(gl.TRIANGLES,n,gl.UNSIGNED_INT,a*4);CUR.stat.tris+=n/3};
+  for(const q of M.t){if(longe(q.b,CUR.eye,CUR.far)||!caixaVis(CUR.VP,q.b))continue;CUR.stat.blocos++;if(a>=0&&a+n===q.o)n+=q.n;else{if(a>=0)go();a=q.o;n=q.n}}if(a>=0)go()}
 function init(){if(CX.A)return true;CX.A=criaCtx("p3dA",false);CX.B={cv:document.createElement("canvas")};
   const G2=document.createElement("canvas");G2.id="p3dG";G2.style.cssText="position:absolute;left:0;top:0;pointer-events:none;display:none";CX.G=G2;return true}
 const SOL=(()=>{const v=[-.35,-.5,.75],l=Math.hypot(...v);return v.map(x=>x/l)})();
@@ -554,8 +576,14 @@ function atlasPista(){const cv=document.createElement("canvas");cv.width=1024;cv
 const ICO=(()=>{let f=[[[0,0,1],[1,0,0],[0,1,0]],[[0,0,1],[0,1,0],[-1,0,0]],[[0,0,1],[-1,0,0],[0,-1,0]],[[0,0,1],[0,-1,0],[1,0,0]],[[0,0,-1],[0,1,0],[1,0,0]],[[0,0,-1],[-1,0,0],[0,1,0]],[[0,0,-1],[0,-1,0],[-1,0,0]],[[0,0,-1],[1,0,0],[0,-1,0]]];
   const mid=(a,b)=>nz([(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]);const g=[];for(const[a,b,c]of f){const ab=mid(a,b),bc=mid(b,c),ca=mid(c,a);g.push([a,ab,ca],[ab,b,bc],[ca,bc,c],[ab,bc,ca])}return g})();
 MB.prototype.copa=function(x,y,z,rx,rz,col,m,seed){const b=this.p.length/3;for(const t of ICO)for(const q of t){const j=1+.12*Math.sin(seed+q[0]*7+q[1]*5+q[2]*3);this.v(x+q[0]*rx*j,y+q[1]*rx*j,z+q[2]*rz*j,q,col,m)}for(let k=0;k<ICO.length*3;k++)this.i.push(b+k)};
-function constroiPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"};const B=new MB();const SB=new MB();B.somb=SB;const AT=atlasPista();const GC=(typeof GROUND!=="undefined"&&GROUND[th.g])||["#3D7A3B","#478A43","#4E9449"];
-  const urb=/urban/i.test(th.g||"");const street=!!(R&&R.C&&R.C.street);
+const GEOC={g:null,d:null};
+const f32=a=>a instanceof Float32Array?a:new Float32Array(a);
+function geoPista(){if(GEOC.g!==TRACKGEO||!GEOC.d){const t0=performance.now();const r=montaPista();const L=ladrilha({p:r.B.p,i:r.B.i},16),LS=ladrilha({p:r.SB.p,i:r.SB.i},12);
+    const pk=(M,Li)=>({p:f32(M.p),n:f32(M.n),c:f32(M.c),m:f32(M.m),k:f32(M.k),i:Li.i,t:Li.t});GEOC.d={B:pk(r.B,L),SB:pk(r.SB,LS),atlas:r.AT.cv};GEOC.g=TRACKGEO;P3.msMonta=Math.round(performance.now()-t0)}return GEOC.d}
+function constroiPista(){const d=geoPista();const pv=sobe(d.B);pv.t=d.B.t;pv.somb=sobe(d.SB);pv.somb.t=d.SB.t;pv.atlas=d.atlas;return pv}
+P3.prepara=function(){try{if(typeof TRACKGEO!=="undefined"&&TRACKGEO&&TRACKGEO.path)geoPista();malhaCarro(.5);malhaCarro(.2);malhaCarro(.05)}catch(e){}};
+function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"};const B=new MB();const SB=new MB();B.somb=SB;const AT=atlasPista();const GC=(typeof GROUND!=="undefined"&&GROUND[th.g])||["#3D7A3B","#478A43","#4E9449"];
+  const urb=/urban/i.test(th.g||"");const CI=typeof CIRCUITS!=="undefined"?CIRCUITS.find(c=>c.id===g.id):null;const street=!!(CI?CI.street:(typeof R!=="undefined"&&R&&R.C&&R.C.street));
   // relevo: altura da pista ao longo da volta (perfis aproximados dos circuitos reais; nos outros, ondulação suave)
   const ELEV={spielberg:[[0,0],[.06,14],[.12,30],[.2,38],[.27,26],[.36,10],[.45,4],[.55,10],[.66,16],[.76,8],[.88,2],[1,0]],
     spa:[[0,0],[.04,-6],[.07,-10],[.1,8],[.16,30],[.25,34],[.36,14],[.5,-4],[.62,-12],[.75,2],[.86,6],[1,0]],
@@ -681,7 +709,7 @@ function constroiPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"pa
       const b0=B.p.length/3,S6=6,rr=hh*.32;B.v(x,y,z+hh,[0,0,1],c,17);for(let q=0;q<S6;q++){const a=q/S6*6.283;B.v(x+Math.cos(a)*rr,y+Math.sin(a)*rr,z+hh*.12,[Math.cos(a),Math.sin(a),.5],c,17)}for(let q=0;q<S6;q++)B.i.push(b0,b0+1+q,b0+1+(q+1)%S6)}}
   // prédios da cidade e horizonte
   const pred=b=>B.caixa(b.x,b.y,b.ang||0,b.w,b.d,b.h,0,hex(b.c||"#B7BCC4"),hex(b.c||"#A8AEB7"),18);(S.bld||[]).forEach(pred);for(const l of(S.lms||[]))(l.list||[]).forEach(pred);
-  P3.tris=B.i.length/3;const pv=sobe(B);pv.somb=sobe(SB);pv.atlas=AT.cv;
+  P3.tris=B.i.length/3;const pv={B,SB,AT};
   // plano que recebe os efeitos 2D do chão (marcas de pneu, borracha, poças, tapetes): fica 30 cm acima do chão, só aparece onde o chão está visível
   return pv}
 // ---------- matrizes
@@ -731,14 +759,15 @@ function etiquetas(lista,VP,cw,ch,dpr){if(!lab){lab=document.createElement("canv
     x.fillStyle=c.isP?"#FFFFFF":c.hum?"#FFD400":"rgba(12,14,18,.82)";x.fillRect(s[0]-tw/2,s[1]-14,tw,15);x.fillStyle=c.col;x.fillRect(s[0]-tw/2,s[1]-14,3,15);x.fillStyle=c.isP||c.hum?"#0A0C10":"#FFF";x.fillText(t,s[0]+1,s[1]-3);
     if(c._stopped){x.fillStyle="#FFD400";x.font="700 10px 'Titillium Web',sans-serif";x.fillText("PIT STOP",s[0],s[1]-18)}})}
 // ---------- camadas: A pista 3D · G efeitos no chão (2D do jogo) · B carros 3D · rc efeitos por cima, etiquetas e chuva (2D do jogo)
-function camadas(rc,iso){const par=rc.parentElement;if(getComputedStyle(par).position==="static")par.style.position="relative";if(getComputedStyle(rc).position==="static")rc.style.position="relative";
-  const dpr=Math.min(2,window.devicePixelRatio||1),cw=rc.clientWidth,ch=rc.clientHeight,w=Math.round(cw*dpr),h=Math.round(ch*dpr);
+function camadas(rc,iso){const par=rc.parentElement;if(par._p3dP!==1){if(getComputedStyle(par).position==="static")par.style.position="relative";par._p3dP=1}if(rc._p3dP!==1){if(getComputedStyle(rc).position==="static")rc.style.position="relative";rc._p3dP=1}
+  // resolução da camada 3D: o ajuste automático de qualidade reduz aqui antes de tirar qualquer efeito
+  const dpr=Math.min(2,window.devicePixelRatio||1)*(P3.esc||1),cw=rc.clientWidth,ch=rc.clientHeight,w=Math.round(cw*dpr),h=Math.round(ch*dpr);
   if(CX.B.cv.nextSibling!==rc)par.insertBefore(CX.B.cv,rc);if(CX.G.nextSibling!==CX.B.cv)par.insertBefore(CX.G,CX.B.cv);if(CX.A.cv.nextSibling!==CX.G)par.insertBefore(CX.A.cv,CX.G);
   [[CX.A.cv,1,true],[CX.G,2,false],[CX.B.cv,3,false]].forEach(([c,z,vis])=>{c.style.display=vis?"block":"none";c.style.left=rc.offsetLeft+"px";c.style.top=rc.offsetTop+"px";c.style.width=cw+"px";c.style.height=ch+"px";if(c.width!==w||c.height!==h){c.width=w;c.height=h}});
   if(lab)lab.style.display=iso?"none":"block";return{dpr,cw,ch,w,h}}
 function noiteF(){if(R.C&&R.C.night)return 1;if(TWI[TRACKGEO.id]){const pr=Math.min(1,Math.max(0,(R.lead||0)/Math.max(1,R.laps||R.totalLaps||20)));return Math.min(1,Math.max(0,(pr-.3)/.6))}return 0}
 function luzes(iso,C,VP){const nf=noiteF(),noite=nf>.5,molh=Math.min(1,(R.w||0)*1.2);const c0=molh>.3?[.62,.66,.7]:[.66,.79,.92],ceu=c0.map((v,i)=>v+([.05,.07,.12][i]-v)*nf);
-  gl.uniformMatrix4fv(UN.uVP,false,VP);gl.uniform3fv(UN.uEye,C.e);gl.uniform3fv(UN.uSol,nz([-.35,-.5,noite?.9:.75]));gl.uniform1f(UN.uLuz,1);gl.uniform3fv(UN.uCeu,ceu);gl.uniform1f(UN.uNeb,iso?0:noite?.0002:molh>.3?.00038:.000105);gl.uniform1f(UN.uMolh,molh);
+  gl.uniformMatrix4fv(UN.uVP,false,VP);gl.uniform3fv(UN.uEye,C.e);gl.uniform3fv(UN.uSol,nz([-.35,-.5,noite?.9:.75]));gl.uniform1f(UN.uLuz,1);gl.uniform3fv(UN.uCeu,ceu);gl.uniform1f(UN.uNeb,P3.neb=(iso?0:noite?.0002:molh>.3?.00038:.000105));gl.uniform1f(UN.uMolh,molh);
   const du=DECAL.uniforms();gl.uniform4fv(UN.uDA,du.A);gl.uniform4fv(UN.uDB,du.B);gl.uniform4fv(UN.uDR,du.R);gl.uniform1i(UN.uDT,0);gl.activeTexture(gl.TEXTURE0);gl.uniform1f(UN.uNoite,nf);gl.uniform1f(UN.uSobre,0);gl.uniform1f(UN.uOculta,0);gl.uniform1f(UN.uProjOn,0);gl.uniform4f(UN.uVivo,0,0,0,0);gl.uniform4f(UN.uRol,0,0,0,0);gl.uniform4f(UN.uRoda,0,0,0,0);gl.uniform1i(UN.uAT,2);gl.uniform1f(UN.uDbg,P3.dbg==null?-9:P3.dbg);gl.uniform1f(UN.uT,performance.now()/1000);gl.uniform1f(UN.uExc,animo());return{ceu,du}}
 function zPos(p){const P=P3.ponte;const base=P3.Hc?P3.Hc(p.x,p.y):0;if(!P||!P3.zp)return base;const g=TRACKGEO,M=g.M,B=P.B;let bh=1e18,ih=-1,bl=1e18;for(let k=-P.K;k<=P.K;k+=2){const i=((B.hi+k)%M+M)%M,q=g.path[i],d=(q.x-p.x)**2+(q.y-p.y)**2;if(d<bh){bh=d;ih=i}const j=((B.lo+k)%M+M)%M,r=g.path[j],d2=(r.x-p.x)**2+(r.y-p.y)**2;if(d2<bl)bl=d2}
   if(ih<0||Math.sqrt(bh)>TW*2.2)return base;if(bl<bh&&Math.abs(Math.cos(p.h-g.heading[B.lo]))>Math.abs(Math.cos(p.h-g.heading[ih])))return base;return P3.zp[ih]}
@@ -746,7 +775,7 @@ P3.zCar=c=>{if(!P3.zAt||!P3.H||c.pit||c.prog==null)return 0;const w=c._w||carWor
 function vivos(){return R.cars.filter(c=>c.status!=="dnf"&&c.status!=="dsq"&&!(c.status==="fin"&&R.over))}
 function animo(){let e=.12;if(typeof crowdExc==="function"&&TRACKGEO.stands)for(const st of TRACKGEO.stands){const v=crowdExc(st.f,R.t)||0;if(v>e)e=v}return Math.min(1,e)*.55*WS}
 function desenhaPista(){gl.uniform1i(UN.uDN,0);gl.uniformMatrix4fv(UN.uMod,false,ID);gl.uniformMatrix3fv(UN.uNM,false,ID3);gl.uniform3f(UN.uCor,1,1,1);gl.uniform3f(UN.uCor2,1,1,1);gl.uniform3f(UN.uComp,1,1,1);
-  gl.bindVertexArray(pista.vao);gl.drawElements(gl.TRIANGLES,pista.n,gl.UNSIGNED_INT,0)}
+  desenhaMalha(pista)}
 // estado de cada carro para o desenho: rodas girando, esterço, asa ativa, rolagem e arfagem
 const VIVO=new Map();
 function vivo(c,p,real){let s=VIVO.get(c.id);const t=performance.now()/1000;if(!s){s={t,h:p.h,v:c.v||0,gir:0,est:0,asa:0,rol:0,arf:0};VIVO.set(c.id,s)}
@@ -756,16 +785,19 @@ function vivo(c,p,real){let s=VIVO.get(c.id);const t=performance.now()/1000;if(!
     const reta=Math.abs(w)<.04&&v>52;s.asa+=((reta?1:0)-s.asa)*Math.min(1,dt*3);s.v=v}s.h=p.h;s.t=t;return s}
 function danos(c){const d=c.dmg||{},wh=d.whl||[];return{fw:(d.wing||0)>.6?1:0,rw:(d.rwing||0)>.6?1:0,r:[wh[0]>.97?1:0,wh[1]>.97?1:0,wh[2]>.97?1:0,wh[3]>.97?1:0]}}
 function desenhaCarros(lista,du,iso,C,pv){const E=(C3D&&C3D.larg)?[1+(C3D.larg-1)*.25,C3D.larg,1+(C3D.larg-1)*.45]:[1,1,1];const real=!(P3._replay);
-  const est=lista.map(q=>({...q,s:vivo(q.c,q.p,real),d:danos(q.c)}));const setCarro=q=>{gl.uniform4f(UN.uVivo,q.s.gir,q.s.est,q.s.asa,1);gl.uniform4f(UN.uRol,q.s.rol,q.s.arf,q.d.fw,q.d.rw);gl.uniform4f(UN.uRoda,q.d.r[0],q.d.r[1],q.d.r[2],q.d.r[3])};
+  const m=WS,CL=5.6*m*CSC;const est=[];for(const q of lista){const s=vivo(q.c,q.p,real),z=q.p.z||0;
+    if(CUR.VP&&!caixaVis(CUR.VP,[q.p.x-3.4*m,q.p.y-3.4*m,z-.3*m,q.p.x+3.4*m,q.p.y+3.4*m,z+1.6*m]))continue;
+    const px=iso?CAM.z*CL*CUR.dpr:CUR.hpx*CL/Math.max(1,Math.hypot(q.p.x-C.e[0],q.p.y-C.e[1],z-C.e[2]));
+    est.push({...q,s,d:danos(q.c),M:px>260||!CTX.carM?car:px>95?CTX.carM:CTX.carB})}CUR.stat.carros=est.length;const setCarro=q=>{gl.uniform4f(UN.uVivo,q.s.gir,q.s.est,q.s.asa,1);gl.uniform4f(UN.uRol,q.s.rol,q.s.arf,q.d.fw,q.d.rw);gl.uniform4f(UN.uRoda,q.d.r[0],q.d.r[1],q.d.r[2],q.d.r[3])};
   // sombras: das construções (fixas) e dos carros (forma real do carro projetada no chão); o stencil evita escurecer duas vezes
   gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-4);
-  gl.uniform1i(UN.uDN,0);if(pv&&pv.somb&&pv.somb.n){gl.uniform4f(UN.uVivo,0,0,0,0);gl.uniformMatrix4fv(UN.uMod,false,ID);gl.bindVertexArray(pv.somb.vao);gl.drawElements(gl.TRIANGLES,pv.somb.n,gl.UNSIGNED_INT,0)}
-  gl.uniform1f(UN.uProjOn,1);gl.bindVertexArray(car.vao);for(const q of est){if(!iso&&Math.hypot(q.p.x-C.e[0],q.p.y-C.e[1])>500*WS)continue;const[Mm,Nm]=matCarro(q.p,E);gl.uniformMatrix4fv(UN.uMod,false,Mm);gl.uniform4f(UN.uProj,SOL[0],SOL[1],SOL[2],(q.p.z||0)+.05);setCarro(q);gl.drawElements(gl.TRIANGLES,car.n,gl.UNSIGNED_INT,0)}
+  gl.uniform1i(UN.uDN,0);if(pv&&pv.somb&&pv.somb.n){gl.uniform4f(UN.uVivo,0,0,0,0);gl.uniformMatrix4fv(UN.uMod,false,ID);desenhaMalha(pv.somb)}
+  gl.uniform1f(UN.uProjOn,1);gl.bindVertexArray((CTX.carB||car).vao);for(const q of est){if(!iso&&Math.hypot(q.p.x-C.e[0],q.p.y-C.e[1])>500*WS)continue;const[Mm,Nm]=matCarro(q.p,E);gl.uniformMatrix4fv(UN.uMod,false,Mm);gl.uniform4f(UN.uProj,SOL[0],SOL[1],SOL[2],(q.p.z||0)+.05);setCarro(q);gl.drawElements(gl.TRIANGLES,(CTX.carB||car).n,gl.UNSIGNED_INT,0)}
   gl.uniform1f(UN.uProjOn,0);gl.disable(gl.POLYGON_OFFSET_FILL);gl.depthFunc(gl.LESS);gl.disable(gl.STENCIL_TEST);gl.depthMask(true);gl.disable(gl.BLEND);
   gl.uniform1i(UN.uDN,du.n);let nv=0;
   for(const q of est){const c=q.c,p=q.p;if(!iso&&Math.hypot(p.x-C.e[0],p.y-C.e[1])>1400*WS)continue;const[Mm,Nm]=matCarro(p,E);gl.uniformMatrix4fv(UN.uMod,false,Mm);gl.uniformMatrix3fv(UN.uNM,false,Nm);setCarro(q);
     gl.uniform3fv(UN.uCor,hex(c.col));gl.uniform3fv(UN.uCor2,hex(c.col2||"#F2F2F2"));gl.uniform3fv(UN.uComp,hex(c.tyre&&typeof COMP!=="undefined"&&COMP[c.tyre.c]?COMP[c.tyre.c].c:"#F5C518"));
-    gl.bindTexture(gl.TEXTURE_2D,texCarro(c));const oc=P3._oculta&&P3._oculta===c;if(oc)gl.uniform1f(UN.uOculta,1);gl.drawElements(gl.TRIANGLES,car.n,gl.UNSIGNED_INT,0);if(oc)gl.uniform1f(UN.uOculta,0);nv++}
+    gl.bindTexture(gl.TEXTURE_2D,texCarro(c));const oc=P3._oculta&&P3._oculta===c;if(oc)gl.uniform1f(UN.uOculta,1);gl.bindVertexArray(q.M.vao);gl.drawElements(gl.TRIANGLES,q.M.n,gl.UNSIGNED_INT,0);if(oc)gl.uniform1f(UN.uOculta,0);nv++}
   gl.uniform4f(UN.uVivo,0,0,0,0);gl.bindVertexArray(null);return nv}
 function garantePista(){usa(CX.A);if(!pista||P3.geo!==TRACKGEO){pista=constroiPista();P3.geo=TRACKGEO;P3._corte=true}}
 // variantes do desenho 2D do jogo: só o que fica no chão (marcas, borracha, poças, DRS, setores) e só o que fica por cima (efeitos, etiquetas)
@@ -800,21 +832,22 @@ P3.desenha=function(ctx,cw,ch,opts,cs){opts=opts||{};const principal=ctx.canvas&
   if(o.atT){gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,o.atT);gl.activeTexture(gl.TEXTURE0)}
   P3._oculta=null;if(iso){VP=isoVP(cw,ch);const v=nz([1,1,2*ISO_S]);const ref=lista[0]?lista[0].p:{x:0,y:0};C={e:[ref.x+v[0]*1e6,ref.y+v[1]*1e6,v[2]*1e6]}}
   else{const alvo=lista.find(q=>q.c.id===cs.id)||lista.find(q=>q.c.isP)||lista[0];if(!alvo)return;const ch2=(principal?"p":"o")+(cs.chave||"");const dt=Math.min(.1,now-(CAMST[ch2]&&CAMST[ch2].tn||now));C=camera(alvo.c,alvo.p,dt,MODO[cs.tipo]||1,ch2);P3._oculta=null;CAMST[ch2].tn=now;VP=mul(persp(C.f*Math.PI/180,L.w/L.h,.25*WS,90000),look(C.e,C.t,[0,0,1]))}
+  CUR.VP=VP;CUR.iso=iso;CUR.eye=iso?null:C.e;CUR.dpr=L.dpr||1;CUR.hpx=iso?1:L.h/(2*Math.tan(C.f*Math.PI/360));CUR.stat={tris:0,blocos:0,total:0,carros:0};
   // efeitos 2D do chão (só na câmera isométrica, que é a mesma projeção do jogo)
   let Gc=null;if(iso){Gc=principal?CX.G:(CX.GO||(CX.GO=document.createElement("canvas")));if(Gc.width!==L.w||Gc.height!==L.h){Gc.width=L.w;Gc.height=L.h}const g2=Gc.getContext("2d");g2.setTransform(L.dpr,0,0,L.dpr,0,0);V.chao(g2,cw,ch,opts)}
   // 3D: pista → efeitos do chão → carros
-  gl.viewport(0,0,L.w,L.h);gl.useProgram(P);const lz=luzes(iso,C,VP);gl.clearColor(lz.ceu[0],lz.ceu[1],lz.ceu[2],1);gl.clearStencil(0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
+  gl.viewport(0,0,L.w,L.h);gl.useProgram(P);const lz=luzes(iso,C,VP);CUR.far=P3.neb?3.1/P3.neb:0;gl.clearColor(lz.ceu[0],lz.ceu[1],lz.ceu[2],1);gl.clearStencil(0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
   if(!iso&&o.ceu){const Rr=40000;gl.depthMask(false);gl.disable(gl.DEPTH_TEST);gl.uniform1i(UN.uDN,0);gl.uniformMatrix4fv(UN.uMod,false,new Float32Array([Rr,0,0,0,0,Rr,0,0,0,0,Rr,0,C.e[0],C.e[1],C.e[2],1]));gl.uniformMatrix3fv(UN.uNM,false,ID3);gl.bindVertexArray(o.ceu.vao);gl.drawElements(gl.TRIANGLES,o.ceu.n,gl.UNSIGNED_INT,0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
   desenhaPista();
   if(Gc){if(!o.gt)o.gt=gl.createTexture();gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,o.gt);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,Gc);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.uniform1i(UN.uGT,1);gl.uniform2f(UN.uVS,L.w,L.h);gl.activeTexture(gl.TEXTURE0);
-    gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-2,-2);gl.uniform1f(UN.uSobre,1);gl.uniformMatrix4fv(UN.uMod,false,ID);gl.bindVertexArray(pista.vao);gl.drawElements(gl.TRIANGLES,pista.n,gl.UNSIGNED_INT,0);gl.uniform1f(UN.uSobre,0);gl.disable(gl.POLYGON_OFFSET_FILL);gl.depthMask(true);gl.disable(gl.BLEND);gl.depthFunc(gl.LESS)}
+    gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-2,-2);gl.uniform1f(UN.uSobre,1);gl.uniformMatrix4fv(UN.uMod,false,ID);desenhaMalha(pista);gl.uniform1f(UN.uSobre,0);gl.disable(gl.POLYGON_OFFSET_FILL);gl.depthMask(true);gl.disable(gl.BLEND);gl.depthFunc(gl.LESS)}
   const nv=desenhaCarros(lista,lz.du,iso,C,pista);if(principal)P3.nv=nv;if(!iso&&!opts.S){try{particulas(o,VP,L.h/(2*Math.tan(C.f*Math.PI/360)))}catch(e){}}
   // 2D por cima: na tela da corrida a camada 3D fica embaixo do canvas; nas janelas, a imagem 3D é copiada para o canvas
   if(principal)ctx.clearRect(0,0,cw,ch);else ctx.drawImage(o.cv,0,0,cw,ch);
   if(iso){P3.topo=true;try{V.topo(ctx,cw,ch,opts)}finally{P3.topo=false}
     if(principal&&!opts.S){const me=lista.find(q=>q.c.isP);if(me){const s=toScreen(me.p.x,me.p.y,Math.max(0,(me.p.z||0)-(P3.H?P3.H(me.p.x,me.p.y):0)),cw,ch);ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(s[0],s[1],15*CSC*CAM.z,8*CSC*CAM.z,0,0,7);ctx.stroke()}}}
-  if(principal){P3.ms=performance.now()-t0;C3D&&C3D.amostra&&C3D.amostra(P3.ms)}};
+  if(principal){P3.ms=performance.now()-t0;P3.stat=CUR.stat;C3D&&C3D.amostra&&C3D.amostra(P3.ms)}};
 // ---------- fotos automáticas (largada, chegada, melhores momentos, pódio)
 P3.foto=function(rot,cam){try{if(!R||!R.cars)return;const cv=document.createElement("canvas");cv.width=1280;cv.height=720;const x=cv.getContext("2d");drawScene(x,1280,720,{pip:true,cam3d:cam});drawScene(x,1280,720,{pip:true,cam3d:cam});
   x.fillStyle="rgba(10,12,16,.75)";x.fillRect(24,24,420,64);x.fillStyle="#FF4D2E";x.fillRect(24,24,6,64);x.fillStyle="#fff";x.font="800 26px 'Titillium Web',sans-serif";x.fillText(rot,44,58);x.font="600 16px 'Titillium Web',sans-serif";x.fillStyle="#C9CDD3";x.fillText((R.C&&R.C.n||"")+" · Liga Paddock",44,80);
@@ -855,5 +888,7 @@ function particulas(o,VP,Hpx){if(!o.pp){o.pp=prog(PVS,PFS);o.pb=gl.createBuffer(
   gl.bindBuffer(gl.ARRAY_BUFFER,o.pk);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(K),gl.DYNAMIC_DRAW);L=gl.getAttribLocation(o.pp,"aK");gl.enableVertexAttribArray(L);gl.vertexAttribPointer(L,4,gl.FLOAT,false,0,0);
   gl.uniformMatrix4fv(gl.getUniformLocation(o.pp,"uVP"),false,VP);gl.uniform1f(gl.getUniformLocation(o.pp,"uH"),Hpx);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.POINTS,0,Q.length/4);gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(null);gl.useProgram(P)}
 // some a camada 3D quando a corrida não está mais sendo desenhada
-P3.quadro=function(){try{vigiaFotos();const pc=document.getElementById("p3dPodio");if(pc)podio(pc)}catch(e){}if(CX.A&&performance.now()-ultPrincipal>400){[CX.A.cv,CX.G,CX.B.cv].forEach(c=>c&&(c.style.display="none"))}};
+P3.quadro=function(){try{if(typeof TRACKGEO!=="undefined"&&TRACKGEO&&GEOC.g!==TRACKGEO&&!P3._prep){P3._prep=1;(window.requestIdleCallback||(f=>setTimeout(f,300)))(()=>{P3._prep=0;P3.prepara()},{timeout:2000})}}catch(e){}
+  // (acima) carregamento antecipado: a pista 3D é montada nos momentos ociosos do fim de semana, não na largada
+  try{vigiaFotos();const pc=document.getElementById("p3dPodio");if(pc)podio(pc)}catch(e){}if(CX.A&&performance.now()-ultPrincipal>400){[CX.A.cv,CX.G,CX.B.cv].forEach(c=>c&&(c.style.display="none"))}};
 })();

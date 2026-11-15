@@ -114,3 +114,39 @@ FX2.clarao = function (ctx, e, s, age, Z) {
   if (!fx2Ok(ctx) || age > .3) return; ctx.save(); ctx.globalCompositeOperation = "lighter";
   fx2Img(ctx, FX2.sp.clarao, s[0], s[1] - 4 * U * Z, (16 + age * 40) * U * Z, .85 * (1 - age / .3)); ctx.restore();
 };
+// ---------- o ar: vácuo (corrente de ar puxando o carro de trás) e ar sujo (turbulência atrás do carro da frente)
+(function () {
+  if (typeof drawTow === "function") { const base = drawTow;
+    globalThis.drawTow = function (ctx, cw, ch, p, pa, k, now) {
+      if (!fx2Ok(ctx)) return base(ctx, cw, ch, p, pa, k, now);
+      const Z = CAM.z, dx = p.x - pa.x, dy = p.y - pa.y, L = Math.hypot(dx, dy); if (L < 8 || L > WS * 45) return;
+      const ux = dx / L, uy = dy / L, nx = -uy, ny = ux, n = fx2Nivel() >= 2 ? 30 : 15, x0 = pa.x - ux * 8 * CSC, y0 = pa.y - uy * 8 * CSC;
+      const pt = (t, lat, z) => toScreen(x0 + (dx + ux * 8 * CSC) * t + nx * lat, y0 + (dy + uy * 8 * CSC) * t + ny * lat, z, cw, ch);
+      ctx.save();
+      // volume do vácuo: um túnel de ar claro bem suave
+      for (let j = 0; j < 4; j++) { const t = (j + .5) / 4, q = pt(t, 0, 2 * CSC); fx2Img(ctx, FX2.sp.agua, q[0], q[1], (2 + t * 3.2) * WS * Z, .15 * k) }
+      // filetes de ar correndo da traseira do carro da frente até o bico do carro de trás
+      ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+      for (let j = 0; j < n; j++) { const h = fx2Hash(j + 5), ph = (now * (1.6 + h * .8) + h) % 1, w = (.6 + ph * 1.9) * WS * (fx2Hash(j * 7) - .5) * 2;
+        const a = Math.min(1, k * 1.05 * Math.sin(Math.PI * ph)); if (a < .02) continue; const t0 = Math.max(0, ph - .16), z = (1.5 + h) * CSC;
+        const A = pt(t0, w * (t0 / Math.max(ph, .01)), z), B = pt(ph, w, z);
+        ctx.strokeStyle = `rgba(190,226,255,${a})`; ctx.lineWidth = Math.max(1.2, (1.2 + h * 1.2) * Z); ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke() }
+      ctx.restore();
+    } }
+  if (typeof drawDirty === "function") { const base = drawDirty;
+    globalThis.drawDirty = function (ctx, cw, ch, p, pa, k, now) {
+      if (!fx2Ok(ctx)) return base(ctx, cw, ch, p, pa, k, now);
+      const Z = CAM.z, dx = p.x - pa.x, dy = p.y - pa.y, L = Math.hypot(dx, dy); if (L < 8) return;
+      const ux = dx / L, uy = dy / L, nx = -uy, ny = ux, n = fx2Nivel() >= 2 ? 12 : 6; ctx.save();
+      // bolsões de ar turbulento girando e se desfazendo
+      for (let j = 0; j < n; j++) { const h = fx2Hash(j + 21), ph = (now * (.9 + h * .5) + h) % 1, t = .1 + ph * .9;
+        const lat = (Math.sin(now * 3.1 + j * 1.7) * 1.1 + (h - .5) * 2.4) * WS * t, x = pa.x + dx * t + nx * lat, y = pa.y + dy * t + ny * lat;
+        const q = toScreen(x, y, (2 + ph * 4) * CSC, cw, ch); fx2Img(ctx, FX2.sp.fumacaClara, q[0], q[1], (1.2 + t * 3) * WS * Z, .24 * k * Math.sin(Math.PI * ph)) }
+      // redemoinhos: espirais curtas que giram rápido
+      ctx.lineCap = "round"; for (let j = 0; j < (n >> 1); j++) { const h = fx2Hash(j + 50), t = .2 + (j + .5) / (n >> 1) * .75, cx = pa.x + dx * t + nx * (h - .5) * 2.4 * WS * t, cy = pa.y + dy * t + ny * (h - .5) * 2.4 * WS * t;
+        const c = toScreen(cx, cy, 2.4 * CSC, cw, ch), r = (.7 + t * 1.6) * WS * Z, a0 = now * (5 + h * 4) * (j % 2 ? 1 : -1) + h * 6;
+        ctx.strokeStyle = `rgba(245,236,226,${(.25 + .35 * k) * (1 - t * .5)})`; ctx.lineWidth = Math.max(1, .9 * Z); ctx.beginPath();
+        for (let s = 0; s <= 10; s++) { const a = a0 + s * .55, rr = r * (1 - s * .07), X = c[0] + Math.cos(a) * rr, Y = c[1] + Math.sin(a) * rr * .5; s ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y) } ctx.stroke() }
+      ctx.restore();
+    } }
+})();

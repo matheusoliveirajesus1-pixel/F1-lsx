@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Paddock P26 · 3D</title>
+<style>
+:root{--bg:#0C0D10;--fg:#EEF0F3;--mu:#8D929C;--ac:#FF4D2E;--ln:rgba(255,255,255,.12)}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+#v{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}#v:active{cursor:grabbing}
+.top{position:fixed;left:0;right:0;top:0;padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));display:flex;justify-content:space-between;gap:12px;pointer-events:none}
+.top>*{pointer-events:auto}
+h1{margin:0;font:900 italic 26px/1 system-ui,sans-serif;letter-spacing:-.01em}h1 small{display:block;margin-top:6px;font:700 11px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:var(--ac);font-style:normal}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:0 max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.row{display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto}
+@media (max-width:700px){.row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}.row::-webkit-scrollbar{display:none}.row b{display:none}button{flex:none}.hint{display:none}h1{font-size:22px}}
+.row b{font:700 10px/1 system-ui;letter-spacing:.16em;text-transform:uppercase;color:var(--mu);align-self:center;margin-right:4px;min-width:56px}
+button{font:600 13px/1 system-ui;color:var(--fg);background:rgba(20,22,27,.82);border:1px solid var(--ln);border-radius:999px;padding:8px 12px;display:inline-flex;align-items:center;gap:7px;cursor:pointer;backdrop-filter:blur(6px)}
+button.on{border-color:var(--ac);background:rgba(255,77,46,.16)}
+.dot{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.hint{font:600 12px/1.2 system-ui;color:var(--mu);text-align:right}
+#err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px;color:var(--mu)}
+</style></head><body>
+<canvas id="v"></canvas>
+<div class="top"><h1 id="nome">Paddock P26<small>Carro-conceito 2026</small></h1><div class="hint">Arraste para girar<br>Role ou faça pinça para zoom</div></div>
+<div class="bar">
+ <div class="row" id="eq"><b>Equipe</b></div>
+ <div class="row" id="pn"><b>Pneu</b></div>
+ <div class="row" id="vi"><b>Vista</b></div>
+</div>
+<div id="err">Este aparelho não conseguiu abrir o 3D (WebGL2 indisponível).</div>
+<script src="carro3d.js"></script>
+<script>
+(function(){
+const EQ=[["paddock","Paddock P26","#E5321E","#F4F4F2"],["mercedes","Mercedez","#27F4D2","#1A1A1A"],["ferrari","Fehari","#E8002D","#FFE600"],["redbull","Red Bison Racing","#3671C6","#DC0032"],["mclaren","McLarren","#FF8000","#1A1A1A"],["racingbulls","Racing Bisons","#6692FF","#F2F2F2"],["alpine","Alpyne","#FF87BC","#0093CC"],["haas","Hass","#E6E6E6","#DA291C"],["audi","Audy","#8A8D8F","#E2001A"],["williams","Willians","#64C4FF","#00205B"],["astonmartin","Aston Marten","#229971","#CEDC00"],["cadillac","Cadilak","#3A3A3A","#F2F2F2"]];
+const PN=[["S","Macio","#E8002D"],["M","Médio","#F5C518"],["H","Duro","#F2F2F2"],["I","Intermediário","#39B54A"],["W","Chuva","#0067AD"]];
+const VI=[["34","3/4",-2.36,.26,8300],["lado","Lado",-1.5708,.04,8200],["frente","Frente",-3.1416,.1,6800],["tras","Trás",0,.14,6800],["cima","Cima",-1.5708,1.45,8600]];
+const qs=new URLSearchParams(location.search);
+const hex=h=>{h=String(h);if(h.length===4)h="#"+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];return[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255)};
+const cv=document.getElementById("v");let R;
+try{const D=CARRO.construir({cor:"#FF0000",cor2:"#00FF00"});R=new Render3D(cv,D)}catch(e){document.getElementById("err").style.display="grid";return}
+const st={yaw:-2.36,pit:.26,dist:8300,auto:true,alvo:[1550,0,240]};let sujo=true;
+function cor(e){R.cores={cor:hex(e[2]),cor2:hex(e[3]),comp:R.cores?R.cores.comp:hex("#F5C518")};document.getElementById("nome").firstChild.nodeValue=e[1];sujo=true}
+// equipe da liga via parâmetros (?nome=&c1=&c2=)
+if(qs.get("c1"))EQ.unshift(["liga",qs.get("nome")||"Equipe","#"+qs.get("c1").replace("#",""),"#"+(qs.get("c2")||"F2F2F2").replace("#","")]);
+const mk=(box,list,fn,sel)=>{const el=document.getElementById(box);list.forEach((it,i)=>{const b=document.createElement("button");b.innerHTML=(it.dot?`<span class="dot" style="background:${it.dot}"></span>`:"")+it.t;b.onclick=()=>{[...el.querySelectorAll("button")].forEach(x=>x.classList.remove("on"));b.classList.add("on");fn(i)};if(i===sel)b.classList.add("on");el.appendChild(b)})};
+let ini=Math.max(0,EQ.findIndex(e=>e[0]===qs.get("equipe")));
+mk("eq",EQ.map(e=>({t:e[1],dot:`linear-gradient(135deg,${e[2]} 55%,${e[3]} 55%)`})),i=>cor(EQ[i]),ini);
+mk("pn",PN.map(p=>({t:p[1],dot:p[2]})),i=>{R.cores.comp=hex(PN[i][2]);sujo=true},1);
+mk("vi",VI.map(v=>({t:v[1]})),i=>{const v=VI[i];anim={yaw:v[2],pit:v[3],dist:v[4]};st.auto=false},0);
+cor(EQ[ini]);let anim=null;
+function tam(){const d=Math.min(2,window.devicePixelRatio||1);const w=Math.round(innerWidth*d),h=Math.round(innerHeight*d);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;sujo=true}}
+function quadro(){tam();if(st.auto){st.yaw+=.0025;sujo=true}
+  if(anim){let fim=true;for(const k of["yaw","pit","dist"]){const d=anim[k]-st[k];if(Math.abs(d)>(k==="dist"?2:.001)){st[k]+=d*.14;fim=false}}if(fim)anim=null;sujo=true}
+  if(sujo){sujo=false;const p=Math.max(.02,Math.min(1.5,st.pit)),c=Math.cos(p),a=st.alvo;const mob=innerWidth<innerHeight;const D=st.dist*(mob?1.3:1);
+    const olho=[a[0]+Math.cos(st.yaw)*c*D,a[1]+Math.sin(st.yaw)*c*D,a[2]+Math.sin(p)*D];R.desenha({tipo:"persp",olho,alvo:a,fov:mob?36:28},[.047,.05,.058],true)}
+  requestAnimationFrame(quadro)}
+// controles
+const pts=new Map();let d0=0;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);st.auto=false;anim=null;if(pts.size===2){const[a,b]=[...pts.values()];d0=Math.hypot(a[0]-b[0],a[1]-b[1])}});
+cv.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;const q=pts.get(e.pointerId);const dx=e.clientX-q[0],dy=e.clientY-q[1];pts.set(e.pointerId,[e.clientX,e.clientY]);
+  if(pts.size===1){st.yaw-=dx*.006;st.pit=Math.max(.02,Math.min(1.5,st.pit+dy*.005))}else if(pts.size===2){const[a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(d0)st.dist=Math.max(3200,Math.min(16000,st.dist*d0/d));d0=d}sujo=true});
+const solta=e=>{pts.delete(e.pointerId);d0=0};cv.addEventListener("pointerup",solta);cv.addEventListener("pointercancel",solta);
+cv.addEventListener("wheel",e=>{e.preventDefault();st.dist=Math.max(3200,Math.min(16000,st.dist*Math.exp(e.deltaY*.001)));st.auto=false;sujo=true},{passive:false});
+quadro();
+})();
+</script></body></html>

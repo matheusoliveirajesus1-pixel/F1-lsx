@@ -105,11 +105,16 @@ Feito (arquivos: avatar.js, entrevista.js, piloto-visual.js, cenas.js):
   - Comercial do patrocinador.
   - Título mundial.
 - **Rádio com o rosto do engenheiro.**
+- **Corpo inteiro (corpo.js)** nas comemorações: pódio (troféu e champanhe), título, anúncio e comercial. As entrevistas continuam com foco no rosto.
 - **Coisas que nasceram disso**
   - Foto na manchete.
   - Clipe vertical nas redes.
 
+- **Memória do mundo (memoria.js):** fatos com quem viu, peso e validade; rádio do piloto (falar e perguntar); a TV escuta; vazamentos; redes reagem; zona mista e coletiva com perguntas da memória; frases polêmicas voltam semanas depois.
+- **Vozes (voz-pt.js + vozes-jogo.js):** voz gerada pelo jogo nas cenas, entrevistas e rádio; liga/desliga em Configurações.
+
 Ainda falta:
+- **Banco da memória maior:** chegar a 150+ tipos de fato (vida pessoal, contratos, patrocínio, companheiro, campeonato).
 - **Perguntas da liga online.** Precisa dos resultados das corridas online e dos nomes dos jogadores humanos.
 - **Banco de perguntas em inglês.** Hoje a legenda de "tradução" mostra o texto em português, porque o banco só existe em português.
 

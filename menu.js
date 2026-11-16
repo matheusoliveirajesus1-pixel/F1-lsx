@@ -1,7 +1,7 @@
 // ===================== MENU PRINCIPAL E CONFIGURAÇÕES =====================
 // Preferências do aparelho (valem para qualquer carreira): qualidade gráfica, gráficos de TV, voz e volumes.
 let PREFS=(()=>{let o=null;try{o=JSON.parse(localStorage.getItem("paddock-prefs")||"null")}catch(e){}o=o&&typeof o==="object"?o:{};
-  return{q:["auto","alto","medio","leve"].includes(o.q)?o.q:"auto",tv:o.tv!==false,tts:!!o.tts,map:["auto","simples","completo"].includes(o.map)?o.map:"auto",vol:o.vol&&typeof o.vol==="object"?o.vol:{}}})();
+  return{q:["auto","alto","medio","leve"].includes(o.q)?o.q:"auto",tv:o.tv!==false,tts:!!o.tts,map:["auto","simples","completo"].includes(o.map)?o.map:"auto",vol:o.vol&&typeof o.vol==="object"?o.vol:{},vozes:o.vozes!==false,ivTexto:!!o.ivTexto}})();
 function prefsSave(){try{localStorage.setItem("paddock-prefs",JSON.stringify(PREFS))}catch(e){}}
 const Q_NAMES=[["auto","Automática","ajusta sozinha se o aparelho engasgar"],["alto","Alta","cenário completo e tela nítida"],["medio","Média","menos detalhes no cenário"],["leve","Leve","para celulares mais simples"]];
 // resumo da carreira salva, sem abrir o jogo
@@ -27,6 +27,7 @@ function cfgModal(){const seg=(act,cur,opts)=>`<div class="tpick">${opts.map(([v
    <h3>Qualidade gráfica</h3>${seg("mnQ",PREFS.q,Q_NAMES)}
    <h3>Mapa</h3>${seg("mnMap",PREFS.map||"auto",[["auto","Automático","simples no celular, completo no computador"],["simples","Simples","sem janelas e com menos árvores; usa bem menos memória"],["completo","Completo","todos os detalhes; pode fechar a página em celulares"]])}
    <h3>Transmissão</h3><div class="choice"><button class="chip${PREFS.tv?" on":""}" data-act="mnTv"><b>${PREFS.tv?"✓ ":""}Gráficos de TV (vinhetas, faixas, avisos e legendas)</b></button></div>
+   <h3>Vozes</h3><div class="choice"><button class="chip${PREFS.vozes!==false?" on":""}" data-act="mnVozes"><b>${PREFS.vozes!==false?"✓ ":""}Personagens falam em voz alta (voz gerada pelo jogo)</b></button></div>
    ${typeof sndPanel==="function"?sndPanel():""}
    ${typeof liveryCard==="function"?liveryCard():""}
    ${G&&!G.mp?`<h3>Assistências de pilotagem</h3><p class="muted" style="font-size:12.5px">Escolha o que fica automático, em sugestão ou manual.</p><button class="btn sm" data-act="ccAs">Abrir assistências</button>`:""}
@@ -42,4 +43,5 @@ function helpModal(){modal(`<h2>Como jogar</h2><ol class="howto">
 function mnAction(a,k,b){if(typeof racelogAction==="function"&&racelogAction(a,k,b))return;if(a==="mnCfg")return cfgModal();if(a==="mnHelp")return helpModal();
   if(a==="mnQ"&&Q_NAMES.some(x=>x[0]===k)){PREFS.q=k;prefsSave();if(typeof qualityApply==="function")qualityApply(true);return cfgModal()}
   if(a==="mnMap"&&["auto","simples","completo"].includes(k)){PREFS.map=k;prefsSave();try{if(typeof SPR!=="undefined")SPR.reset();if(typeof GCH!=="undefined")GCH.map.clear()}catch(e){}return cfgModal()}
-  if(a==="mnTv"){PREFS.tv=!PREFS.tv;prefsSave();return cfgModal()}}
+  if(a==="mnTv"){PREFS.tv=!PREFS.tv;prefsSave();return cfgModal()}
+  if(a==="mnVozes"){PREFS.vozes=PREFS.vozes===false;prefsSave();return cfgModal()}}

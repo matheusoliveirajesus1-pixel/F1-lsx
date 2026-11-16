@@ -488,7 +488,7 @@ vec3 ceu(vec3 d){float y=d.z;float nt=uNoite;vec3 crep=vec3(1.,.55,.3)*smoothste
   if(y>.015){vec2 uv=d.xy/(d.z+.1)*1.3+vec2(uT*.004,0.);float n=fbm(uv*1.6);float cl=smoothstep(.5-.18*uMolh,.78,n)*smoothstep(.015,.22,y);c=mix(c,mix(vec3(.97,.97,.98),vec3(.55,.58,.62),uMolh)*(nt>.5?.12:1.),cl*.8);}
   if(nt>.5&&y>0.){float s=step(.9965,h21(floor(d.xy/(d.z+.2)*260.)));c+=vec3(s*.8)*(nt-.5)*2.;}return c+crep*.6;}
 vec3 amb(vec3 r){float y=r.z;return mix(uCeu*.55,uCeu*1.25,smoothstep(-.1,.6,y))+vec3(1.4)*smoothstep(.92,.99,dot(r,uSol));}
-void main(){int m=int(vM+.5);if(abs(float(m)-uDbg)<.5)discard;if(uProjOn>.5||m==24){o=vec4(0.,0.,0.,.36*(1.-uNoite*.75));return;}if(uOculta>.5&&(m==6||m==7))discard;if(uSobre>.5){if(m>=10&&m!=17&&m!=18&&m!=20||m==21){o=texture(uGT,gl_FragCoord.xy/uVS);}else{o=vec4(0.);}return;}if(m==22){o=vec4(ceu(normalize(vW-uEye)),1.);return;}if(m==19){o=vec4(0.,0.,0.,.38);return;}if(m==21){o=texture(uGT,gl_FragCoord.xy/uVS);return;}
+void main(){int m=int(vM+.5);if(abs(float(m)-uDbg)<.5)discard;if(uProjOn>.5||m==24){o=vec4(0.,0.,0.,.36*(1.-uNoite*.75));return;}if(uOculta>.5&&(m==6||m==7))discard;if(uSobre>.5){if(((m>=10&&m<=16)||m==25||m==21)&&abs(normalize(vN).z)>.75){o=texture(uGT,gl_FragCoord.xy/uVS);}else{o=vec4(0.);}return;}if(m==22){o=vec4(ceu(normalize(vW-uEye)),1.);return;}if(m==19){o=vec4(0.,0.,0.,.38);return;}if(m==21){o=texture(uGT,gl_FragCoord.xy/uVS);return;}
   vec3 V=normalize(uEye-vW);vec3 N=normalize(vN);if(dot(N,V)<0.)N=-N;vec3 base=vC;float rough=.6,spec=.2,fres=.2,metal=0.;
   if(m==0||m==6){rough=.14;spec=.9;fres=1.;}else if(m==1){rough=.35;spec=.4;fres=.5;}else if(m==2){rough=.8;spec=.1;fres=.12;}else if(m==3){rough=.3;spec=.6;fres=.5;metal=.6;}else if(m==4){rough=.05;spec=1.2;fres=1.;metal=1.;}
   else if(m==10){float n=ru(vW.xy*.9)*.45+ru(vW.xy*4.)*.25+h21(floor(vW.xy*12.))*.15+h21(floor(vW.xy*38.))*.15;float rem=smoothstep(.55,.75,ru(vW.xy*.035));base*=(.8+.3*n)*(1.-.08*rem);float poca=uMolh*smoothstep(.5,.72,ru(vW.xy*.06+3.));base*=1.-.35*uMolh;rough=mix(.75,.12,max(uMolh*.6,poca));spec=mix(.12,.9,uMolh);fres=mix(.1,1.,max(uMolh*.7,poca));}
@@ -612,7 +612,7 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
   // terreno: grade de alturas; perto da pista acompanha a pista, longe sobe em morros e montanhas conforme o lugar
   const bb0=g.bb,E0=Math.max(bb0.x1-bb0.x0,bb0.y1-bb0.y0)*1.6+3000,gcx=(bb0.x0+bb0.x1)/2,gcy=(bb0.y0+bb0.y1)/2;const CEL=40,NX=Math.ceil(2*E0/CEL)+1,X0=gcx-E0,Y0=gcy-E0;
   const Dg=new Float32Array(NX*NX).fill(1e9),Eg=new Float32Array(NX*NX);const sem=(x,y,e)=>{const i=Math.round((x-X0)/CEL),j=Math.round((y-Y0)/CEL);if(i<0||j<0||i>=NX||j>=NX)return;const k=j*NX+i;const d=Math.hypot(x-(X0+i*CEL),y-(Y0+j*CEL));if(d<Dg[k]){Dg[k]=d;Eg[k]=e}};
-  for(let i=0;i<M;i++){const q=g.path[i];sem(q.x,q.y,ze[i])}if(g.pit)for(let k=0;k<g.pit.length;k+=2){const q=g.pit[k];const ff=(g.pl?g.pl.fe:0);sem(q.x,q.y,ze[Math.floor(fr(ff+k/g.pit.length*.1)*M)%M])}
+  for(let i=0;i<M;i++){const q=g.path[i];sem(q.x,q.y,ze[i])}// a pit lane segue o terreno da reta mais próxima (antes ela semeava alturas de outro trecho e levantava o chão sobre a pista)
   {const s2=Math.SQRT2*CEL;for(let pass=0;pass<2;pass++){const fw=pass===0;for(let jj=0;jj<NX;jj++)for(let ii=0;ii<NX;ii++){const j=fw?jj:NX-1-jj,i=fw?ii:NX-1-ii,k=j*NX+i;
       for(const[di,dj,c]of fw?[[-1,0,CEL],[0,-1,CEL],[-1,-1,s2],[1,-1,s2]]:[[1,0,CEL],[0,1,CEL],[1,1,s2],[-1,1,s2]]){const a=i+di,b=j+dj;if(a<0||b<0||a>=NX||b>=NX)continue;const kk=b*NX+a;if(Dg[kk]+c<Dg[k]){Dg[k]=Dg[kk]+c;Eg[k]=Eg[kk]}}}}}
   const amp=street||urb?0:th.mountains?1:th.hills?.45:/desert|dunes/.test(th.g||"")?.18:.22;
@@ -623,6 +623,10 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
     const perto=Math.min(1,Math.max(0,(D-90*m)/(260*m)));const longe=Math.min(1,Math.max(0,(D-320*m)/(900*m)));
     const morro=(fbm2(x/(900*m),y/(900*m))-.35)*60*m*amp*perto,serra=Math.pow(fbm2(x/(2200*m)+7,y/(2200*m)+3),1.4)*560*m*amp*longe;
     Hn[k]=Eg[k]+Math.max(-4*m,morro)+serra-(D<TW+6*m?.6*m:0)}
+  // o terreno nunca fica acima do asfalto: perto de qualquer trecho da pista, o chão fica abaixo da altura daquele trecho
+  // (a malha do chão usa triângulos grandes; sem isso, um morro ou um trecho mais alto ao lado "invadia" a pista de baixo)
+  {const Rc=TW+5*U+3*CEL*1.6,rr=Math.ceil(Rc/CEL);for(let i=0;i<M;i++){const q=g.path[i],lim=ze[i]-.45*m;const ci=Math.round((q.x-X0)/CEL),cj=Math.round((q.y-Y0)/CEL);
+    for(let dj=-rr;dj<=rr;dj++){const j=cj+dj;if(j<0||j>=NX)continue;for(let di=-rr;di<=rr;di++){const ii=ci+di;if(ii<0||ii>=NX)continue;const x=X0+ii*CEL,y=Y0+j*CEL;if((x-q.x)*(x-q.x)+(y-q.y)*(y-q.y)>Rc*Rc)continue;const k=j*NX+ii;if(Hn[k]>lim)Hn[k]=lim}}}}
   const H=(x,y)=>{let fx=(x-X0)/CEL,fy=(y-Y0)/CEL;fx=Math.max(0,Math.min(NX-1.001,fx));fy=Math.max(0,Math.min(NX-1.001,fy));const i=Math.floor(fx),j=Math.floor(fy),u=fx-i,v=fy-j,k=j*NX+i;return(Hn[k]*(1-u)+Hn[k+1]*u)*(1-v)+(Hn[k+NX]*(1-u)+Hn[k+NX+1]*u)*v};
   const Dd=(x,y)=>{const i=Math.max(0,Math.min(NX-1,Math.round((x-X0)/CEL))),j=Math.max(0,Math.min(NX-1,Math.round((y-Y0)/CEL)));return Dg[j*NX+i]};
   P3.H=H;P3.Dd=Dd;P3.Hc=(x,y)=>H(x,y)+(Dd(x,y)<TW+6*m?.6*m:0);B.hf=H;SB.hf=null;
@@ -632,14 +636,26 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
     const C=(TW+3*m)/sn+3*m,F=120*m,Hb=Math.max(0,6.4*m+ze[Bc.lo]-ze[Bc.hi]),K=Math.ceil((C+F)/seg);for(let k=-K;k<=K;k++){const i=((Bc.hi+k)%M+M)%M,d=Math.abs(k)*seg;const t=Math.min(1,Math.max(0,(C+F-d)/F));zp[i]=Math.max(zp[i],Hb*t*t*(3-2*t))}P3.ponte={B:Bc,C,F,Hb,seg,K}}}
   for(let i=0;i<M;i++)zp[i]+=ze[i];
   const zAt=f=>{const x=fr(f)*M,i=Math.floor(x)%M,k=x-Math.floor(x);return zp[i]*(1-k)+zp[(i+1)%M]*k};P3.zAt=zAt;
+  // água: espelho plano, abaixo da pista, com o fundo do lago escavado no terreno; triangulação de verdade (o leque a partir do centro
+  // cobria a pista quando o lago tem forma côncava, como em Albert Park e no porto de Mônaco)
+  for(const w of(S.water||[])){const poly=(Array.isArray(w)?w:w.pts||[]).map(q=>({x:q.x,y:q.y}));if(poly.length<3)continue;const col=hex(typeof WATER_C!=="undefined"?WATER_C:"#2F6D96");
+    let lvl=1e9;for(const q of poly)lvl=Math.min(lvl,H(q.x,q.y));lvl-=.15*m;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of poly){x0=Math.min(x0,q.x);x1=Math.max(x1,q.x);y0=Math.min(y0,q.y);y1=Math.max(y1,q.y)}
+    for(let i=0;i<M;i++){const q=g.path[i];if(q.x>x0-60*m&&q.x<x1+60*m&&q.y>y0-60*m&&q.y<y1+60*m)lvl=Math.min(lvl,zp[i]-.6*m)}
+    const dentro=(x,y)=>{let c=false;for(let k=0,j=poly.length-1;k<poly.length;j=k++){const a=poly[k],b=poly[j];if((a.y>y)!==(b.y>y)&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)c=!c}return c};
+    {const i0=Math.max(0,Math.floor((x0-X0)/CEL)-1),i1=Math.min(NX-1,Math.ceil((x1-X0)/CEL)+1),j0=Math.max(0,Math.floor((y0-Y0)/CEL)-1),j1=Math.min(NX-1,Math.ceil((y1-Y0)/CEL)+1);
+      for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){if(dentro(X0+i*CEL,Y0+j*CEL)){const k=j*NX+i;Hn[k]=Math.min(Hn[k],lvl-1.2*m)}}}
+    // corte de orelhas
+    const V=poly.slice();let area=0;for(let k=0;k<V.length;k++){const a=V[k],b=V[(k+1)%V.length];area+=a.x*b.y-b.x*a.y}if(area<0)V.reverse();
+    const cruz=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);const noTri=(p,a,b,c)=>cruz(a,b,p)>=0&&cruz(b,c,p)>=0&&cruz(c,a,p)>=0;
+    let guard=0;while(V.length>3&&guard++<5000){let cortou=false;for(let k=0;k<V.length;k++){const a=V[(k+V.length-1)%V.length],b=V[k],c=V[(k+1)%V.length];if(cruz(a,b,c)<=0)continue;
+        let ok=true;for(const p of V){if(p===a||p===b||p===c)continue;if(noTri(p,a,b,c)){ok=false;break}}if(!ok)continue;B.tri([a.x,a.y,lvl],[b.x,b.y,lvl],[c.x,c.y,lvl],col,16);V.splice(k,1);cortou=true;break}if(!cortou)break}
+    for(let k=1;k+1<V.length;k++)B.tri([V[0].x,V[0].y,lvl],[V[k].x,V[k].y,lvl],[V[k+1].x,V[k+1].y,lvl],col,16)/* o que sobrar (contorno com voltas estranhas) fecha em leque */}
   // chão
-  const E=E0,cx=gcx,cy=gcy;{const ST=3,nn=Math.floor((NX-1)/ST)+1,b0=B.p.length/3;const cg=hex(GC[0]),cm=hex(th.mountains?"#2F5530":"#3C6A36"),cr=hex(th.mountains?"#7E7A72":"#6E7A5E");
+  const E=E0,cx=gcx,cy=gcy;{const ST=3,nn=Math.floor((NX-1)/ST)+1,b0=B.p.length/3;P3.terr={X0,Y0,CEL,ST,nn,NX};const cg=hex(GC[0]),cm=hex(th.mountains?"#2F5530":"#3C6A36"),cr=hex(th.mountains?"#7E7A72":"#6E7A5E");
     for(let j=0;j<nn;j++)for(let i=0;i<nn;i++){const x=X0+i*ST*CEL,y=Y0+j*ST*CEL;const z=H(x,y)-.3;const dx=H(x+CEL,y)-H(x-CEL,y),dy=H(x,y+CEL)-H(x,y-CEL);const n=nz([-dx,-dy,2*CEL]);const D=Dd(x,y);
       const t=Math.min(1,Math.max(0,(D-140*m)/(220*m))),rk=Math.min(1,Math.max(0,(z-Eg[0]-260*m)/(160*m)))*(1-n[2])*2;const c=[0,1,2].map(q=>cg[q]*(1-t)+cm[q]*t);const c2=c.map((v,q)=>v*(1-Math.min(1,rk))+cr[q]*Math.min(1,rk));B.v(x,y,z,n,c2,urb?13:11)}
     for(let j=0;j<nn-1;j++)for(let i=0;i<nn-1;i++){const a=b0+j*nn+i;B.i.push(a,a+1,a+nn,a+1,a+nn+1,a+nn)}}
   // água
-  for(const w of(S.water||[])){const poly=Array.isArray(w)?w:w.pts||[];if(poly.length<3)continue;let x=0,y=0;for(const q of poly){x+=q.x;y+=q.y}x/=poly.length;y/=poly.length;const col=hex(typeof WATER_C!=="undefined"?WATER_C:"#2F6D96");
-    for(let k=0;k<poly.length;k++){const a=poly[k],b=poly[(k+1)%poly.length];B.tri([x,y,H(x,y)-.1],[a.x,a.y,H(a.x,a.y)-.1],[b.x,b.y,H(b.x,b.y)-.1],col,16)}}
   // áreas de escape (brita ou asfalto)
   for(const gr of(g.gravel||[])){const n=gr.pts.length/2|0;const A=[],Bq=[];for(let k=0;k<n;k++){A.push([gr.pts[k].x,gr.pts[k].y]);Bq.push([gr.pts[gr.pts.length-1-k].x,gr.pts[gr.pts.length-1-k].y])}
     if(gr.asphalt){for(let k=0;k<n-1;k++){const c=hex(k%4<2?"#2F8F5B":"#5E6268");const z=q=>B.hz(q[0],q[1])+.03;B.quad([A[k][0],A[k][1],z(A[k])],[A[k+1][0],A[k+1][1],z(A[k+1])],[Bq[k+1][0],Bq[k+1][1],z(Bq[k+1])],[Bq[k][0],Bq[k][1],z(Bq[k])],c,10)}}
@@ -650,6 +666,8 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
   // asfalto e linhas brancas
   const N=M*2,pos=(f,L)=>{const p=trackPos(f,L);return[p.x,p.y,zAt(f)]};const lado=L=>Array.from({length:N},(_,k)=>pos(k/N,L));const plano=a=>a.map(q=>[q[0],q[1]]);
   B.faixa(lado(TW+5*U),lado(TW-.5*U),.0,hex(street?"#9AA1A9":"#2E7D32"),street?13:11,true);B.faixa(lado(-TW+.5*U),lado(-TW-5*U),.0,hex(street?"#9AA1A9":"#2E7D32"),street?13:11,true);
+  {const cS=hex(street?"#8A9098":"#2A6B2E");for(const sg of[1,-1]){const Lb=sg*(TW+5*U),Pa=lado(Lb);for(let k=0;k<N;k++){const a=Pa[k],b=Pa[(k+1)%N];const d=4*m;
+      if(sg>0)B.quad([a[0],a[1],a[2]-d],[b[0],b[1],b[2]-d],[b[0],b[1],b[2]],[a[0],a[1],a[2]],cS,street?13:11);else B.quad([b[0],b[1],b[2]-d],[a[0],a[1],a[2]-d],[a[0],a[1],a[2]],[b[0],b[1],b[2]],cS,street?13:11)}}}
   B.faixa(lado(TW),lado(-TW),.05,hex("#3B3E44"),10,true);
   B.faixa(lado(TW+.05*m),lado(TW-.32*m),.08,hex("#EDEDED"),15,true);B.faixa(lado(-TW+.32*m),lado(-TW-.05*m),.08,hex("#EDEDED"),15,true);
   // linha de largada (xadrez)
@@ -664,7 +682,7 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
   // muro paralelo à pista por dentro de curva fechada: a linha "dobra" e forma um laço; tiramos os pontos que ficam mais perto da pista do que deveriam
   const laco=(a,sg)=>{const o=a.slice();for(let i=0;i<M;i++){const L=a[i];if(L==null)continue;const p0=g.path[i],h=g.heading[i];const x=p0.x-Math.sin(h)*sg*L,y=p0.y+Math.cos(h)*sg*L;
       for(let k=-120;k<=120;k+=2){const q=g.path[((i+k)%M+M)%M];if(Math.hypot(q.x-x,q.y-y)<L*.9){o[i]=null;break}}}return o};
-  for(const sg of[1,-1]){const a0=S.wl&&S.wl[sg];if(!a0)continue;const a=laco(suav(a0),sg);const hW=(street?2.2:1)*m;let prev=null;
+  P3.wlVis={};for(const sg of[1,-1]){const a0=S.wl&&S.wl[sg];if(!a0)continue;const a=laco(Array.from(a0),sg);P3.wlVis[sg]=a;/* o muro desenhado é o mesmo da física (scene.js já tira as dobras) */const hW=(street?2.2:1)*m;let prev=null;
     for(let i=0;i<=M;i++){const ii=i%M,L=a[ii];if(L==null||!isFinite(L)){prev=null;continue}const p=g.path[ii],h=g.heading[ii];const x=p.x-Math.sin(h)*sg*L,y=p.y+Math.cos(h)*sg*L,zz=zp[ii];
       if(prev&&Math.hypot(x-prev[0],y-prev[1])<12*m){const z0=prev[2];const c=(i>>1)%2?hex(street?"#C9CFD6":"#9AA3AD"):hex(street?"#B9C0C8":"#8E97A2");B.quad([prev[0],prev[1],z0],[x,y,zz],[x,y,hW+zz],[prev[0],prev[1],hW+z0],c,13);{const h2=g.heading[ii],ox=-Math.sin(h2)*sg*.7*m,oy=Math.cos(h2)*sg*.7*m;B.quad([prev[0],prev[1],hW+z0],[x,y,hW+zz],[x+ox,y+oy,hW+zz],[prev[0]+ox,prev[1]+oy,hW+z0],hex(street?"#E1E5EA":"#B7BEC6"),13)}
         if(!street&&i%2)B.quad([prev[0],prev[1],hW*.62+z0],[x,y,hW*.62+zz],[x,y,hW*.8+zz],[prev[0],prev[1],hW*.8+z0],hex(i%4<2?"#D92B2B":"#F1F1F1"),14)}prev=[x,y,zz]}}
@@ -691,11 +709,17 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
   // faixas de patrocinador por cima da pista, em retas
   {const seg=g.len/M;let n=0;for(let i=Math.round(M*.06);i<M&&n<4;i+=Math.round(M*.07)){let reta=true;for(let k=-20;k<=20;k+=5){let d=g.heading[((i+k)%M+M)%M]-g.heading[i];while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;if(Math.abs(d)>.12){reta=false;break}}if(!reta||(P3.ponte&&Math.abs(i-P3.ponte.B.hi)<P3.ponte.K))continue;
     const p0=g.path[i],h=g.heading[i],z=zp[i],lx=-Math.sin(h),ly=Math.cos(h),L=TW+3*m;const a=[p0.x-lx*L,p0.y-ly*L],b=[p0.x+lx*L,p0.y+ly*L];for(const q of[a,b])B.caixa(q[0],q[1],h,.6*m,.6*m,9*m,z-B.hz(q[0],q[1]),hex("#3B4048"),hex("#3B4048"),4);
-    const zb=z+7*m,zt=z+8.8*m,r=AT.faixa(n),fx=Math.cos(h)*.12*m,fy=Math.sin(h)*.12*m;B.quadUV([a[0]-fx,a[1]-fy,zb],[b[0]-fx,b[1]-fy,zb],[b[0]-fx,b[1]-fy,zt],[a[0]-fx,a[1]-fy,zt],r);B.quadUV([b[0]+fx,b[1]+fy,zb],[a[0]+fx,a[1]+fy,zb],[a[0]+fx,a[1]+fy,zt],[b[0]+fx,b[1]+fy,zt],r);B.caixa((a[0]+b[0])/2,(a[1]+b[1])/2,h+Math.PI/2,L*2,.2*m,1.8*m,zb-B.hz((a[0]+b[0])/2,(a[1]+b[1])/2),hex("#2A2E35"),hex("#2A2E35"),4);n++}}
+    const zb=z+7*m,zt=z+8.8*m,r=AT.faixa(n),fx=Math.cos(h)*.16*m,fy=Math.sin(h)*.16*m;B.quadUV([a[0]+fx,a[1]+fy,zb],[b[0]+fx,b[1]+fy,zb],[b[0]+fx,b[1]+fy,zt],[a[0]+fx,a[1]+fy,zt],r);B.quadUV([b[0]-fx,b[1]-fy,zb],[a[0]-fx,a[1]-fy,zb],[a[0]-fx,a[1]-fy,zt],[b[0]-fx,b[1]-fy,zt],r);/* cada face do lado certo: o texto lê direito para quem vem e para quem vai */B.caixa((a[0]+b[0])/2,(a[1]+b[1])/2,h+Math.PI/2,L*2,.2*m,1.8*m,zb-B.hz((a[0]+b[0])/2,(a[1]+b[1])/2),hex("#2A2E35"),hex("#2A2E35"),4);n++}}
+  const DC=new Map(),DCS=60;for(let i=0;i<M;i++){const q=g.path[i];const k=Math.floor(q.x/DCS)+","+Math.floor(q.y/DCS);let l=DC.get(k);if(!l)DC.set(k,l=[]);l.push(i)}
+  const dCentroI=(x,y)=>{let b=1e9,bi=-1;const gx=Math.floor(x/DCS),gy=Math.floor(y/DCS);for(let a=-2;a<=2;a++)for(let c=-2;c<=2;c++){const l=DC.get((gx+a)+","+(gy+c));if(l)for(const i of l){const q=g.path[i];const d=Math.hypot(q.x-x,q.y-y);if(d<b){b=d;bi=i}}}return[b,bi]};
+  const dCentro=(x,y)=>dCentroI(x,y)[0];P3.dCentro=dCentro;
+  // altura do chão onde um carro pode estar: em cima do asfalto e da faixa de grama, a altura da pista (sem a rampa da ponte, que o zPos soma);
+  // mais longe, o terreno (que agora fica sempre abaixo da pista)
+  {const borda=TW+5*U;P3.Hc=(x,y)=>{const r=dCentroI(x,y);const ht=H(x,y)-.25;if(r[1]<0)return ht;const zt=ze[r[1]];if(r[0]<=borda)return zt;const t=Math.min(1,(r[0]-borda)/(3*U));const s2=t*t*(3-2*t);return zt+(Math.max(ht,zt-6*m)-zt)*s2}}
   // pit lane, muro do pit, garagens e prédio
   const side=g.side;if(g.pit&&g.pit.length){const pts=g.pit;const A=[],Bq=[],W1=[];for(let k=0;k<pts.length;k++){const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];const h=Math.atan2(b.y-a.y,b.x-a.x),nx=-Math.sin(h),ny=Math.cos(h);
       A.push([pts[k].x+nx*15*U,pts[k].y+ny*15*U]);Bq.push([pts[k].x-nx*15*U,pts[k].y-ny*15*U]);W1.push([pts[k].x-nx*side*16*U,pts[k].y-ny*side*16*U])}
-    B.faixa(A,Bq,.04,hex("#5A6068"),10,false);const k0=Math.round(pts.length*.12),k1=Math.round(pts.length*.88);for(let k=k0;k<k1;k++){const a=W1[k],b=W1[k+1];{const ha=H(a[0],a[1]),hb=H(b[0],b[1]);B.quad([a[0],a[1],ha],[b[0],b[1],hb],[b[0],b[1],.75*m+hb],[a[0],a[1],.75*m+ha],hex(k%6<3?"#D9DDE2":"#C5CAD0"),13)}}}
+    B.faixa(A,Bq,.04,hex("#5A6068"),10,false);const k0=Math.round(pts.length*.12),k1=Math.round(pts.length*.88);for(let k=k0;k<k1;k++){const a=W1[k],b=W1[k+1];if(dCentro(a[0],a[1])<TW+1.2*m||dCentro(b[0],b[1])<TW+1.2*m)continue;{const ha=H(a[0],a[1]),hb=H(b[0],b[1]);B.quad([a[0],a[1],ha],[b[0],b[1],hb],[b[0],b[1],.75*m+hb],[a[0],a[1],.75*m+ha],hex(k%6<3?"#D9DDE2":"#C5CAD0"),13)}}}
   const teams=(typeof G!=="undefined"&&G&&G.teams)||[];(g.garages||[]).forEach((ga,i)=>{const t=teams.find(x=>typeof garF==="function"&&Math.abs(garF(x)-ga.f)<.004)||teams[i];const c=t?t.c:"#888888";
     B.caixa(ga.x-Math.sin(ga.h)*side*4*U,ga.y+Math.cos(ga.h)*side*4*U,ga.h,26*U,16*U,14*U,0,hex("#D5D9DE"),hex("#BFC4CA"),18);B.caixa(ga.x+(-Math.sin(ga.h))*side*-8.2*U,ga.y+Math.cos(ga.h)*side*-8.2*U,ga.h,22*U,.6*U,3*U,10*U,hex(c),hex(c),14)});
   if(g.building&&g.building.pts){const[a,b]=g.building.pts;const x=(a.x+b.x)/2,y=(a.y+b.y)/2,L=Math.hypot(b.x-a.x,b.y-a.y),h=Math.atan2(b.y-a.y,b.x-a.x);B.caixa(x,y,h,L,26*U,30*U,0,hex("#E4E7EB"),hex("#C9CED4"),18)}
@@ -737,7 +761,7 @@ function matCarro(p,E){const s=S_MM*CSC,c=Math.cos(p.h),si=Math.sin(p.h);const a
   const f=[c*cp,si*cp,sp],l=[-si,c,0],u=[-c*sp,-si*sp,cp];
   const M=new Float32Array([f[0]*ax,f[1]*ax,f[2]*ax,0,l[0]*ay,l[1]*ay,0,0,u[0]*az,u[1]*az,u[2]*az,0,p.x+f[0]*tx,p.y+f[1]*tx,pz+f[2]*tx,1]);
   const N=new Float32Array([f[0]/ax*s,f[1]/ax*s,f[2]/ax*s,l[0]/ay*s,l[1]/ay*s,0,u[0]/az*s,u[1]/az*s,u[2]/az*s]);return[M,N]}
-function posCarro(c){const p=carWorld(c);const o={x:p.x,y:p.y,h:p.h};if(P3.zAt&&!c.pit&&c.prog!=null){const L=TRACKGEO.len,d=4*WS/L;o.z=P3.zAt(c.prog);o.pt=Math.atan2(P3.zAt(c.prog+d)-P3.zAt(c.prog-d),8*WS)}else if(P3.Hc)o.z=P3.Hc(p.x,p.y);return o}
+function posCarro(c){const p=carWorld(c);const o={x:p.x,y:p.y,h:p.h};if(P3.zAt&&!c.pit&&c.prog!=null){const L=TRACKGEO.len,d=4*WS/L;o.z=P3.zAt(c.prog);o.pt=Math.atan2(P3.zAt(c.prog+d)-P3.zAt(c.prog-d),8*WS);const lat=Math.abs((c.y||0)*WS),borda=TW+5*U;if(lat>borda&&P3.H){const t=Math.min(1,(lat-borda)/(3*U)),s2=t*t*(3-2*t);o.z+=(Math.max(P3.H(p.x,p.y)-.25,o.z-6*WS)-o.z)*s2}}else if(P3.Hc)o.z=P3.Hc(p.x,p.y);return o}
 // ---------- câmera isométrica: a mesma projeção do toScreen do jogo
 function isoVP(cw,ch){const Z=CAM.z,A=2*Z/cw,Bc=2*Z/ch,ox=-CAM.x*Z+cw/2+(CAM.sx||0),oy=-CAM.y*Z+ch/2+(CAM.sy||0);const S=ISO_S,C=ISO_C;
   const dc=CAM.y/S,RG=(ch/Z)/S*1.6+600;
@@ -798,7 +822,10 @@ function vivo(c,p,real){let s=VIVO.get(c.id);const t=performance.now()/1000;if(!
     const lat=v*w,lon=(v-s.v)/dt;s.rol+=(Math.max(-.035,Math.min(.035,-lat*.0009))-s.rol)*Math.min(1,dt*5);s.arf+=(Math.max(-.025,Math.min(.025,lon*.0016))-s.arf)*Math.min(1,dt*5);
     const reta=Math.abs(w)<.04&&v>52;s.asa+=((reta?1:0)-s.asa)*Math.min(1,dt*3);s.v=v}s.h=p.h;s.t=t;return s}
 function danos(c){const d=c.dmg||{},wh=d.whl||[];return{fw:(d.wing||0)>.6?1:0,rw:(d.rwing||0)>.6?1:0,r:[wh[0]>.97?1:0,wh[1]>.97?1:0,wh[2]>.97?1:0,wh[3]>.97?1:0]}}
-function desenhaCarros(lista,du,iso,C,pv){const E=(C3D&&C3D.larg)?[1+(C3D.larg-1)*.25,C3D.larg,1+(C3D.larg-1)*.45]:[1,1,1];const real=!(P3._replay);
+// tamanho do carro 3D = tamanho do carro da física (5,6 m × 2,0 m): assim, quando dois carros se encostam na tela, se encostaram de verdade
+function escalaFisica(){if(P3.E)return P3.E;const p=malhaCarro(.5).p;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let k=0;k<p.length;k+=3){const x=p[k],y=p[k+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  const lu=(x1-x0)*S_MM*CSC,wu=(y1-y0)*S_MM*CSC,L=(typeof CARL!=="undefined"?CARL:5.6)*WS*.97,Wd=(typeof CARW!=="undefined"?CARW:2)*WS*.97;const e0=L/lu,e1=Wd/wu;P3.E=[e0,e1,(e0+e1)/2];return P3.E}
+function desenhaCarros(lista,du,iso,C,pv){const E=escalaFisica();const real=!(P3._replay);
   const m=WS,CL=5.6*m*CSC;const est=[];for(const q of lista){const s=vivo(q.c,q.p,real),z=q.p.z||0;
     if(CUR.VP&&!caixaVis(CUR.VP,[q.p.x-3.4*m,q.p.y-3.4*m,z-.3*m,q.p.x+3.4*m,q.p.y+3.4*m,z+1.6*m]))continue;
     const px=iso?CAM.z*CL*CUR.dpr:CUR.hpx*CL/Math.max(1,Math.hypot(q.p.x-C.e[0],q.p.y-C.e[1],z-C.e[2]));

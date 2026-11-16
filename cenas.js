@@ -53,6 +53,9 @@ const PP=Palco.prototype;
 PP.u=function(n){return`url(#${this.id}${n})`};
 PP.fundo=function(s){this.$.fundo.innerHTML=s};PP.frente=function(s){this.$.frente.innerHTML=s};
 PP.rig=function(P,o){const r=new (AV().Rig)(this.$.rigs,P,o);this.rigs.push(r);for(let i=0;i<20;i++)r.tick(.05,i*.05);return r};
+// corpo inteiro (comemorações): mesma interface do rig; x,y = topo da figura, s = escala (altura ≈ s × 2010)
+PP.corpo=function(P,o){const C=GL.CORPO;if(!C)return this.rig(P,o);const c=new C.Corpo(this.$.rigs,P,o);this.rigs.push(c);for(let i=0;i<30;i++)c.tick(.05,i*.05);return c};
+PP.mao=function(c,lado){const m=c.maos&&c.maos[lado];return m?[c.x+m[0]*c.s,c.y+m[1]*c.s]:[c.x,c.y+300*c.s]};
 PP.espera=function(seg){const g=this.T.gen;return new Promise(r=>this.T.esperas.push({at:this.T.t+seg,r,g}))};
 PP.para=function(){this.vivo=false;window.removeEventListener("keydown",this.tecla)};
 PP.flash=function(forte){const x=Math.random()<.5?Math.random()*380-60:1260+Math.random()*400,y=520+Math.random()*420,r=forte?260:150+Math.random()*80;
@@ -75,11 +78,12 @@ PP.laco=function(){if(this.rodando)return;this.rodando=true;let ult=performance.
 PP.legenda=function(txt,quem,frac){const B=GL.AVZ?GL.AVZ.blocos(txt):[txt],tot=B.reduce((s,b)=>s+b.length,0);let acc=0,i=0;for(;i<B.length;i++){acc+=B[i].length;if(acc/tot>=frac-1e-6)break}
   const h=`${quem?`<small>${esc(quem)}</small>`:""}${esc(B[Math.min(i,B.length-1)])}`;if(this.$.sub.dataset.h!==h){this.$.sub.innerHTML=h;this.$.sub.dataset.h=h}this.$.sub.classList.add("on")};
 // alguém fala: boca sincronizada, texto no cartão do lado (q = direita, a = esquerda) ou na legenda (sub)
-PP.diz=async function(rig,o){const txt=o.texto,dur=txt.length/(o.cps||16),g=this.T.gen,t0=this.T.t;if(o.emo)rig.emo(o.emo);let el=null;
+PP.diz=async function(rig,o){const txt=o.texto,g=this.T.gen,t0=this.T.t;if(o.emo)rig.emo(o.emo);let el=null;
+  const VZ=GL.VOZJ&&GL.VOZJ.fala(txt,{nome:o.nome,fem:rig.P&&rig.P.fem,emo:o.emo||rig.emoN,radio:o.radio});const dur=VZ?VZ.dur:txt.length/(o.cps||16);
   if(!o.sub){const c=o.lado==="q"?this.$.q:this.$.a;(o.lado==="q"?this.$.qWho:this.$.aWho).innerHTML=`<em>${esc(o.nome)}</em>${o.cargo?` · ${esc(o.cargo)}`:""}`;
     if(o.lado==="q"){el=this.$.qTxt}else{this.$.aBody.innerHTML=`<p></p>`;el=this.$.aBody.firstChild}c.classList.add("on")}
-  rig.fala.on=true;rig.fala.txt=txt;
-  while(this.vivo){const k=g!==this.T.gen?1:Math.min(1,(this.T.t-t0)/dur);rig.fala.i=k*txt.length;if(el){const n=Math.floor(k*txt.length);let c=txt.indexOf(" ",n);if(c<0||k>=1)c=txt.length;el.textContent=txt.slice(0,c)}
+  rig.fala.on=true;rig.fala.txt=VZ?VZ.boca:txt;
+  while(this.vivo){const k=g!==this.T.gen?1:Math.min(1,(this.T.t-t0)/dur);if(g!==this.T.gen&&VZ)VZ.para();rig.fala.i=VZ?VZ.indice():k*txt.length;if(el){const n=Math.floor(k*txt.length);let c=txt.indexOf(" ",n);if(c<0||k>=1)c=txt.length;el.textContent=txt.slice(0,c)}
     else this.legenda(txt,o.nome,k);if(k>=1)break;await this.espera(.03)}
   rig.fala.on=false;await this.espera(o.pausa!=null?o.pausa:.9)};
 PP.cala=function(){this.$.sub.classList.remove("on");this.$.q.classList.remove("on");this.$.a.classList.remove("on")};
@@ -178,12 +182,14 @@ function cenaPodio(res){const top=res.cls.filter(x=>x.status==="ok").slice(0,3);
     else{ME().morale=Math.min(100,(ME().morale||50)+1);meR.emo("pensativo");meR.olhar(-3,3,-.1);await this.espera(1.6);fx=[["Moral +1","up"]]}
     this.chips(fx);if(typeof save==="function")save();await this.espera(2.6);this.cala();
     // cerimônia
-    this.lugar("Cerimônia do pódio");this.fundo(fPodio(this,!!(R&&R.C&&R.C.night)));const deg=[{x:800,y:150,s:.5},{x:520,y:200,s:.5},{x:1080,y:230,s:.5}];rg.forEach((r,i)=>r.pos(deg[i].x,deg[i].y,deg[i].s));
+    this.lugar("Cerimônia do pódio");this.fundo(fPodio(this,!!(R&&R.C&&R.C.night)));const deg=[{x:800,y:555},{x:520,y:605},{x:1080,y:635}].map(d=>({x:d.x,y:d.y-.22*2010,s:.22}));
+    // no pódio os três aparecem de corpo inteiro, em cima dos degraus
+    rg.forEach(r=>r.remove());this.rigs=[];const cb=ds.map((d,i)=>this.corpo(rostoD(d),{...uniDe(d,top[i].team),nome:d.n,roupa:"macacao",...deg[i]}));rg.splice(0,3,...cb);
     this.frente(`<rect x="680" y="555" width="240" height="345" fill="#E9ECEF"/><rect x="400" y="605" width="240" height="295" fill="#D7DBE0"/><rect x="960" y="635" width="240" height="265" fill="#D7DBE0"/>
       ${[["1",800,640],["2",520,690],["3",1080,720]].map(([n,x,y])=>`<text x="${x}" y="${y}" text-anchor="middle" font-family="Titillium Web,sans-serif" font-weight="900" font-size="72" fill="#15171B">${n}</text>`).join("")}`);
     const nat=typeof NAT_NAME!=="undefined"?NAT_NAME[ds[0].nat]||ds[0].nat:ds[0].nat;rg.forEach(r=>{r.emo("neutro");r.olhar(0,-2,0)});this.letreiro("Hino de "+nat,"Pódio · "+(R&&R.C?R.C.gp:""));this.rajada=8;await this.espera(3.4);this.letreiro("","",false);
-    rg.forEach(r=>r.emo("rindo"));this.confete(140,["#FF4D2E","#FFD34D","#00B4D8","#FFFFFF","#5BE39A"]);this.rajada=14;
-    for(let i=0;i<3&&this.vivo;i++){this.espuma(deg[0].x+(i%2?60:-60),deg[0].y+330,i%2?1:-1);this.espuma(deg[1].x+60,deg[1].y+330,1);this.espuma(deg[2].x-60,deg[2].y+330,-1);await this.espera(.7)}
+    rg.forEach(r=>r.emo("rindo"));rg[0].pose&&rg[0].pose("trofeu");await this.espera(1.2);rg.forEach(r=>r.pose&&r.pose("comemora"));this.confete(140,["#FF4D2E","#FFD34D","#00B4D8","#FFFFFF","#5BE39A"]);this.rajada=14;await this.espera(.5);
+    for(let i=0;i<3&&this.vivo;i++){const a=this.mao(rg[0],i%2?"d":"e"),b=this.mao(rg[1],"d"),c=this.mao(rg[2],"e");this.espuma(a[0],a[1],i%2?1:-1);this.espuma(b[0],b[1],1);this.espuma(c[0],c[1],-1);await this.espera(.7)}
     await this.espera(2);rg.forEach(r=>r.emo("feliz"))};return p}
 
 // ---------- 4. companheiro de equipe depois da ordem de equipe
@@ -213,9 +219,9 @@ function cenaNegocio(i){const o=G.offers[i];if(!o)return null;const t=teamOf(o.t
 
 // ---------- 6. anúncio da contratação
 function cenaAnuncio(o){const t=teamOf(o.team);const me=ME();const p=new Palco({local:"Anúncio oficial",marca:String(t.n).toUpperCase(),acento:uniEquipe(t).acento,flashes:true,barra:false});
-  p.fundo(fParede(p,marcas(t)));const r=p.rig(AV().rostoJogador(),{...uniDe(me,o.team),x:800,y:0,s:1});
+  p.fundo(fParede(p,marcas(t)));const r=p.corpo(AV().rostoJogador(),{...uniDe(me,o.team),nome:me.n,roupa:"macacao",pose:"acena",x:800,y:880-.4*2010,s:.4});
   p.roteiro=async function(){r.emo("feliz");this.rajada=12;this.letreiro(me.n,`Novo piloto da ${t.n} · ${G.year+1}`);await this.espera(2.4);
-    await this.diz(r,{sub:true,nome:me.n,emo:"feliz",texto:`Estou muito feliz por esse novo capítulo com a ${t.n}. Vamos trabalhar forte desde o primeiro dia.`});this.letreiro("","",false);r.emo("confiante");this.rajada=6};return p}
+    await this.diz(r,{sub:true,nome:me.n,emo:"feliz",texto:`Estou muito feliz por esse novo capítulo com a ${t.n}. Vamos trabalhar forte desde o primeiro dia.`});this.letreiro("","",false);r.emo("confiante");if(r.pose)r.pose("joia");this.rajada=6};return p}
 
 // ---------- 7. gravação do comercial do patrocinador
 const SLOGAN={"logística":"chega antes de todo mundo. Igual eu na largada.","bebida energética":"quando a luz apaga, eu preciso de energia.","games e streaming":"onde a corrida continua depois da bandeirada.","fones de ouvido":"o único barulho mais alto que o motor.",
@@ -223,18 +229,18 @@ const SLOGAN={"logística":"chega antes de todo mundo. Igual eu na largada.","be
   tecnologia:"os dados que me deixam mais rápido.","seguros":"porque na pista eu arrisco. Fora dela, não.","companhia aérea":"de corrida em corrida, pelo mundo.","refrigerante":"a comemoração depois da bandeira quadriculada.","carros de rua":"um pouco da pista na sua garagem.",
   saúde:"cuidar do corpo também é ganhar corrida.","café":"o primeiro pit stop do dia.","turismo":"o mundo inteiro é a minha pista."};
 function cenaComercial(o){const s=(typeof SPONS!=="undefined"&&SPONS.find(x=>x.id===o.id))||{n:o.n||"Patrocinador",c:"#FF4D2E",sec:""};const cat=(typeof SPONSOR_CAT!=="undefined"&&SPONSOR_CAT.find(x=>x.id===s.id))||{...s,c2:"#FFFFFF",mk:"diamond"};
-  const me=ME();const p=new Palco({local:"Gravação do comercial",marca:s.n.toUpperCase(),acento:s.c,barra:false});p.fundo(fEstudio(p,cat));const r=p.rig(AV().rostoJogador(),{...uniDe(me),x:800,y:40,s:.92});
+  const me=ME();const p=new Palco({local:"Gravação do comercial",marca:s.n.toUpperCase(),acento:s.c,barra:false});p.fundo(fEstudio(p,cat));const r=p.corpo(AV().rostoJogador(),{...uniDe(me),nome:me.n,roupa:"macacao",pose:"cintura",x:800,y:890-.43*2010,s:.43});
   p.frente(`<g class="clap"><rect x="60" y="640" width="300" height="190" rx="8" fill="#111"/><path d="M60 640 L360 640 L340 590 L40 590Z" fill="#F2F3F5"/><text x="210" y="740" text-anchor="middle" font-family="Titillium Web,sans-serif" font-weight="900" font-size="40" fill="#fff">TAKE 1</text></g>`);
   p.roteiro=async function(){r.emo("neutro");this.legenda("Silêncio no estúdio... Ação!","Diretor",1);await this.espera(1.8);this.cala();
-    await this.diz(r,{sub:true,nome:me.n,emo:"confiante",texto:`${s.n}: ${SLOGAN[s.sec]||"comigo na pista e fora dela."}`});r.emo("rindo");await this.espera(.6);
+    if(r.pose)r.pose("pe");await this.diz(r,{sub:true,nome:me.n,emo:"confiante",texto:`${s.n}: ${SLOGAN[s.sec]||"comigo na pista e fora dela."}`});r.emo("rindo");if(r.pose)r.pose("joia");await this.espera(.6);
     this.legenda("Corta! Ficou ótimo. Primeiro take, hein?","Diretor",1);await this.espera(2.2);this.cala();r.emo("feliz")};return p}
 
 // ---------- 8. título mundial
 function cenaTitulo(){const me=ME(),t=myTeam();const p=new Palco({local:"Campeão mundial",marca:"LIGA PADDOCK",acento:"#FFD34D",flashes:true,dica:"O momento da carreira"});p.fundo(fPodio(p,true));
-  const u=uniEquipe(t);const mc=[p.rig(AV().pessoa("Mecânico "+t.id+"1"),{...u,roupa:"polo",bone:true,x:420,y:170,s:.62}),p.rig(AV().pessoa("Mecânica "+t.id+"2",{fem:true}),{...u,roupa:"polo",x:1180,y:180,s:.62})];
-  const r=p.rig(AV().rostoJogador(),{...uniDe(me),x:800,y:60,s:.86});p.frente(trofeu(p,800,700,1.15));
+  const u=uniEquipe(t);const pm=AV().pessoa("Mecânico "+t.id+"1");pm.bone=true;const mc=[p.corpo(pm,{...u,nome:"",roupa:"polo",pose:"comemora",x:470,y:880-.3*2010,s:.3}),p.corpo(AV().pessoa("Mecânica "+t.id+"2",{fem:true}),{...u,nome:"",roupa:"polo",pose:"acena",x:1130,y:880-.3*2010,s:.3})];
+  const r=p.corpo(AV().rostoJogador(),{...uniDe(me),nome:me.n,roupa:"macacao",pose:"trofeu",x:800,y:890-.37*2010,s:.37});p.frente(`<rect y="860" width="1600" height="40" fill="#0B0D12"/>`);
   p.roteiro=async function(){[r,...mc].forEach(x=>x.emo("rindo"));this.letreiro(me.n,`Campeão mundial ${G.year}`);this.confete(220,["#FFD34D","#FFFFFF","#FF4D2E",u.cor,u.cor2]);this.rajada=16;await this.espera(2.8);
-    await this.diz(r,{sub:true,nome:me.n,emo:"rindo",texto:"A gente conseguiu! Isso é de cada pessoa dessa equipe. Campeões do mundo!"});this.confete(160,["#FFD34D","#FFFFFF",u.cor]);this.rajada=10;this.letreiro(me.n,`Campeão mundial ${G.year}`)};return p}
+    await this.diz(r,{sub:true,nome:me.n,emo:"rindo",texto:"A gente conseguiu! Isso é de cada pessoa dessa equipe. Campeões do mundo!"});if(r.pose)r.pose("comemora");this.confete(160,["#FFD34D","#FFFFFF",u.cor]);this.rajada=10;this.letreiro(me.n,`Campeão mundial ${G.year}`);await this.espera(2.5);if(r.pose&&this.vivo)r.pose("trofeu")};return p}
 
 // ---------- 9. foto da manchete
 function foto(emo,tipo){if(!GL.AV)return"";const svg=document.createElementNS(NS,"svg");svg.setAttribute("viewBox","-330 170 660 495");svg.setAttribute("preserveAspectRatio","xMidYMid slice");
@@ -257,8 +263,10 @@ function radioRosto(){try{const f=document.getElementById("rfeed");if(!f||!GL.AV
     const tx=document.createElement("div");tx.innerHTML=`<small>Engenheiro de corrida</small><b>${esc(G.engineer||"Engenheiro")}</b>`;w.appendChild(tx);
     if(h){h.style.display="none";card.insertBefore(w,h)}RAD.rig=new (AV().Rig)(svg,AV().pessoa(G.engineer||"Bruno"),{...u,roupa:"polo",fone:true,x:0,y:0,s:1});RAD.svg=svg;RAD.ult=R&&R.radio?R.radio[0]:null;
     let ult=performance.now(),acc=0;const q=n=>{if(!svg.isConnected){RAD.rig=null;return}const dt=Math.max(0,Math.min(.1,(n-ult)/1000));ult=n;acc+=dt;RAD.t+=dt;
-      const m=R&&R.radio?R.radio[0]:null;if(m&&m!==RAD.ult){RAD.ult=m;const meC=R.cars.find(c=>c.isP);if(!meC||m.c===meC.id){RAD.rig.emo(humorDo(m.t));RAD.rig.fala.on=true;RAD.rig.fala.txt=String(m.t);RAD.rig.fala.i=0;RAD.fim=String(m.t).length/16}}
-      if(RAD.rig.fala.on){RAD.rig.fala.i+=dt*16;if(RAD.rig.fala.i>=RAD.rig.fala.txt.length){RAD.rig.fala.on=false;setTimeout(()=>RAD.rig&&RAD.rig.emo("neutro"),1500)}}
+      const m=R&&R.radio?R.radio[0]:null;if(m&&m!==RAD.ult){RAD.ult=m;const meC=R.cars.find(c=>c.isP);if(!meC||m.c===meC.id){const deEng=!m.me;const fala=String(m.t).replace(/^[^:"]{1,24}:\s*/,"").replace(/^"|"$/g,"");
+          const VZ=GL.VOZJ&&GL.VOZJ.fala(fala,{nome:deEng?(G.engineer||"Engenheiro"):ME().n,jogador:!deEng,fem:deEng&&RAD.rig.P?RAD.rig.P.fem:undefined,radio:true,emo:humorDo(m.t)});
+          if(deEng){RAD.rig.emo(humorDo(m.t));RAD.rig.fala.on=true;RAD.vz=VZ;RAD.rig.fala.txt=VZ?VZ.boca:String(m.t);RAD.rig.fala.i=0;RAD.fim=String(m.t).length/16}}}
+      if(RAD.rig.fala.on){RAD.rig.fala.i=RAD.vz?RAD.vz.indice():RAD.rig.fala.i+dt*16;if(RAD.rig.fala.i>=RAD.rig.fala.txt.length-.01){RAD.rig.fala.on=false;RAD.vz=null;setTimeout(()=>RAD.rig&&RAD.rig.emo("neutro"),1500)}}
       if(acc>=.05){RAD.rig.tick(acc,RAD.t);acc=0}requestAnimationFrame(q)};requestAnimationFrame(q)}catch(e){console.warn("rádio",e)}}
 
 // ---------- ligações com as telas do jogo

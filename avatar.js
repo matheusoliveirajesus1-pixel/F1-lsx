@@ -84,6 +84,8 @@ function barbaSVG(b,c){if(b==="rala")return`<path d="M-84 410 C-74 455 -52 482 -
 
 function roupa(o,id,k){const{c1,c2,ac,cE,txtC,sp,pS,nomeEq,fsEq}=k;const r=o.roupa||"macacao";
   const pesc=`<path d="M-48 470 L48 470 L52 572 L-52 572 Z" fill="${pS}"/><path d="M-48 520 C-20 545 20 545 48 520 L50 560 L-50 560 Z" fill="#000" opacity=".18"/>`;
+  const gola=`<g class="gola"><rect x="-72" y="548" width="144" height="56" rx="16" fill="${tom(c1,-.42)}"/><rect x="-72" y="548" width="144" height="7" rx="3" fill="${ac}"/><text x="0" y="586" text-anchor="middle" font-family="Titillium Web,sans-serif" font-weight="900" font-style="italic" font-size="${fsEq.toFixed(1)}" fill="#E9ECEF" letter-spacing="1.5">${esc(nomeEq)}</text></g>`;
+  if(o.semTronco)return pesc+(r==="macacao"?gola:"");
   const corpo=f=>`<path d="M-360 900 C-350 735 -255 650 -110 618 L-58 596 L58 596 L110 618 C255 650 350 735 360 900 Z" fill="${f}"/>`;
   if(r==="polo")return`<g class="tronco">${corpo(`url(#${id}m)`)}
       <path d="M-300 760 C-270 700 -200 660 -120 640" stroke="${c2}" stroke-width="10" fill="none" opacity=".9"/><path d="M300 760 C270 700 200 660 120 640" stroke="${c2}" stroke-width="10" fill="none" opacity=".9"/>
@@ -160,7 +162,7 @@ function visema(ch){ch=(ch||" ").toLowerCase();
 const lerp=(a,b,k)=>a+(b-a)*k;
 
 // ---------- o boneco animado
-function Rig(parent,P,o){o=o||{};this.o=o;this.g=document.createElementNS(NS,"g");this.g.innerHTML=svgDe(P,o);parent.appendChild(this.g);
+function Rig(parent,P,o){o=o||{};this.o=o;this.P=P;this.g=document.createElementNS(NS,"g");this.g.innerHTML=svgDe(P,o);parent.appendChild(this.g);
   const q=s=>this.g.querySelector(s);this.e={cab:q(".cabeca"),tr:q(".tronco"),fe:q(".feicoes"),lb:q(".logoBone"),orE:q(".orE"),orD:q(".orD"),oE:q(".olhoE"),oD:q(".olhoD"),sE:q(".sobE"),sD:q(".sobD"),
     bIn:q(".bocaIn"),bClip:q(".bocaClip"),den:q(".dentes"),lin:q(".lingua"),lS:q(".labS"),lI:q(".labI"),boca:q(".boca"),bqE:q(".bqE"),bqD:q(".bqD"),vE:q(".viE"),vD:q(".viD")};
   this.e.olhos=[this.e.oE,this.e.oD].map(g=>({esc:g.querySelector(".esc"),iris:g.querySelectorAll(".iris")}));
@@ -179,7 +181,7 @@ Rig.prototype.tick=function(dt,t0){dt=Math.max(0,Math.min(.1,dt||0));const F=thi
   this.flashI=Math.max(0,this.flashI-dt*3.2);const sq=1-Math.max(0,F.cur-8)*.012;const abre=Math.max(.06,F.olho*pis*(1-this.flashI*.75))*sq;
   const ri=this.emoN==="rindo"&&fa.on?Math.sin(t*15)*2.2:0,resp=Math.sin(t*1.6)*1.2,nod=fa.on?Math.sin(t*4.3)*1.6:0;
   e.cab.setAttribute("transform",`rotate(${(F.tilt+Math.sin(t*.7)*.8).toFixed(2)} 0 520) translate(${(F.yaw*10).toFixed(2)} ${(F.baixa+resp+nod+ri).toFixed(2)})`);
-  e.tr.setAttribute("transform",`translate(0 ${(resp*.6+(this.emoN==="rindo"&&fa.on?Math.abs(Math.sin(t*15))*2:0)).toFixed(2)})`);
+  if(e.tr)e.tr.setAttribute("transform",`translate(0 ${(resp*.6+(this.emoN==="rindo"&&fa.on?Math.abs(Math.sin(t*15))*2:0)).toFixed(2)})`);
   e.fe.setAttribute("transform",`translate(${(F.yaw*14).toFixed(2)} ${(F.baixa*.4).toFixed(2)})`);if(e.lb)e.lb.setAttribute("transform",`translate(${(F.yaw*10).toFixed(2)} 288)`);
   e.orE.setAttribute("rx",(16*(1-F.yaw*.35)).toFixed(2));e.orD.setAttribute("rx",(16*(1+F.yaw*.35)).toFixed(2));
   for(const ol of e.olhos){ol.esc.setAttribute("transform",`scale(1 ${abre.toFixed(3)})`);ol.iris.forEach(i=>i.setAttribute("transform",`translate(${F.gx.toFixed(2)} ${F.gy.toFixed(2)})`))}

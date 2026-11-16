@@ -39,36 +39,51 @@ function readCreate(){const n=UI.ng;const f=$("#fname");if(f){n.name=f.value.tri
 
 // ---------- hub
 function topbar(){const me=ME(),t=myTeam();const st=standings();const pos=st.drivers.findIndex(x=>x.id===G.me)+1;
-  return`<div class="topbar"><div class="brand">${helmetSVG(G.helmet.c1,G.helmet.c2,40)}<div><div class="logo">${esc(me.n)} <span>#${me.num}</span></div><div class="teamchip"><span class="livery"></span>${t.n}</div></div></div>
+  const rt=G.avatar&&window.PV?window.PV.retrato(me,44):"";
+  return`<div class="topbar"><div class="brand">${rt?`<button class="pvTop" data-act="pvEdit" aria-label="Editar o visual do piloto">${rt}</button>`:helmetSVG(G.helmet.c1,G.helmet.c2,40)}<div><div class="logo">${esc(me.n)} <span>#${me.num}</span></div><div class="teamchip"><span class="livery"></span>${t.n}</div></div></div>
   <div class="stats"><div><span class="muted">Temporada</span><b>${G.year} · ${Math.min(G.round+1,G.calendar.length)}/${G.calendar.length}</b></div><div><span class="muted">Campeonato</span><b>${pos?pos+"º":"—"} · ${myStats().points} pts</b></div>
   <div><span class="muted">Seguidores</span><b>${fmtK(G.fame.followers)}</b></div><div><span class="muted">Confiança ${ib("confianca")}</span><b>${Math.round(G.trust)}%</b></div></div></div>`}
-function hub(){const tabs=[["home","Início"],["shop","🔧 Oficina"],["social","Redes"],["press","Imprensa"],["champ","Campeonato"],["career","Carreira"],["learn","Aprender"],["online","🌐 Online"]];
-  app.innerHTML=topbar()+`<div class="tabs" role="tablist">${tabs.map(([k,n])=>`<button class="tab${UI.tab===k?" on":""}" data-act="tab" data-k="${k}" role="tab">${n}</button>`).join("")}</div><div id="body"></div>`;
+const TAB_IC={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',shop:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
+  champ:'<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M9 17h6"/>',career:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',mais:'<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>'};
+const TABS=[["home","Início"],["shop","Oficina"],["champ","Campeonato"],["career","Carreira"],["social","Redes",1],["press","Imprensa",1],["learn","Aprender",1],["online","Online",1]];
+function tabIc(k){return TAB_IC[k]?`<svg class="tabic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${TAB_IC[k]}</svg>`:""}
+function hub(){const tabs=TABS;const sec=!TABS.some(t=>t[0]===UI.tab&&!t[2]);
+  app.innerHTML=topbar()+`<div class="tabs" role="tablist">${tabs.map(([k,n,s2])=>`<button class="tab${s2?" sec":""}${UI.tab===k?" on":""}" data-act="tab" data-k="${k}" role="tab">${tabIc(k)}<span>${n}</span></button>`).join("")}<button class="tab mais${sec?" on":""}" data-act="tabMais" aria-haspopup="dialog">${tabIc("mais")}<span>Mais</span></button></div><div id="body"></div>`;document.body.classList.add("hubOn");
   ({home:homeTab,shop:shopTab,social:socialTab,press:pressTab,champ:champTab,career:careerTab,learn:learnTab,online:onlineTab})[UI.tab]()}
 function onlineTab(){$("#body").innerHTML=`<div class="grid2" style="margin-top:12px"><div class="card"><h3>Corrida online com amigos</h3><p>Crie uma sala, mande o código e corram juntos na mesma pista. Cada um pilota o próprio carro pelo rádio e larga no toque, contra o grid inteiro.</p>
    <p class="muted" style="font-size:13.5px">Modos: equipes diferentes (até 4 pilotos) ou mesma equipe (dois companheiros). A corrida online não mexe na sua carreira.</p><button class="btn go" data-act="mpOpen">Abrir o modo online</button></div>
    <div class="card"><h3>Antes de começar</h3><p>Compartilhe esta página com o seu amigo pelo menu <b>Compartilhar</b> do Claude. Quem cria a sala roda a corrida no próprio aparelho e precisa deixar o jogo aberto até o fim.</p></div></div>`}
 function nextC(){return CIR[G.calendar[G.round]]}
-function homeTab(){const C=nextC();const me=ME();const m=mate();const rv=G.rival&&G.drivers[G.rival];
-  $("#body").innerHTML=`<div class="hero" style="margin-top:12px"><div class="gp"><h3>Próxima etapa · ${G.round+1} de ${G.calendar.length}${C.sprint?" · fim de semana sprint":""}</h3><div class="name">${C.gp}</div>
-    <div class="muted">${C.n} · ${C.city}, ${C.nat}</div>
-    <canvas id="prev" width="560" height="300" style="width:100%;height:auto;border-radius:6px;background:#0E1116"></canvas>
-    <div class="mini"><div>Extensão<b>${(C.len/1000).toFixed(3).replace(".",",")} km</b></div><div>Voltas<b>${raceLaps(C.id)} <span class="muted">/ ${C.laps}</span></b></div><div>Recorde de ref.<b>${fmtT(C.target)}</b></div>
-      <div>Desgaste<b>${C.wear>1.15?"Alto":C.wear<.9?"Baixo":"Médio"}</b></div><div>Ultrapassar<b>${C.ovt>.65?"Fácil":C.ovt<.35?"Difícil":"Médio"}</b></div><div>Chuva<b>${Math.round(C.rain*100)}%</b></div></div>
-    <button class="btn go" data-act="goWeekend">Ir para o paddock</button></div>
-   <div style="display:flex;flex-direction:column;gap:12px">
-    ${typeof shopCard==="function"?shopCard():""}
+function homeTab(){const C=nextC();const me=ME();const m=mate();const rv=G.rival&&G.drivers[G.rival];const st=standings();const pos=st.drivers.findIndex(x=>x.id===G.me)+1;
+  const S=typeof shopInit==="function"?shopInit():null;const rec=S&&typeof shopRecommend==="function"?shopRecommend():null;
+  const fatos=[`${raceLaps(C.id)} voltas`,`${(C.len/1000).toFixed(3).replace(".",",")} km`,`Chuva ${Math.round(C.rain*100)}%`,`Desgaste ${C.wear>1.15?"alto":C.wear<.9?"baixo":"médio"}`];
+  const seta=`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
+  const linhas=[];
+  if(rec)linhas.push(rec.can?`<button class="lin" data-act="shopBuy" data-k="${rec.p.id}"><span><b>Instalar ${esc(rec.p.n)} · ${SHOP_LV[rec.lv+1]}</b><small>Oficina · ${rec.pr} créditos</small></span>${seta}</button>`:`<button class="lin" data-act="tab" data-k="shop"><span><b>Próxima peça: ${esc(rec.p.n)}</b><small>Faltam ${rec.pr-S.cr} créditos</small></span>${seta}</button>`);
+  const nOf=(G.offers||[]).length,nSp=(G.spOffers||[]).length;
+  if(nOf)linhas.push(`<button class="lin" data-act="tab" data-k="career"><span><b>${nOf} proposta${nOf>1?"s":""} de contrato</b><small>Carreira</small></span>${seta}</button>`);
+  if(nSp)linhas.push(`<button class="lin" data-act="tab" data-k="career"><span><b>${nSp} proposta${nSp>1?"s":""} de patrocínio</b><small>Carreira</small></span>${seta}</button>`);
+  if(linhas.length<2&&G.news&&G.news[0])linhas.push(`<div class="lin info"><span><b>${esc(G.news[0].t)}</b><small>Última notícia</small></span></div>`);
+  $("#body").innerHTML=`<div class="inicio"><div class="hero"><div class="gp"><h3>Próxima corrida · ${G.round+1} de ${G.calendar.length}${C.sprint?" · sprint":""}</h3><div class="name">${C.gp}</div>
+    <div class="muted">${C.n} · ${fatos.join(" · ")}</div>
+    <canvas id="prev" width="560" height="300" style="width:100%;height:auto"></canvas>
+    <button class="btn go big" data-act="goWeekend">Ir para o fim de semana</button></div>
+   <div class="lado">
+    <div class="tres"><div><span>Campeonato</span><b>${pos&&myStats().points?pos+"º":"—"}</b></div><div><span>Confiança ${ib("confianca")}</span><b>${Math.round(G.trust)}%</b></div><div><span>Créditos</span><b>${S?S.cr:0}</b></div></div>
+    <div class="linhas">${linhas.join("")}</div>
+    <details class="maisDet"><summary>Imagem, companheiro e notícias</summary><div class="maisCorpo">
     <div class="card"><h3>Sua imagem ${ib("fama")}</h3>
       <div class="meter"><span>Popularidade</span>${bar(G.fame.pop,0,100,"#F15BB5")}<b class="num">${Math.round(G.fame.pop)}</b></div>
       <div class="meter"><span>Respeito</span>${bar(G.fame.rep,0,100,"#6EC1FF")}<b class="num">${Math.round(G.fame.rep)}</b></div>
-      <div class="meter"><span>Confiança</span>${bar(G.trust,0,100,"#21C55D")}<b class="num">${Math.round(G.trust)}</b></div>
-      <div class="meter"><span>Moral</span>${bar(me.morale,0,100,"#FFD400")}<b class="num">${Math.round(me.morale)}</b></div>
+      <div class="meter"><span>Confiança</span>${bar(G.trust,0,100,"#3FBF7F")}<b class="num">${Math.round(G.trust)}</b></div>
+      <div class="meter"><span>Moral</span>${bar(me.morale,0,100,"#F2C94C")}<b class="num">${Math.round(me.morale)}</b></div>
       <div class="meter"><span>Polêmica</span>${bar(G.heat||0,0,100,"#FF4D4F")}<b class="num">${Math.round(G.heat||0)}</b></div>
       <div class="kv"><span>Valor de mercado</span><b class="num">${money(Math.max(.5,marketValue()))}/ano</b></div></div>
     <div class="card"><h3>Duelo com o companheiro</h3>${m?`<div class="kv"><span>${esc(m.n)} (#${m.num})</span><b class="num">OVR ${ovr(m)}</b></div>
       <div class="kv"><span>Classificações</span><b class="num">${G.h2h.q[0]} × ${G.h2h.q[1]}</b></div><div class="kv"><span>Corridas</span><b class="num">${G.h2h.r[0]} × ${G.h2h.r[1]}</b></div>`:""}
       ${rv?`<div class="kv"><span>Rival na imprensa</span><b>${esc(rv.n)} · ${teamName(rv.team)}</b></div><div class="kv"><span>Relação</span><b class="num">${Math.round(G.rel[rv.id]||0)}</b></div>`:""}</div>
-    <div class="card"><h3>Notícias</h3><ul class="news">${G.news.slice(0,14).map(n=>`<li class="${n.cls}">${esc(n.t)}</li>`).join("")}</ul></div></div></div>`;
+    <div class="card"><h3>Notícias</h3><ul class="news">${G.news.slice(0,8).map(n=>`<li class="${n.cls}">${esc(n.t)}</li>`).join("")}</ul></div></div></details>
+   </div></div></div>`;
   drawPreview($("#prev"),C.id)}
 function drawPreview(cv,id){if(!cv)return;const geo=buildCircuit(id);const ctx=cv.getContext("2d");const w=cv.width,h=cv.height;ctx.clearRect(0,0,w,h);
   let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;const pts=geo.P.map(p=>{const a=(p.x-p.y)*ISO_C,b=(p.x+p.y)*ISO_S;x0=Math.min(x0,a);x1=Math.max(x1,a);y0=Math.min(y0,b);y1=Math.max(y1,b);return[a,b]});
@@ -539,7 +554,11 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
    createGo(){readCreate();const n=UI.ng;if(n.name.length<3){$("#fname").focus();$("#fname").placeholder="Digite seu nome";return}const parts=n.name.split(" ");const code=(n.code||parts[parts.length-1].normalize("NFD").replace(/[^A-Za-z]/g,"").slice(0,3)).toUpperCase().padEnd(3,"X");
      const base={};Object.keys(ATTR).forEach(k=>base[k]=74);const st=STYLES[n.style].a;Object.keys(st).forEach(k=>base[k]+=st[k]);base.pace=75+(st.pace||0);
      newGame({name:n.name,code,nat:n.nat,num:n.num,c1:n.c1,c2:n.c2,trait:n.trait,dist:n.dist,attrs:base,pers:Object.assign({},STYLES[n.style].p)});G.engineer=pick(["Bruno","Sarah","Tom","Gianpiero","Lena"]);save();UI.scr="hub";UI.tab="home";render()},
-   tab(){UI.tab=k;render()},realism(){G.settings.real=k;save();render()},
+   tab(){UI.tab=k;modal("");render();window.scrollTo(0,0)},
+   pvEdit(){if(window.PV)window.PV.abre({})},
+   tabMais(){const xs=[...document.querySelectorAll(".tabs .tab.sec")].map(b=>[b.dataset.k,b.textContent.trim()]);
+     modal(`<h2>Mais</h2><div class="maisLista">${xs.map(([k2,n])=>`<button class="maisIt${UI.tab===k2?" on":""}" data-act="tab" data-k="${k2}"><span>${esc(n)}</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>`).join("")}</div>
+       <p class="muted" style="font-size:13px">Dica: segure o dedo num número ou termo para ver o que ele quer dizer.</p><button class="btn" data-act="closeModal">Fechar</button>`)},realism(){G.settings.real=k;save();render()},
    goWeekend(){if(G.ban){bannedWeekend();return}startWeekend();W.step="press";UI.pressDone=false;UI.pressArt=null;UI.mixDone=false;UI.mixArt=null;UI.pre=null;G.interview=null;render()},
    toHub(){G.phase="home";render()},
    answer(){const mx=W.step==="mixed";if(mx)G.round--;const art=answerInterview(+k);if(mx)G.round++;if(art){if(W.step==="press"){UI.pressDone=true;UI.pressArt=art}else{UI.mixDone=true;UI.mixArt=art}}render()},
@@ -587,3 +606,18 @@ window.addEventListener("resize",()=>{if(UI.scr==="hub"&&G&&G.phase!=="weekend"&
 (function(){const boot=()=>{UI.scr="title";render()};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else setTimeout(boot,0)})();
 // geometria isométrica: montar TRACKGEO ao começar o fim de semana
 const _sw=startWeekend;startWeekend=function(){const w=_sw();buildTrack(w.geo);return w};
+
+var GL_marcaHub=null;
+// ---------- visual Pit Wall: barra de baixo só nas telas do hub; "segurar o dedo" abre a explicação dos termos (os "?" ficam escondidos no celular)
+(function(){const marca=()=>document.body.classList.toggle("hubOn",!!document.querySelector("#app .tabs"));GL_marcaHub=marca;
+  let tm=0,x0=0,y0=0,alvo=null,engole=false;
+  const acha=el=>{for(let i=0;el&&i<4;i++,el=el.parentElement){if(el.matches&&el.matches(".tabs,.modal,button,a,input,select"))return null;const b=el.querySelector&&el.querySelector(":scope > .ib");if(b)return b}return null};
+  document.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse")return;const b=acha(e.target);if(!b)return;alvo=b;x0=e.clientX;y0=e.clientY;clearTimeout(tm);
+    tm=setTimeout(()=>{if(!alvo)return;engole=true;if(navigator.vibrate)try{navigator.vibrate(12)}catch(_){}alvo.click();alvo=null;setTimeout(()=>{engole=false},650)},480)},{passive:true});
+  const cancela=()=>{clearTimeout(tm);alvo=null};
+  document.addEventListener("pointermove",e=>{if(alvo&&Math.hypot(e.clientX-x0,e.clientY-y0)>10)cancela()},{passive:true});
+  document.addEventListener("pointerup",cancela,{passive:true});document.addEventListener("pointercancel",cancela,{passive:true});
+  document.addEventListener("click",e=>{if(engole){engole=false;if(!e.target.closest(".ib")){e.stopPropagation();e.preventDefault()}}},true);
+  document.addEventListener("contextmenu",e=>{if(acha(e.target))e.preventDefault()});
+  if(document.readyState!=="loading")marca();else document.addEventListener("DOMContentLoaded",marca)})();
+{const _r0=render;globalThis.render=function(){const r=_r0.apply(this,arguments);if(GL_marcaHub)GL_marcaHub();return r}}

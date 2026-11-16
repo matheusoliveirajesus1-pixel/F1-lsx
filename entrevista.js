@@ -163,7 +163,7 @@ Cena.prototype.roda=async function(){if(this.rodaOk)return;this.rodaOk=true;cons
     // pergunta: o cartão entra devagar e o piloto vira para quem pergunta
     $.qWho.innerHTML=`<em>${esc(q.j.n)}</em> · ${esc(o.n)}`;$.qTxt.textContent="";$.q.classList.add("on");this.rig.emo("ouvindo");
     if(lado){this.rig.olhar(2,3,.1);this.rival&&this.rival.olhar(-1,2,.1);this.outro&&this.outro.olhar(1,2,-.1)}else this.rig.olhar(6,1,.45);
-    await this.espera(.9);await this.digita($.qTxt,q.q,30,trad?q.q:null,q.j.n,trad);await this.espera(1);
+    await this.espera(.9);{const VZ=GL.VOZJ&&GL.VOZJ.fala(q.q,{nome:q.j.n,emo:"serio"});await this.digita($.qTxt,q.q,VZ?Math.max(8,q.q.length/VZ.dur):30,trad?q.q:null,q.j.n,trad)}await this.espera(1);
     // escolha do tom
     if(trad)$.sub.classList.remove("on");this.rig.emo("pensativo");this.rig.olhar(-4,-4,-.25);const k=await this.escolher(q);if(!this.vivo)return;
     const a=q.opts[k];await this.falar(q,a,trad);if(!this.vivo)return;
@@ -187,8 +187,8 @@ Cena.prototype.falar=async function(q,a,trad){const $=this.$,rig=this.rig,lado=t
   if(lado){const pol=a.tone==="polemico",emoc=a.tone==="emocional",conf=a.tone==="confiante";
     if(this.rival){this.rival.olhar(5,0,.25);this.rival.emo(pol?"irritado":conf?"serio":emoc?"feliz":"neutro")}
     if(this.outro){this.outro.olhar(-5,0,-.25);this.outro.emo(pol?"rindo":emoc?"feliz":"ouvindo")}}
-  const txt=a.t,dur=txt.length/16,g=this.T.gen,t0=this.T.t;rig.fala.on=true;rig.fala.txt=txt;
-  while(this.vivo){const k=g!==this.T.gen?1:Math.min(1,(this.T.t-t0)/dur);rig.fala.i=k*txt.length;
+  const txt=a.t,g=this.T.gen,t0=this.T.t;const VZ=GL.VOZJ&&GL.VOZJ.fala(txt,{jogador:true,emo:rig.emoN});const dur=VZ?VZ.dur:txt.length/16;rig.fala.on=true;rig.fala.txt=VZ?VZ.boca:txt;
+  while(this.vivo){const k=g!==this.T.gen?1:Math.min(1,(this.T.t-t0)/dur);if(g!==this.T.gen&&VZ)VZ.para();rig.fala.i=VZ?VZ.indice():k*txt.length;
     const n=Math.floor(k*txt.length);let c=txt.indexOf(" ",n);if(c<0||k>=1)c=txt.length;pTxt.textContent=txt.slice(0,c);
     this.legenda(txt,this.me.n,k,trad);rig.olhar(Math.sin(this.T.t*.6)*2.5,Math.sin(this.T.t*.9)*.8,Math.sin(this.T.t*.35)*.12);if(k>=1)break;await this.espera(.03)}
   rig.fala.on=false;if(lado&&a.tone==="polemico"&&this.rival)this.rival.emo("revira");

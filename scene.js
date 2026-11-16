@@ -156,6 +156,19 @@ function sceneBuild(TG){const id=TG.id,th=Object.assign({g:"park",tr:"broad",td:
       for(let t=TW+m(1);t<=a[i];t+=m(1.5)){const x=p.x+n.x*sg*t,y=p.y+n.y*sg*t;const d=dOther(x,y,i,win,true);if(d<=t+m(.5)){a[i]=Math.max(TW+m(.8),t-m(.75));clipN[sg>0?0:1]++;break}}}
     // sem dentes: o muro cortado desce e sobe aos poucos
     for(let pass=0;pass<3;pass++){const b=Float32Array.from(a);for(let i=0;i<M;i++)a[i]=Math.min(b[i],Math.min(b[(i-1+M)%M],b[(i+1)%M])+m(3))}}
+  // por dentro de curva muito fechada (grampo, Degner 2) o muro "dobrava" sobre si mesmo: o ponto ficava mais perto de outra parte da
+  // mesma curva do que da própria pista. Aqui ele encosta até onde cabe. A física e o desenho usam este mesmo muro.
+  for(const sg of[1,-1]){const a=wl[sg];let mud=false;for(let i=0;i<M;i++){const p=P[i],n=nrm(i);let L=a[i];
+      const dobra=t=>{const x=p.x+n.x*sg*t,y=p.y+n.y*sg*t;for(let k=-120;k<=120;k+=2){if(!k)continue;const q=P[((i+k)%M+M)%M];if(Math.hypot(q.x-x,q.y-y)<t*.9)return true}return false};
+      if(!dobra(L))continue;while(L>TW+m(.8)&&dobra(L))L-=m(.5);a[i]=Math.max(TW+m(.8),L);mud=true}
+    if(mud)for(let pass=0;pass<3;pass++){const b=Float32Array.from(a);for(let i=0;i<M;i++)a[i]=Math.min(b[i],Math.min(b[(i-1+M)%M],b[(i+1)%M])+m(3))}}
+  // muro do pit: entre a pista e a pit lane existe um muro (o 3D desenha). A física usa o mesmo lugar, para o carro não atravessar a pit lane e as garagens
+  if(TG.pit&&TG.pit.length>8){const pts=TG.pit,k0=Math.round(pts.length*.12),k1=Math.round(pts.length*.88),sd=TG.side||1;
+    for(let k=k0;k<k1;k++){const a2=pts[Math.max(0,k-1)],b2=pts[Math.min(pts.length-1,k+1)];const h=Math.atan2(b2.y-a2.y,b2.x-a2.x),nx=-Math.sin(h),ny=Math.cos(h);
+      const w={x:pts[k].x-nx*sd*16*U,y:pts[k].y-ny*sd*16*U};const gx=Math.floor(w.x/GI),gy=Math.floor(w.y/GI);let bi=-1,bd=1e9;
+      for(let a3=-2;a3<=2;a3++)for(let b3=-2;b3<=2;b3++){const L=gI.get((gx+a3)+":"+(gy+b3));if(!L)continue;for(const j of L){const q=P[j],dd=Math.hypot(q.x-w.x,q.y-w.y);if(dd<bd){bd=dd;bi=j}}}
+      if(bi<0)continue;const n=nrm(bi),lat=(w.x-P[bi].x)*n.x+(w.y-P[bi].y)*n.y,sg=lat>=0?1:-1,L=Math.abs(lat);if(L<=TW+m(1.2))continue;
+      for(const d of[-1,0,1]){const ii=((bi+d)%M+M)%M;wl[sg][ii]=Math.min(wl[sg][ii],L)}}}
   // brita e barreira de pneus acompanham o muro cortado
   TG.gravel.forEach(gr=>{const o=gr.o,a=wl[o];if(!a)return;const sp=gr.i-gr.i0-2;const P2=(i,L)=>{const ii=((i%M)+M)%M,p=P[ii],n=nrm(ii);return{x:p.x+n.x*L,y:p.y+n.y*L}};
     gr.wl=gr.wl.map((L,k)=>Math.min(L,a[((gr.i0+k)%M+M)%M]));gr.wall=gr.wl.map((L,k)=>P2(gr.i0+k,o*L));

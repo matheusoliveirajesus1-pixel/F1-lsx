@@ -85,7 +85,7 @@ function retrato(d,tam){if(!GL.AV)return"";const svg=document.createElementNS(GL
 // cartão "Seu piloto" na aba Início + convite automático para quem ainda não tem visual
 function instala(){if(typeof homeTab!=="function"||homeTab._pv)return;const base=homeTab;
   GL.homeTab=function(){base.apply(this,arguments);try{estilo();const b=document.getElementById("body");if(!b)return;const me=ME();const novo=!G.avatar;
-      const c=document.createElement("div");c.className="card pvc"+(novo?" novo":"");c.style.marginTop="12px";
+      if(!novo)return;const c=document.createElement("div");c.className="card pvc"+(novo?" novo":"");c.style.marginTop="12px";
       c.innerHTML=`${retrato(me,92)}<div style="flex:1;min-width:0"><h3 style="margin:0 0 4px">Seu piloto</h3><p class="muted" style="margin:0 0 8px">${novo?"Sua carreira ainda não tem um rosto. Crie o visual do seu piloto: nada da carreira muda.":"Este é o visual que aparece nas entrevistas e na coletiva."}</p><button class="btn ${novo?"go":"sm"}" data-pv="abre">${novo?"Criar meu piloto":"Editar visual"}</button></div>`;
       b.insertBefore(c,b.firstChild);c.querySelector("[data-pv]").onclick=()=>abre({primeira:novo});
       if(novo&&!UI.pvAdiado&&!UI.pvVisto&&!(navigator.webdriver&&!window.PV_TESTE)){UI.pvVisto=true;setTimeout(()=>{if(!G.avatar&&UI.scr==="hub")abre({primeira:true})},350)}}catch(e){console.warn("visual do piloto",e)}};

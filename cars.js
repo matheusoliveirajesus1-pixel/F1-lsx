@@ -5,7 +5,9 @@
 function helmetCol(c){const h=hashS((c.code||"")+"cap")%360;return`hsl(${h},85%,${55+(hashS(c.code||"x")%20)}%)`}
 function carAero(c){if(!R||!R.geo||!R.geo.ai||!c.prog&&c.prog!==0)return false;const i=Math.floor(fr(c.prog)*R.geo.N)%R.geo.N;return R.geo.ai.ph[i]===0&&(c.v||0)>45&&!!(R.geo.zoneMask&&R.geo.zoneMask[i])&&!R.sc}
 function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=Math.sin(h),zb=(o&&o.z)||0;
-  const pt=(u,v,z)=>{u*=CSC;v*=CSC;return toScreen(p.x+u*co-v*si,p.y+u*si+v*co,z*CSC+zb,cw,ch)};
+  // carroceria suspensa: mergulha na freada, agacha na aceleração e inclina para fora na curva (transferência de carga do dyn.js)
+  const dq=c.dyn&&!c.wreck&&!c.sc?c.dyn:null;const PA=dq?clamp(dq.ax||0,-60,20)*.0019:0,RA=dq?clamp(dq.ay||0,-60,60)*.0045:0;let TILT=!!dq;
+  const pt=(u,v,z)=>{if(TILT&&z>.3)z+=u*PA+v*RA;u*=CSC;v*=CSC;return toScreen(p.x+u*co-v*si,p.y+u*si+v*co,z*CSC+zb,cw,ch)};
   {const s0=pt(0,0,0);if(s0[0]<-90||s0[0]>cw+90||s0[1]<-90||s0[1]>ch+90)return}// fora da tela: nada a desenhar
   if(!detail||Z<.5){const s=pt(0,0,0);ctx.fillStyle=c.col;ctx.strokeStyle=c.isP?"#FFF":"#0A0C10";ctx.lineWidth=c.isP?2:1.2;ctx.beginPath();ctx.arc(s[0],s[1],c.isP?5:3.8,0,7);ctx.fill();ctx.stroke();return}
   if(c.sc){drawSafetyCar(ctx,c,pt,co,si,Z);return}
@@ -75,7 +77,7 @@ function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=M
     // luz de chuva
     const blink=(R&&R.w>.25)||c.clip||(night&&!wreck);if(!wreck&&blink&&Math.floor(performance.now()/260)%2===0){const q=pt(-12.9,0,2.7);ctx.fillStyle="#FF2A2A";ctx.fillRect(q[0]-1.6,q[1]-1.2,3.2,2.4);ctx.fillStyle="rgba(255,40,40,.25)";ctx.beginPath();ctx.arc(q[0],q[1],5*Math.max(.8,Z*.8),0,7);ctx.fill()}};
   if(!frontNear)frontWing();else rearWing();
-  far.forEach(drawWheel);
+  far.forEach(w=>{const t=TILT;TILT=false;drawWheel(w);TILT=t});
   // difusor
   quad([pt(-10.6,-3.5,.7),pt(-12.6,-3.2,1.4),pt(-12.6,3.2,1.4),pt(-10.6,3.5,.7)],"#121315");
   // sidepods com rebaixo (downwash) e entrada de ar
@@ -99,7 +101,7 @@ function drawCar(ctx,cw,ch,c,p,detail,o){const Z=CAM.z,h=p.h,co=Math.cos(h),si=M
   {ctx.strokeStyle="#2B2E33";ctx.lineWidth=Math.max(.9,.75*Z);ctx.beginPath();const a=pt(3.1,0,2.9),b=pt(2.2,0,3.85),l1=pt(1.4,-1.0,3.8),l2=pt(-.7,-1.1,3.5),l3=pt(-1.2,-1.15,2.95),r1=pt(1.4,1.0,3.8),r2=pt(-.7,1.1,3.5),r3=pt(-1.2,1.15,2.95);
     ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.moveTo(l3[0],l3[1]);ctx.quadraticCurveTo(l2[0],l2[1],l1[0],l1[1]);ctx.quadraticCurveTo(b[0],b[1],r1[0],r1[1]);ctx.quadraticCurveTo(r2[0],r2[1],r3[0],r3[1]);ctx.stroke()}
   if(hi)for(const sv of[1,-1]){quad([pt(2.2,2.0*sv,2.8),pt(2.8,2.0*sv,2.8),pt(2.8,2.9*sv,3.1),pt(2.2,2.9*sv,3.1)],"#15171A")}
-  near.forEach(drawWheel);
+  near.forEach(w=>{const t=TILT;TILT=false;drawWheel(w);TILT=t});
   if(!frontNear)rearWing();else frontWing();
   // luz de freio
   // faíscas do assoalho raspando (assoalho quebrado, roda arrancada ou andando no aro): só desenho, com ruído do relógio de tela

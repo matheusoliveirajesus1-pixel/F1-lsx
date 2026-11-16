@@ -54,11 +54,110 @@ function esfera(M,c,r,colF,mat,S=48,T=32){S=Math.max(12,Math.round(S*Q));T=Math.
   const d=[Math.sin(th)*Math.cos(ph),Math.sin(th)*Math.sin(ph),Math.cos(th)];M.v(c[0]+d[0]*r,c[1]+d[1]*r,c[2]+d[2]*r,colF(d),mat)}}
   for(let j=0;j<T;j++)for(let k=0;k<S;k++){const k2=(k+1)%S;const a=base+j*S+k,b=base+j*S+k2,cc=base+(j+1)*S+k,d=base+(j+1)*S+k2;M.t(a,cc,b);M.t(b,cc,d)}}
 
+// ---------- PEÇAS DO CARRO: identificação, hierarquia e metadados (preparação para danos localizados)
+// Cada peça é um conjunto de triângulos da malha (faixas contínuas do índice). A malha em si não muda: o carro é desenhado igual.
+// Lado: E = esquerda (y < 0 no modelo), D = direita. Rodas no padrão do jogo: 0 dianteira esq., 1 dianteira dir., 2 traseira esq., 3 traseira dir.
+function centroTri(M,t){const I=M.i,P=M.p;let x=0,y=0,z=0;for(let j=0;j<3;j++){const v=I[t*3+j]*3;x+=P[v];y+=P[v+1];z+=P[v+2]}return[x/3,y/3,z/3]}
+const LADO={E:"esquerda",D:"direita",Left:"esquerda",Right:"direita"};
+const CANTOS={FrontLeft:{n:"dianteira esquerda",roda:0,eixo:"dianteiro",s:-1},FrontRight:{n:"dianteira direita",roda:1,eixo:"dianteiro",s:1},RearLeft:{n:"traseira esquerda",roda:2,eixo:"traseiro",s:-1},RearRight:{n:"traseira direita",roda:3,eixo:"traseiro",s:1}};
+// informação de cada peça: nome, categoria, se pode ser arrancada/destruída, conjunto mecânico, ligações e ponto de fixação (mm)
+function PECAS_INFO(id,G){const p=id.split("."),sd=p[p.length-1],lado=LADO[sd]||null,s=sd==="E"?-1:sd==="D"?1:0;
+  const I=(nome,cat,o)=>({id,nome,categoria:cat,lado,destrutivel:true,danificavel:true,conjunto:p[0],conecta:[],fixacao:null,...o});
+  const WB=G.WB,YF=G.YF,YR=G.YR;
+  switch(p[0]){
+  case"Nose":return p[1]==="Tip"?I("Ponta do bico","carroceria",{conjunto:"Nose",posicao:"frente",conecta:["Nose.Cone"],fixacao:[-650,0,180]})
+    :I("Bico (estrutura de impacto)","carroceria",{conjunto:"Nose",posicao:"frente",conecta:["Nose.Tip","Chassis.Monocoque","FrontWing.Pylon.E","FrontWing.Pylon.D"],fixacao:[-60,0,240]});
+  case"FrontWing":{const el=p[1],L=lado?" ("+lado+")":"";const nomes={MainPlane:"Plano principal da asa dianteira",Flap1:"Flap 1 da asa dianteira",Flap2:"Flap 2 da asa dianteira",Endplate:"Endplate da asa dianteira",Footplate:"Placa inferior da asa dianteira",Pylon:"Suporte da asa no bico"};
+    const con={MainPlane:["FrontWing.Pylon.E","FrontWing.Pylon.D","FrontWing.Flap1."+sd,"FrontWing.Endplate."+sd,"FrontWing.Footplate."+sd,"FrontWing.MainPlane."+(sd==="E"?"D":"E")],Flap1:["FrontWing.MainPlane."+sd,"FrontWing.Flap2."+sd,"FrontWing.Endplate."+sd],Flap2:["FrontWing.Flap1."+sd,"FrontWing.Endplate."+sd],
+      Endplate:["FrontWing.MainPlane."+sd,"FrontWing.Flap1."+sd,"FrontWing.Flap2."+sd,"FrontWing.Footplate."+sd],Footplate:["FrontWing.Endplate."+sd,"FrontWing.MainPlane."+sd],Pylon:["Nose.Cone","FrontWing.MainPlane.E","FrontWing.MainPlane.D"]}[el];
+    const fx={Pylon:[-880,s*45,100],Endplate:[-850,s*866,160],Footplate:[-875,s*820,55]}[el]||[-900,s*430,110];
+    return I(nomes[el]+L,"aerodinamica",{conjunto:"FrontWing",posicao:"frente",conecta:con,fixacao:fx})}
+  case"RearWing":{const el=p[1],L=lado?" ("+lado+")":"";const nomes={MainPlane:"Plano principal da asa traseira",Flap:"Flap móvel da asa traseira",BeamWing:"Beam wing",Endplate:"Endplate da asa traseira",EndplatePanel:"Painel pintado do endplate",EndplateStripe:"Faixa do endplate",Pylon:"Pilone central (pescoço de cisne)"};
+    const con={MainPlane:["RearWing.Endplate.E","RearWing.Endplate.D","RearWing.Pylon","RearWing.Flap"],Flap:["RearWing.Endplate.E","RearWing.Endplate.D","RearWing.MainPlane"],BeamWing:["RearWing.Endplate.E","RearWing.Endplate.D","Chassis.Gearbox"],
+      Endplate:["RearWing.MainPlane","RearWing.Flap","RearWing.BeamWing","RearWing.EndplatePanel."+sd,"RearWing.EndplateStripe."+sd],EndplatePanel:["RearWing.Endplate."+sd],EndplateStripe:["RearWing.Endplate."+sd],Pylon:["Chassis.Gearbox","RearWing.MainPlane"]}[el];
+    const fx={Pylon:[3600,0,355],Flap:[3995,0,818],BeamWing:[3850,0,410],MainPlane:[3880,0,740]}[el]||[4000,s*513,640];
+    return I(nomes[el]+L,"aerodinamica",{conjunto:"RearWing",posicao:"traseira",conecta:con,fixacao:fx,movel:el==="Flap"})}
+  case"Sidepods":{const sl=p[1];const sx=sl==="E"?-1:1;return p[2]==="Body"?I("Sidepod ("+LADO[sl]+")","carroceria",{lado:LADO[sl],conjunto:"Sidepods",posicao:"lateral",conecta:["Chassis.Monocoque","Chassis.PowerUnitBay","Floor.Plank","Sidepods."+sl+".InletLip","Mirrors."+sl+".Stalk"],fixacao:[1700,sx*300,300]})
+    :I("Borda da entrada de ar do sidepod ("+LADO[sl]+")","carroceria",{lado:LADO[sl],conjunto:"Sidepods",posicao:"lateral",conecta:["Sidepods."+sl+".Body"],fixacao:[1146,sx*478,450]})}
+  case"Mirrors":{const sl=p[1],sx=sl==="E"?-1:1;return p[2]==="Housing"?I("Retrovisor ("+LADO[sl]+")","carroceria",{lado:LADO[sl],conjunto:"Mirrors",posicao:"lateral",conecta:["Mirrors."+sl+".Stalk"],fixacao:[1120,sx*600,700]})
+    :I("Haste do retrovisor ("+LADO[sl]+")","carroceria",{lado:LADO[sl],conjunto:"Mirrors",posicao:"lateral",conecta:["Mirrors."+sl+".Housing","Sidepods."+sl+".Body"],fixacao:[1170,sx*500,600]})}
+  case"EngineCover":return p[1]==="SharkFin"?I("Barbatana do capô","carroceria",{conjunto:"EngineCover",posicao:"traseira",conecta:["EngineCover.Cover"],fixacao:[2700,0,700]})
+    :I("Capô do motor (parte de cima)","carroceria",{conjunto:"EngineCover",posicao:"centro-traseira",conecta:["Chassis.Airbox","Chassis.PowerUnitBay","EngineCover.SharkFin","Sidepods.E.Body","Sidepods.D.Body"],fixacao:[2500,0,600]});
+  case"Floor":if(p[1]==="Plank")return I("Assoalho","aerodinamica",{conjunto:"Floor",posicao:"baixo",conecta:["Chassis.Monocoque","Chassis.PowerUnitBay","Floor.EdgeWing.E","Floor.EdgeWing.D","Diffuser.Ramp","Sidepods.E.Body","Sidepods.D.Body"],fixacao:[1900,0,45]});
+    return p[1]==="EdgeWing"?I("Borda levantada do assoalho ("+lado+")","aerodinamica",{conjunto:"Floor",posicao:"baixo-lateral",conecta:["Floor.Plank","Floor.EdgeFin."+sd],fixacao:[1900,s*720,60]})
+      :I("Aleta da borda do assoalho ("+lado+")","aerodinamica",{conjunto:"Floor",posicao:"baixo-lateral",conecta:["Floor.EdgeWing."+sd],fixacao:[1550,s*715,100]});
+  case"Diffuser":if(p[1]==="Ramp")return I("Rampa do difusor","aerodinamica",{conjunto:"Diffuser",posicao:"traseira-baixo",conecta:["Floor.Plank","Diffuser.Strake.E1","Diffuser.Strake.E2","Diffuser.Strake.E3","Diffuser.Strake.D1","Diffuser.Strake.D2","Diffuser.Strake.D3"],fixacao:[3150,0,54]});
+    {const k=sd.slice(1),sl=sd[0];return I("Aleta do difusor "+k+" ("+LADO[sl]+")","aerodinamica",{lado:LADO[sl],conjunto:"Diffuser",posicao:"traseira-baixo",conecta:["Diffuser.Ramp"],fixacao:[3450,(sl==="E"?-1:1)*[0,120,300,525][+k],120]})}
+  case"Chassis":{const nm={Monocoque:"Monocoque (célula de sobrevivência)",PowerUnitBay:"Carenagem da unidade de potência",Gearbox:"Câmbio e estrutura traseira",CockpitOpening:"Abertura do cockpit",CockpitRim:"Acolchoado do cockpit",Airbox:"Tomada de ar / santantônio",AirboxInlet:"Tomada lateral do santantônio",TCam:"Câmera T",RainLight:"Luz de chuva",Halo:"Halo"};
+    const e=p[1],nome=nm[e]+(e==="Halo"?(p[2]==="Hoop"?" (arco)":" (pilar central)"):lado?" ("+lado+")":"");
+    const fixo=["Monocoque","CockpitOpening","CockpitRim","Halo"].includes(e);
+    const con={Monocoque:["Nose.Cone","Chassis.PowerUnitBay","Chassis.Halo.Hoop","Chassis.Halo.Pillar","Chassis.Airbox","Sidepods.E.Body","Sidepods.D.Body","Floor.Plank"],PowerUnitBay:["Chassis.Monocoque","Chassis.Gearbox","EngineCover.Cover","Floor.Plank"],Gearbox:["Chassis.PowerUnitBay","RearWing.Pylon","RearWing.BeamWing","Chassis.RainLight","Diffuser.Ramp"],
+      Airbox:["Chassis.Monocoque","EngineCover.Cover","Chassis.TCam","Chassis.AirboxInlet.E","Chassis.AirboxInlet.D"],AirboxInlet:["Chassis.Airbox"],TCam:["Chassis.Airbox"],RainLight:["Chassis.Gearbox"],Halo:["Chassis.Monocoque"],CockpitOpening:["Chassis.Monocoque"],CockpitRim:["Chassis.Monocoque"]}[e]||[];
+    return I(nome,e==="Gearbox"||e==="PowerUnitBay"?"estrutura":"chassi",{conjunto:"Chassis",posicao:"centro",destrutivel:!fixo&&e!=="Gearbox"&&e!=="PowerUnitBay",danificavel:e!=="Halo",conecta:con,mecanico:e==="Gearbox"})}
+  case"Cockpit":return I({SteeringWheel:"Volante",SteeringColumn:"Coluna de direção"}[p[1]]+(p[2]?{Body:"",Display:" (tela)",ShiftLights:" (luzes de troca)",Grip:" (manopla "+lado+")"}[p[2]]:""),"cockpit",{conjunto:"Cockpit",posicao:"cockpit",destrutivel:false,danificavel:false,conecta:p[1]==="SteeringColumn"?["Chassis.Monocoque","Cockpit.SteeringWheel.Body"]:["Cockpit.SteeringColumn"]});
+  case"Driver":return I("Capacete do piloto","piloto",{conjunto:"Driver",posicao:"cockpit",destrutivel:false,danificavel:false});
+  case"Suspension":{const C=CANTOS[p[1]],fr=C.eixo==="dianteiro",S=C.s,el=p[2];const YW=fr?YF-150:YR-195,X0=fr?0:WB;
+    // pontos de fixação (mm): no chassi e na manga de eixo (lado da roda); são os mesmos pontos usados para desenhar os braços
+    const pts=fr?{UpperWishbone:{chassi:[[-230,S*170,470],[260,S*180,490]],roda:[0,S*YW,455]},LowerWishbone:{chassi:[[-280,S*120,250],[330,S*130,265]],roda:[15,S*YW,225]},TrackRod:{chassi:[[-120,S*150,345]],roda:[-105,S*YW,330]},Pushrod:{chassi:[[150,S*190,520]],roda:[40,S*(YF-160),235]},
+        Rocker:{chassi:[[150,S*120,545]]},Damper:{chassi:[[330,S*60,560]]},Spring:{chassi:[[330,S*60,560]]},Upright:{roda:[0,S*YF,RF_(G)]}}
+      :{UpperWishbone:{chassi:[[WB-260,S*150,470],[WB+250,S*140,490]],roda:[WB,S*YW,480]},LowerWishbone:{chassi:[[WB-300,S*140,250],[WB+270,S*120,250]],roda:[WB,S*YW,225]},ToeLink:{chassi:[[WB+200,S*130,340]],roda:[WB+190,S*YW,340]},Pullrod:{chassi:[[WB-180,S*120,240]],roda:[WB+20,S*(YR-205),440]},
+        Rocker:{chassi:[[WB-180,S*90,225]]},Damper:{chassi:[[WB-420,S*60,230]]},Spring:{chassi:[[WB-420,S*60,230]]},Upright:{roda:[WB,S*YR,G.RR]}};
+    const nm={UpperWishbone:"Braço superior",LowerWishbone:"Braço inferior",TrackRod:"Barra de direção",ToeLink:"Barra de convergência",Pushrod:"Pushrod",Pullrod:"Pullrod",Rocker:"Rocker (balancim)",Damper:"Amortecedor",Spring:"Mola (barra de torção)",Upright:"Manga de eixo"}[el];
+    const virt=["Rocker","Damper","Spring","Upright"].includes(el);const base="Suspension."+p[1]+".";const rod=fr?(el==="Pushrod"?"Pushrod":null):(el==="Pullrod"?"Pullrod":null);
+    const con={UpperWishbone:["Chassis.Monocoque",base+"Upright"],LowerWishbone:["Chassis.Monocoque",base+"Upright"],TrackRod:["Chassis.Monocoque",base+"Upright"],ToeLink:["Chassis.Gearbox",base+"Upright"],Pushrod:[base+"Upright",base+"Rocker"],Pullrod:[base+"Upright",base+"Rocker"],
+      Rocker:[base+(fr?"Pushrod":"Pullrod"),base+"Damper",base+"Spring",fr?"Chassis.Monocoque":"Chassis.Gearbox"],Damper:[base+"Rocker",fr?"Chassis.Monocoque":"Chassis.Gearbox"],Spring:[base+"Rocker",fr?"Chassis.Monocoque":"Chassis.Gearbox"],
+      Upright:[base+"UpperWishbone",base+"LowerWishbone",base+(fr?"TrackRod":"ToeLink"),base+(fr?"Pushrod":"Pullrod"),"Wheels."+p[1]+".Hub"]}[el];
+    return I(nm+" ("+C.n+")","suspensao",{lado:S<0?"esquerda":"direita",conjunto:"Suspension."+p[1],posicao:C.n,canto:p[1],roda:C.roda,eixo:C.eixo,conecta:con,pontos:pts[el],fixacao:(pts[el].roda||pts[el].chassi[0]),
+      virtual:virt,interno:el==="Rocker"||el==="Damper"||el==="Spring",destrutivel:!virt||el==="Upright",mecanico:true,funcao:{UpperWishbone:"localiza a roda (cambagem)",LowerWishbone:"localiza a roda e recebe a carga vertical",TrackRod:"direção",ToeLink:"convergência",Pushrod:"leva a carga da roda ao rocker",Pullrod:"leva a carga da roda ao rocker",Rocker:"converte o movimento da haste para a mola e o amortecedor",Damper:"amortece compressão e extensão",Spring:"sustenta o carro (rigidez)",Upright:"liga braços, haste e direção ao cubo da roda"}[el]})}
+  case"Wheels":{const C=CANTOS[p[1]],fr=C.eixo==="dianteiro",cx=fr?0:WB,cy=C.s*(fr?YF:YR),r=fr?G.RF:G.RR,el=p[2],base="Wheels."+p[1]+".";
+    const nm={Tyre:"Pneu",Rim:"Aro",Hub:"Cubo e porca",RimInner:"Face interna do aro (cobre disco e pinça)",BrakeDuct:"Duto de freio"}[el];
+    const con={Tyre:[base+"Rim"],Rim:[base+"Tyre",base+"Hub",base+"RimInner"],Hub:[base+"Rim","Suspension."+p[1]+".Upright"],RimInner:[base+"Rim",base+"Hub"],BrakeDuct:["Suspension."+p[1]+".Upright"]}[el];
+    return I(nm+" ("+C.n+")",el==="BrakeDuct"?"freio":"roda",{lado:C.s<0?"esquerda":"direita",conjunto:"Wheels."+p[1],posicao:C.n,canto:p[1],roda:C.roda,eixo:C.eixo,conecta:con,fixacao:[cx,cy,r],eixoGiro:[0,1,0],mecanico:true})}}
+  return I(id,"outro",{})}
+function RF_(G){return G.RF}
+// peças sem malha (ficam dentro da carroceria): existem para a física da suspensão ter onde se apoiar
+const VIRTUAIS=["Rocker","Damper","Spring","Upright"];
+function montaPecas(M,DONO,G){const nT=M.i.length/3,mapa={},lista=[];const nova=id=>{if(!mapa[id]){const p=PECAS_INFO(id,G);p.faixas=[];p.triangulos=0;p.vertices=0;p.caixa=null;mapa[id]=p;lista.push(p)}return mapa[id]};
+  let semDono=0;for(let t=0;t<nT;){const id=DONO[t];let u=t+1;while(u<nT&&DONO[u]===id)u++;if(id==null)semDono+=u-t;else{const p=nova(id);p.faixas.push([t*3,u*3]);p.triangulos+=u-t}t=u}
+  // caixa e vértices de cada peça
+  for(const p of lista){const vs=new Set();const I=M.i,P=M.p;let a=[1e9,1e9,1e9],b=[-1e9,-1e9,-1e9];for(const[i0,i1]of p.faixas)for(let k=i0;k<i1;k++){const v=I[k];if(vs.has(v))continue;vs.add(v);for(let j=0;j<3;j++){const q=P[v*3+j];if(q<a[j])a[j]=q;if(q>b[j])b[j]=q}}
+    p.vertices=vs.size;p.caixa={min:a.map(Math.round),max:b.map(Math.round)};p.centro=a.map((q,j)=>Math.round((q+b[j])/2));if(!p.fixacao)p.fixacao=p.centro}
+  // peças internas da suspensão (sem malha)
+  for(const c of Object.keys(CANTOS))for(const e of VIRTUAIS){const p=nova("Suspension."+c+"."+e);p.virtual=true}
+  // ligações valem nos dois sentidos (se A liga em B, B liga em A)
+  for(const p of lista)for(const q of p.conecta){const o=mapa[q];if(o&&!o.conecta.includes(p.id))o.conecta.push(p.id)}
+  // número de peça por vértice (o primeiro dono; vértices na emenda entre duas peças ficam com a primeira)
+  const g=new Int16Array(M.p.length/3).fill(-1);lista.forEach((p,n)=>{p.n=n;for(const[i0,i1]of p.faixas)for(let k=i0;k<i1;k++){const v=M.i[k];if(g[v]<0)g[v]=n}});M.g=g;
+  // massa suspensa ou não, por vértice (o desenho usa): 0 = carro (suspenso), 1 = roda, cubo, aro e duto de freio (acompanham o chão), 2 = braços e hastes (a ponta do chassi sobe e desce com o carro, a da roda fica)
+  const gc=new Float32Array(g.length);for(let v=0;v<g.length;v++){const id=g[v]>=0?lista[g[v]].id:"";gc[v]=id.startsWith("Wheels.")?1:id.startsWith("Suspension.")?2:0}M.gc=gc;
+  return{mapa,lista,semDono,triangulos:nT,arvore:arvoreDe(lista)}}
+// hierarquia: CarroF1 → Chassi, Cockpit, Carroceria, Suspension, Wheels; MechanicalComponents e DestructibleParts são índices (referências às mesmas peças)
+function arvoreDe(lista){const T={CarroF1:{Chassi:{},Cockpit:{},Carroceria:{Nose:[],FrontWing:[],RearWing:[],Sidepods:[],EngineCover:[],Floor:[],Diffuser:[],Mirrors:[]},Suspension:{FrontLeft:[],FrontRight:[],RearLeft:[],RearRight:[]},Wheels:{FrontLeft:[],FrontRight:[],RearLeft:[],RearRight:[]},
+  MechanicalComponents:{PowerUnit:["Chassis.PowerUnitBay"],Gearbox:["Chassis.Gearbox"],Steering:[],Uprights:[],SpringsDampers:[]},DestructibleParts:{FrontWingParts:[],RearWingParts:[],BodyParts:[],SuspensionParts:[],WheelParts:[],Mirrors:[]}}};const C=T.CarroF1;
+  for(const p of lista){const q=p.id.split(".");
+    if(q[0]==="Chassis"){(C.Chassi[q[1]]=C.Chassi[q[1]]||[]).push(p.id)}
+    else if(q[0]==="Cockpit"||q[0]==="Driver"){(C.Cockpit[q[0]==="Driver"?"Driver":q[1]]=C.Cockpit[q[0]==="Driver"?"Driver":q[1]]||[]).push(p.id)}
+    else if(C.Carroceria[q[0]])C.Carroceria[q[0]].push(p.id);
+    else if(q[0]==="Suspension")C.Suspension[q[1]].push(p.id);
+    else if(q[0]==="Wheels")C.Wheels[q[1]].push(p.id);
+    const MC=C.MechanicalComponents;if(/TrackRod|SteeringColumn|SteeringWheel\.Body/.test(p.id))MC.Steering.push(p.id);if(/\.Upright$/.test(p.id))MC.Uprights.push(p.id);if(/\.(Damper|Spring|Rocker)$/.test(p.id))MC.SpringsDampers.push(p.id);
+    if(p.destrutivel){const DP=C.DestructibleParts;const g=q[0]==="FrontWing"?"FrontWingParts":q[0]==="RearWing"?"RearWingParts":q[0]==="Suspension"?"SuspensionParts":q[0]==="Wheels"?"WheelParts":q[0]==="Mirrors"?"Mirrors":"BodyParts";DP[g].push(p.id)}}
+  return T}
+function indicesPecas(D,ids,dentro){const set=new Set();for(const id of ids)for(const p of D.pecas.lista)if(p.id===id||p.id.startsWith(id+"."))set.add(p);const I=D.mesh.i,out=[];
+  if(dentro){for(const p of set)for(const[a,b]of p.faixas)for(let k=a;k<b;k++)out.push(I[k]);return new Uint32Array(out)}
+  const fora=[];for(const p of set)fora.push(...p.faixas);fora.sort((x,y)=>x[0]-y[0]);let k=0;for(const[a,b]of fora){for(;k<a;k++)out.push(I[k]);k=Math.max(k,b)}for(;k<I.length;k++)out.push(I[k]);return new Uint32Array(out)}
+function submalhaPeca(D,id){const p=D.pecas.mapa[id];if(!p||!p.triangulos)return null;const M=D.mesh,o=p.fixacao||p.centro,map=new Map(),S={p:[],n:[],c:[],m:[],k:[],i:[],fixacao:o};
+  for(const[a,b]of p.faixas)for(let k=a;k<b;k++){const v=M.i[k];let w=map.get(v);if(w==null){w=S.p.length/3;map.set(v,w);S.p.push(M.p[v*3]-o[0],M.p[v*3+1]-o[1],M.p[v*3+2]-o[2]);S.n.push(M.n[v*3],M.n[v*3+1],M.n[v*3+2]);S.c.push(M.c[v*3],M.c[v*3+1],M.c[v*3+2]);S.m.push(M.m[v]);S.k.push(M.k[v])}S.i.push(w)}
+  return S}
 function construir(opt){opt=opt||{};Q=opt.lod||1;
   const COR=hex(opt.cor||"#E5321E"),COR2=hex(opt.cor2||"#F4F4F2"),CARB=hex("#17181B"),PRETO=hex("#0B0B0D");
   const COMP=hex(opt.composto||"#F5C518");COR.k=1;COR2.k=2;COMP.k=3;
   const M=new Mesh();const D={entreEixos:3400,largura:1900};
   const WB=3400,RF=352,RR=356,WF=280,WR=375,YF=950-WF/2,YR=950-WR/2;D.rf=RF;D.rr=RR;D.yf=YF;D.yr=YR;D.wf=WF;D.wr=WR;
+  // registro de peças: cada triângulo criado dentro de de(id,...) pertence àquela peça. Não muda vértices, triângulos nem a ordem
+  // de desenho: o carro continua idêntico, só passa a saber de que peça é cada triângulo (ver PECAS_INFO e CARRO.pecas)
+  const DONO=[];const de=(id,fn)=>{const t0=M.i.length/3;fn();const t1=M.i.length/3;for(let t=t0;t<t1;t++)if(DONO[t]===undefined)DONO[t]=typeof id==="function"?id(centroTri(M,t),t):id};// peça dentro de peça: a de dentro fica com os seus triângulos
+  const LD=s=>s<0?"E":"D";// lado: E = esquerda (y < 0 no modelo), D = direita
   // ---------- corpo central (bico + monocoque + capô do motor + caixa de câmbio)
   const K=[
     {x:-1010,hw:50, zb:122,zt:200},
@@ -80,35 +179,37 @@ function construir(opt){opt=opt||{};Q=opt.lod||1;
   const livery=q=>{const[x,y,z]=q;const zbot=interp(K,x,"zb"),ztop=interp(K,x,"zt");const h=(z-zbot)/(ztop-zbot);
     const zz=z-Math.max(zbot,100);const hh=zz/(ztop-Math.max(zbot,100));if(hh<.30)return CARB;if(hh<.33)return COR2;return COR};
   const rings=[];for(let x=-1010;x<=3720;x+=22/Q){rings.push(anel(x,0,interp(K,x,"hw"),interp(K,x,"zb"),interp(K,x,"zt"),72,3.2,5,.72))}
-  loft(M,rings,livery,MAT.pintura,{col:COR},{col:CARB,mat:MAT.carbono});
+  // bico (ponta e estrutura de impacto), monocoque, capô do motor (parte de cima), carenagem da unidade de potência (laterais de baixo) e câmbio/estrutura traseira
+  const secCorpo=c=>{const x=c[0];if(x<-650)return"Nose.Tip";if(x<-60)return"Nose.Cone";if(x<1640)return"Chassis.Monocoque";if(x<3350){const zb=interp(K,x,"zb"),zt=interp(K,x,"zt");return c[2]>zb+(zt-zb)*.55?"EngineCover.Cover":"Chassis.PowerUnitBay"}return"Chassis.Gearbox"};
+  de(secCorpo,()=>loft(M,rings,livery,MAT.pintura,{col:COR},{col:CARB,mat:MAT.carbono}));
   // faixa central branca no bico e no capô (decalque fino sobre a superfície)
   const faixa=(x0,x1,larg)=>{const rs=[];for(let x=x0;x<=x1;x+=20/Q){const zt=interp(K,x,"zt");rs.push([[x,-larg,zt+1.5],[x,larg,zt+1.5]])}
     const b=M.p.length/3;for(const r of rs)for(const q of r)M.v(q[0],q[1],q[2],COR2,MAT.pintura);for(let i=0;i<rs.length-1;i++){const a=b+i*2;M.t(a,a+2,a+1);M.t(a+1,a+2,a+3)}};
-  faixa(-1000,700,26);faixa(2250,3500,22);
+  de(secCorpo,()=>{faixa(-1000,700,26);faixa(2250,3500,22)});// a faixa pintada acompanha a peça em que está
   // abertura do cockpit
-  {const N=Math.max(16,Math.round(60*Q)),rs=[];for(let k=0;k<N;k++){const a=k/N*Math.PI*2;const x=1330+Math.cos(a)*330,y=Math.sin(a)*190;rs.push([x,y,interp(K,x,"zt")+2])}
+  de("Chassis.CockpitOpening",()=>{const N=Math.max(16,Math.round(60*Q)),rs=[];for(let k=0;k<N;k++){const a=k/N*Math.PI*2;const x=1330+Math.cos(a)*330,y=Math.sin(a)*190;rs.push([x,y,interp(K,x,"zt")+2])}
     const c0=M.v(1330,0,interp(K,1330,"zt")+2,PRETO,MAT.escuro);const b=M.p.length/3;for(const q of rs)M.v(q[0],q[1],q[2],PRETO,MAT.escuro);for(let k=0;k<N;k++)M.t(c0,b+k,b+(k+1)%N);
     // borda do cockpit (acolchoado)
-    tubo(M,[...rs,rs[0]].map(q=>[q[0],q[1],q[2]+6]),16,12,CARB,MAT.carbono,10)}
+    de("Chassis.CockpitRim",()=>tubo(M,[...rs,rs[0]].map(q=>[q[0],q[1],q[2]+6]),16,12,CARB,MAT.carbono,10))});
   // piloto: capacete
-  esfera(M,[1420,0,700],128,d=>{if(d[0]<-.42&&d[2]>-.15&&d[2]<.32)return PRETO;if(d[2]>.55)return COR;if(Math.abs(d[1])<.12&&d[2]>0)return COR;return COR2},MAT.capacete);
+  de("Driver.Helmet",()=>esfera(M,[1420,0,700],128,d=>{if(d[0]<-.42&&d[2]>-.15&&d[2]<.32)return PRETO;if(d[2]>.55)return COR;if(Math.abs(d[1])<.12&&d[2]>0)return COR;return COR2},MAT.capacete));
   // ---------- volante com tela (visto da câmera onboard)
   {const VC=hex("#1A1C20"),TELA=hex("#1D5566"),LED=hex("#2BE07A");const xv=1215;
-    loft(M,[anel(xv-14,0,140,505,615,32,3,3),anel(xv+14,0,140,505,615,32,3,3)],()=>VC,MAT.carbono,{col:VC},{col:VC});
-    loft(M,[anel(xv+15,0,56,535,590,20,4,4),anel(xv+19,0,56,535,590,20,4,4)],()=>TELA,MAT.branco,{col:TELA},{col:TELA});
-    loft(M,[anel(xv+15,0,86,598,606,20,6,6),anel(xv+19,0,86,598,606,20,6,6)],()=>LED,MAT.branco,{col:LED},{col:LED});
-    for(const s of[-1,1])tubo(M,[[xv+10,s*140,515],[xv+20,s*155,560],[xv+10,s*140,610]],18,18,hex("#2F3A8C"),MAT.escuro,10);
-    tubo(M,[[xv-20,0,560],[1060,0,520]],14,14,VC,MAT.carbono,8)}
+    de("Cockpit.SteeringWheel.Body",()=>loft(M,[anel(xv-14,0,140,505,615,32,3,3),anel(xv+14,0,140,505,615,32,3,3)],()=>VC,MAT.carbono,{col:VC},{col:VC}));
+    de("Cockpit.SteeringWheel.Display",()=>loft(M,[anel(xv+15,0,56,535,590,20,4,4),anel(xv+19,0,56,535,590,20,4,4)],()=>TELA,MAT.branco,{col:TELA},{col:TELA}));
+    de("Cockpit.SteeringWheel.ShiftLights",()=>loft(M,[anel(xv+15,0,86,598,606,20,6,6),anel(xv+19,0,86,598,606,20,6,6)],()=>LED,MAT.branco,{col:LED},{col:LED}));
+    for(const s of[-1,1])de("Cockpit.SteeringWheel.Grip."+LD(s),()=>tubo(M,[[xv+10,s*140,515],[xv+20,s*155,560],[xv+10,s*140,610]],18,18,hex("#2F3A8C"),MAT.escuro,10));
+    de("Cockpit.SteeringColumn",()=>tubo(M,[[xv-20,0,560],[1060,0,520]],14,14,VC,MAT.carbono,8))}
   // ---------- tomada de ar / santantônio
   {const KA=[{x:1640,hw:105,zt:905},{x:1720,hw:128,zt:930},{x:1900,hw:150,zt:900},{x:2250,hw:175,zt:760}];const rs=[];
     for(let x=1640;x<=2250;x+=18/Q){const zt=interp(KA,x,"zt"),hw=interp(KA,x,"hw");rs.push(anel(x,0,hw,interp(K,x,"zt")-60,zt,48,2.4,3,.9))}
-    loft(M,rs,()=>COR,MAT.pintura,{col:PRETO,mat:MAT.escuro},null);
+    de("Chassis.Airbox",()=>loft(M,rs,()=>COR,MAT.pintura,{col:PRETO,mat:MAT.escuro},null));
     // câmera T (topo)
-    placaH(M,940,10,[[1690,-70],[1770,-70],[1770,70],[1690,70]],PRETO,MAT.escuro);placa(M,0,20,[[1700,920],[1760,920],[1755,936],[1705,936]],PRETO,MAT.escuro);
+    de("Chassis.TCam",()=>{placaH(M,940,10,[[1690,-70],[1770,-70],[1770,70],[1690,70]],PRETO,MAT.escuro);placa(M,0,20,[[1700,920],[1760,920],[1755,936],[1705,936]],PRETO,MAT.escuro)});
     // tomadas laterais do santantônio
-    for(const s of[-1,1])loft(M,[anel(1700,s*112,28,790,880,20,2,2),anel(1740,s*120,32,780,885,20,2,2)],()=>PRETO,MAT.escuro,{col:PRETO},{})}
+    for(const s of[-1,1])de("Chassis.AirboxInlet."+LD(s),()=>loft(M,[anel(1700,s*112,28,790,880,20,2,2),anel(1740,s*120,32,780,885,20,2,2)],()=>PRETO,MAT.escuro,{col:PRETO},{}))}
   // barbatana do capô
-  placa(M,0,10,[[2100,760],[2400,800],[3350,640],[3420,440],[3200,440],[2300,700]],COR,MAT.pintura);
+  de("EngineCover.SharkFin",()=>placa(M,0,10,[[2100,760],[2400,800],[3350,640],[3420,440],[3200,440],[2300,700]],COR,MAT.pintura));
   // ---------- sidepods (downwash)
   for(const s of[-1,1]){const KS=[
       {x:1150,yc:478,hw:190,zb:300,zt:600},
@@ -120,31 +221,31 @@ function construir(opt){opt=opt||{};Q=opt.lod||1;
       {x:3150,yc:220,hw:55, zb:205,zt:255}];
     const rs=[];for(let x=1150;x<=3150;x+=20/Q){rs.push(anel(x,s*interp(KS,x,"yc"),interp(KS,x,"hw"),interp(KS,x,"zb"),interp(KS,x,"zt"),56,4.2,2.6,.35))}
     const lv=q=>{const x=q[0],zb=interp(KS,x,"zb"),zt=interp(KS,x,"zt");const h=(q[2]-zb)/(zt-zb);if(h<.30)return CARB;if(h<.33)return COR2;return COR};
-    loft(M,rs,lv,MAT.pintura,{col:PRETO,mat:MAT.escuro},{col:CARB,mat:MAT.carbono});
+    de("Sidepods."+LD(s)+".Body",()=>loft(M,rs,lv,MAT.pintura,{col:PRETO,mat:MAT.escuro},{col:CARB,mat:MAT.carbono}));
     // lábio da entrada
-    tubo(M,[...rs[0],rs[0][0]].map(q=>[q[0]-4,q[1],q[2]]),12,12,CARB,MAT.carbono,10);
+    de("Sidepods."+LD(s)+".InletLip",()=>tubo(M,[...rs[0],rs[0][0]].map(q=>[q[0]-4,q[1],q[2]]),12,12,CARB,MAT.carbono,10));
     // espelho
-    const my=s*600,mx=1080,mz=700;loft(M,[anel(mx-10,my,8,mz-5,mz+5,28,2,2),anel(mx,my,75,mz-28,mz+28,28,3,3),anel(mx+40,my,82,mz-32,mz+30,28,3,3),anel(mx+70,my,60,mz-22,mz+22,28,3,3)],()=>COR,MAT.pintura,{},{col:hex("#C9D2DA"),mat:MAT.metal});
-    tubo(M,[[mx+40,my-s*40,mz-25],[mx+90,s*500,600]],10,22,CARB,MAT.carbono,10);
+    const my=s*600,mx=1080,mz=700;de("Mirrors."+LD(s)+".Housing",()=>loft(M,[anel(mx-10,my,8,mz-5,mz+5,28,2,2),anel(mx,my,75,mz-28,mz+28,28,3,3),anel(mx+40,my,82,mz-32,mz+30,28,3,3),anel(mx+70,my,60,mz-22,mz+22,28,3,3)],()=>COR,MAT.pintura,{},{col:hex("#C9D2DA"),mat:MAT.metal}));
+    de("Mirrors."+LD(s)+".Stalk",()=>tubo(M,[[mx+40,my-s*40,mz-25],[mx+90,s*500,600]],10,22,CARB,MAT.carbono,10));
     // defletores (bargeboard simplificado) à frente do sidepod
   }
   // ---------- assoalho
   {const F=[[520,300],[900,600],[1250,720],[2500,720],[2900,620],[3150,560],[3330,540]];
     const poly=[];for(const[x,y]of F)poly.push([x,y]);for(let i=F.length-1;i>=0;i--)poly.push([F[i][0],-F[i][1]]);
     // triangulação: faixa de quads entre os dois lados
-    const z0=36,z1=54;const b=M.p.length/3;for(const[x,y]of F){M.v(x,y,z1,CARB,MAT.carbono);M.v(x,-y,z1,CARB,MAT.carbono)}
+    const z0=36,z1=54;de("Floor.Plank",()=>{const b=M.p.length/3;for(const[x,y]of F){M.v(x,y,z1,CARB,MAT.carbono);M.v(x,-y,z1,CARB,MAT.carbono)}
     for(let i=0;i<F.length-1;i++){const a=b+i*2;M.t(a,a+1,a+2);M.t(a+1,a+3,a+2)}
     const b2=M.p.length/3;for(const[x,y]of F){M.v(x,y,z0,PRETO,MAT.carbono);M.v(x,-y,z0,PRETO,MAT.carbono)}
-    for(let i=0;i<F.length-1;i++){const a=b2+i*2;M.t(a,a+2,a+1);M.t(a+1,a+2,a+3)}
+    for(let i=0;i<F.length-1;i++){const a=b2+i*2;M.t(a,a+2,a+1);M.t(a+1,a+2,a+3)}});
     for(const s of[-1,1]){// borda lateral levantada (edge wing)
-      const pts=F.map(([x,y])=>[x,s*y,45]);const rs=pts.map(p=>[[p[0],p[1],36],[p[0],p[1]+s*8,36],[p[0],p[1]+s*8,82],[p[0],p[1],82]]);loft(M,rs,()=>CARB,MAT.carbono,{},{});
+      const pts=F.map(([x,y])=>[x,s*y,45]);const rs=pts.map(p=>[[p[0],p[1],36],[p[0],p[1]+s*8,36],[p[0],p[1]+s*8,82],[p[0],p[1],82]]);de("Floor.EdgeWing."+LD(s),()=>loft(M,rs,()=>CARB,MAT.carbono,{},{}));
       // aleta da borda do assoalho
-      asa(M,[{y:s*700,x:1500,z:96,c:200,a:.15},{y:s*730,x:1520,z:110,c:170,a:.25}],()=>CARB,MAT.carbono)}
+      de("Floor.EdgeFin."+LD(s),()=>asa(M,[{y:s*700,x:1500,z:96,c:200,a:.15},{y:s*730,x:1520,z:110,c:170,a:.25}],()=>CARB,MAT.carbono))}
     // difusor: rampa + paredes
     const rs=[];for(let x=3150;x<=3760;x+=30/Q){const t=(x-3150)/610;const z=54+Math.pow(t,1.6)*290;const hw=540-t*20;rs.push([[x,-hw,z],[x,hw,z]])}
-    const b3=M.p.length/3;for(const r of rs)for(const q of r)M.v(q[0],q[1],q[2],CARB,MAT.carbono);for(let i=0;i<rs.length-1;i++){const a=b3+i*2;M.t(a,a+2,a+1);M.t(a+1,a+2,a+3);M.t(a,a+1,a+2);M.t(a+1,a+3,a+2)}
+    de("Diffuser.Ramp",()=>{const b3=M.p.length/3;for(const r of rs)for(const q of r)M.v(q[0],q[1],q[2],CARB,MAT.carbono);for(let i=0;i<rs.length-1;i++){const a=b3+i*2;M.t(a,a+2,a+1);M.t(a+1,a+2,a+3);M.t(a,a+1,a+2);M.t(a+1,a+3,a+2)}});
     for(const yy of[-525,-300,-120,120,300,525]){const P=[];for(let x=3150;x<=3760;x+=40/Q){const t=(x-3150)/610;P.push([x,54+Math.pow(t,1.6)*290])}
-      placa(M,yy,10,[...P.map(([x,z])=>[x,z]),[3760,40],[3150,40]].reverse(),CARB,MAT.carbono)}
+      de("Diffuser.Strake."+LD(yy)+(Math.abs(yy)>400?"3":Math.abs(yy)>200?"2":"1"),()=>placa(M,yy,10,[...P.map(([x,z])=>[x,z]),[3760,40],[3150,40]].reverse(),CARB,MAT.carbono))}
   }
   // ---------- asa dianteira
   {const HW=860;const ele=[];
@@ -154,23 +255,23 @@ function construir(opt){opt=opt||{};Q=opt.lod||1;
       if(i===1)return{y,x:-860+u*10-lift*30,z:120+lift*110,c:190-u*30,a:.42+lift*.25};
       return{y,x:-745-lift*60,z:185+lift*160,c:140-u*20,a:.78+lift*.3}};
     for(let i=0;i<3;i++){const st=[];for(let k=0;k<=60;k++){const y=-HW+k/60*2*HW;st.push(mk(i,y))}
-      asa(M,st,q=>{const u=Math.abs(q[1])/HW;return i===2&&u>.3?COR:(i===1&&u>.55?COR2:CARB)},MAT.carbono,pf)}
-    for(const s of[-1,1]){placa(M,s*(HW+6),12,[[-1100,46],[-620,46],[-590,160],[-635,262],[-760,292],[-1000,205],[-1095,112]],COR,MAT.pintura);
-      placa(M,s*(HW-40),8,[[-1050,40],[-700,40],[-700,70],[-1050,70]],CARB,MAT.carbono)}
+      const el=["MainPlane","Flap1","Flap2"][i];de(c=>"FrontWing."+el+"."+(c[1]<0?"E":"D"),()=>asa(M,st,q=>{const u=Math.abs(q[1])/HW;return i===2&&u>.3?COR:(i===1&&u>.55?COR2:CARB)},MAT.carbono,pf))}
+    for(const s of[-1,1]){de("FrontWing.Endplate."+LD(s),()=>placa(M,s*(HW+6),12,[[-1100,46],[-620,46],[-590,160],[-635,262],[-760,292],[-1000,205],[-1095,112]],COR,MAT.pintura));
+      de("FrontWing.Footplate."+LD(s),()=>placa(M,s*(HW-40),8,[[-1050,40],[-700,40],[-700,70],[-1050,70]],CARB,MAT.carbono))}
     // suportes do bico
-    for(const s of[-1,1])placa(M,s*45,10,[[-1000,90],[-760,110],[-760,180],[-960,170]],CARB,MAT.carbono)}
+    for(const s of[-1,1])de("FrontWing.Pylon."+LD(s),()=>placa(M,s*45,10,[[-1000,90],[-760,110],[-760,180],[-960,170]],CARB,MAT.carbono))}
   // ---------- asa traseira
   {const HW=505;const pf=perfil(.08,.42,.11);
     const est=(x,z,c,a,curva)=>{const st=[];for(let k=0;k<=50;k++){const y=-HW+k/50*2*HW;const u=Math.abs(y)/HW;st.push({y,x,z:z-curva*(1-u*u),c,a})}return st};
-    asa(M,est(3770,750,340,.18,26),()=>CARB,MAT.carbono,pf);
-    asa(M,est(3995,815,230,.6,18),q=>COR,MAT.pintura,pf);
-    asa(M,est(3850,410,180,.2,0).map(s=>({...s,y:s.y*.82})),()=>CARB,MAT.carbono,pf);// beam wing
-    for(const s of[-1,1]){placa(M,s*(HW+8),12,[[3700,330],[4120,330],[4290,640],[4300,900],[4270,960],[3880,965],[3790,930],[3740,780]],CARB,MAT.carbono);placa(M,s*(HW+15),4,[[3800,880],[4295,880],[4300,900],[4270,948],[3880,950],[3790,920]],COR,MAT.pintura);
-      placa(M,s*(HW+16),6,[[3770,850],[4292,850],[4293,866],[3778,866]],COR2,MAT.pintura)}
+    de("RearWing.MainPlane",()=>asa(M,est(3770,750,340,.18,26),()=>CARB,MAT.carbono,pf));
+    de("RearWing.Flap",()=>asa(M,est(3995,815,230,.6,18),q=>COR,MAT.pintura,pf));// flap móvel (asa aberta nas retas)
+    de("RearWing.BeamWing",()=>asa(M,est(3850,410,180,.2,0).map(s=>({...s,y:s.y*.82})),()=>CARB,MAT.carbono,pf));// beam wing
+    for(const s of[-1,1]){de("RearWing.Endplate."+LD(s),()=>placa(M,s*(HW+8),12,[[3700,330],[4120,330],[4290,640],[4300,900],[4270,960],[3880,965],[3790,930],[3740,780]],CARB,MAT.carbono));de("RearWing.EndplatePanel."+LD(s),()=>placa(M,s*(HW+15),4,[[3800,880],[4295,880],[4300,900],[4270,948],[3880,950],[3790,920]],COR,MAT.pintura));
+      de("RearWing.EndplateStripe."+LD(s),()=>placa(M,s*(HW+16),6,[[3770,850],[4292,850],[4293,866],[3778,866]],COR2,MAT.pintura))}
     // pilone central (pescoço de cisne)
-    placa(M,0,14,[[3560,360],[3650,350],[3880,700],[3920,815],[3850,820],[3790,760]],CARB,MAT.carbono);
+    de("RearWing.Pylon",()=>placa(M,0,14,[[3560,360],[3650,350],[3880,700],[3920,815],[3850,820],[3790,760]],CARB,MAT.carbono));
     // luz de chuva
-    placa(M,0,60,[[3712,262],[3740,262],[3740,300],[3712,300]],hex("#FF2A2A"),MAT.escuro)}
+    de("Chassis.RainLight",()=>placa(M,0,60,[[3712,262],[3740,262],[3740,300],[3712,300]],hex("#FF2A2A"),MAT.escuro))}
   // ---------- halo
   {const pts=[];const hy=255,top=842;
     for(const [x,y,z] of[[1560,-265,640],[1520,-268,720],[1440,-262,800],[1330,-250,top]])pts.push([x,y,z]);
@@ -178,34 +279,46 @@ function construir(opt){opt=opt||{};Q=opt.lod||1;
     // anel superior como meia-elipse
     const ring=[];for(let k=0;k<=30;k++){const a=-Math.PI/2+k/30*Math.PI;ring.push([1500-Math.cos(a)*430,Math.sin(a)*hy,top+Math.cos(a)*14])}
     const path=[[1680,-262,640],[1650,-264,740],[1590,-260,815],...ring,[1590,260,815],[1650,264,740],[1680,262,640]];
-    tubo(M,path,26,22,CARB,MAT.carbono,16);
-    tubo(M,[[1075,0,top+8],[1030,0,770],[960,0,690],[900,0,640]],20,14,CARB,MAT.carbono,16)}
+    de("Chassis.Halo.Hoop",()=>tubo(M,path,26,22,CARB,MAT.carbono,16));
+    de("Chassis.Halo.Pillar",()=>tubo(M,[[1075,0,top+8],[1030,0,770],[960,0,690],[900,0,640]],20,14,CARB,MAT.carbono,16))}
   // ---------- suspensão (perfis aerodinâmicos achatados)
   const braco=(a,b,c)=>{tubo(M,[a,b],22,8,CARB,MAT.carbono,10);if(c)tubo(M,[c,b],22,8,CARB,MAT.carbono,10)};
-  for(const s of[-1,1]){
-    braco([-230,s*170,470],[0,s*(YF-150),455],[260,s*180,490]);
-    braco([-280,s*120,250],[15,s*(YF-150),225],[330,s*130,265]);
-    tubo(M,[[-120,s*150,345],[-105,s*(YF-150),330]],18,8,CARB,MAT.carbono,10);
-    tubo(M,[[40,s*(YF-160),235],[150,s*190,520]],16,16,CARB,MAT.carbono,10);
-    braco([WB-260,s*150,470],[WB,s*(YR-195),480],[WB+250,s*140,490]);
-    braco([WB-300,s*140,250],[WB,s*(YR-195),225],[WB+270,s*120,250]);
-    tubo(M,[[WB+200,s*130,340],[WB+190,s*(YR-195),340]],18,8,CARB,MAT.carbono,10);
-    tubo(M,[[WB+20,s*(YR-205),440],[WB-180,s*120,240]],16,16,CARB,MAT.carbono,10);
+  for(const s of[-1,1]){const F="Suspension.Front"+(s<0?"Left":"Right")+".",T="Suspension.Rear"+(s<0?"Left":"Right")+".";
+    de(F+"UpperWishbone",()=>braco([-230,s*170,470],[0,s*(YF-150),455],[260,s*180,490]));
+    de(F+"LowerWishbone",()=>braco([-280,s*120,250],[15,s*(YF-150),225],[330,s*130,265]));
+    de(F+"TrackRod",()=>tubo(M,[[-120,s*150,345],[-105,s*(YF-150),330]],18,8,CARB,MAT.carbono,10));// barra de direção
+    de(F+"Pushrod",()=>tubo(M,[[40,s*(YF-160),235],[150,s*190,520]],16,16,CARB,MAT.carbono,10));
+    de(T+"UpperWishbone",()=>braco([WB-260,s*150,470],[WB,s*(YR-195),480],[WB+250,s*140,490]));
+    de(T+"LowerWishbone",()=>braco([WB-300,s*140,250],[WB,s*(YR-195),225],[WB+270,s*120,250]));
+    de(T+"ToeLink",()=>tubo(M,[[WB+200,s*130,340],[WB+190,s*(YR-195),340]],18,8,CARB,MAT.carbono,10));// barra de convergência
+    de(T+"Pullrod",()=>tubo(M,[[WB+20,s*(YR-205),440],[WB-180,s*120,240]],16,16,CARB,MAT.carbono,10));
   }
   // ---------- rodas
-  const roda=(cx,cy,R,W,s)=>{const w=W/2,RIM=229;
+  const roda=(cx,cy,R,W,s,id)=>{const w=W/2,RIM=229;
     // pneu: perfil do lado de dentro para fora
     const pf=[];const L=[[RIM,-w+6],[RIM+30,-w],[R-70,-w-4],[R-30,-w+4],[R-8,-w+30],[R,-w+70],[R,w-70],[R-8,w-30],[R-30,w-4],[R-70,w],[RIM+92,w+2],[RIM+92,w+2,COMP],[RIM+70,w+2,COMP],[RIM+70,w+2],[RIM+30,w],[RIM,w-6]];
-    for(const q of L)pf.push(q);torno(M,cx,cy,RR===R?RR:R,pf.map(([r,dy,c])=>[r,dy,c]),hex("#141416"),MAT.pneu,96,s);
+    for(const q of L)pf.push(q);de(id+".Tyre",()=>torno(M,cx,cy,RR===R?RR:R,pf.map(([r,dy,c])=>[r,dy,c]),hex("#141416"),MAT.pneu,96,s));
     // aro (tampa de roda) e cubo
-    torno(M,cx,cy,R,[[RIM,w-6],[RIM-6,w-4],[200,w-14],[60,w-30],[40,w-28],[30,w-10],[0,w-10]],hex("#2A2C30"),MAT.roda,64,s);
-    torno(M,cx,cy,R,[[RIM,-w+6],[RIM-10,-w+20],[150,-w+60],[0,-w+60]],hex("#1E1F22"),MAT.roda,48,-s);
+    de(c=>Math.hypot(c[0]-cx,c[2]-R)<55?id+".Hub":id+".Rim",()=>torno(M,cx,cy,R,[[RIM,w-6],[RIM-6,w-4],[200,w-14],[60,w-30],[40,w-28],[30,w-10],[0,w-10]],hex("#2A2C30"),MAT.roda,64,s));// aro e, no centro, o cubo com a porca
+    de(id+".RimInner",()=>torno(M,cx,cy,R,[[RIM,-w+6],[RIM-10,-w+20],[150,-w+60],[0,-w+60]],hex("#1E1F22"),MAT.roda,48,-s));// face interna (cobre disco e pinça)
     // duto de freio
-    tubo(M,[[cx-20,cy-s*(w+30),R+40],[cx-60,cy-s*(w+120),R+20]],70,60,CARB,MAT.carbono,16,[1,0,0])};
-  for(const s of[-1,1]){roda(0,s*YF,RF,WF,s);roda(WB,s*YR,RR,WR,s)}
+    de(id+".BrakeDuct",()=>tubo(M,[[cx-20,cy-s*(w+30),R+40],[cx-60,cy-s*(w+120),R+20]],70,60,CARB,MAT.carbono,16,[1,0,0]))};
+  for(const s of[-1,1]){roda(0,s*YF,RF,WF,s,"Wheels.Front"+(s<0?"Left":"Right"));roda(WB,s*YR,RR,WR,s,"Wheels.Rear"+(s<0?"Left":"Right"))}
   // torno usa cz=R: corrigir — torno(M,cx,cy,cz,...)
-  M.normais();D.mesh=M;return D}
-G.CARRO={construir,MAT};
+  M.normais();D.mesh=M;
+  D.pecas=montaPecas(M,DONO,{WB,RF,RR,WF,WR,YF,YR});M.pecas=D.pecas;D.arvore=D.pecas.arvore;return D}
+G.CARRO={construir,MAT,PECAS_INFO,
+  // acesso às peças (preparação para o sistema de danos; nada aqui muda o desenho atual)
+  peca:(D,id)=>D.pecas.mapa[id]||null,
+  lista:(D,filtro)=>D.pecas.lista.filter(p=>!filtro||Object.entries(filtro).every(([k,v])=>p[k]===v)),
+  destrutiveis:D=>D.pecas.lista.filter(p=>p.destrutivel),
+  doGrupo:(D,prefixo)=>D.pecas.lista.filter(p=>p.id===prefixo||p.id.startsWith(prefixo+".")),
+  // índices de triângulo só das peças pedidas (ex.: desenhar ou soltar uma asa sozinha)
+  indicesDe:(D,ids)=>indicesPecas(D,ids,true),
+  // índices do carro sem as peças pedidas (ex.: carro sem a asa dianteira)
+  indicesSem:(D,ids)=>indicesPecas(D,ids,false),
+  // malha independente de uma peça (vértices copiados, posição relativa ao ponto de fixação): para soltar e voar
+  submalha:(D,id)=>submalhaPeca(D,id)};
 })(typeof window!=="undefined"?window:globalThis);
 
 // ---------- Pintura com patrocinadores: textura com os logos + posições no carro (mm do modelo)
@@ -463,8 +576,8 @@ const P3=window.P3D={on:true,cam:0,ms:0,tris:0,erro:null,esc:1};
 const CAMS=["Isométrica","Perseguição","TV","Onboard","Aérea"];P3.nomes=CAMS;
 const hex=h=>{h=String(h||"#888");if(h.length===4)h="#"+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];return[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255]};
 const VS=`#version 300 es
-in vec3 aP;in vec3 aN;in vec3 aC;in float aM;in float aK;
-uniform mat4 uVP;uniform mat4 uMod;uniform mat3 uNM;uniform vec3 uCor;uniform vec3 uCor2;uniform vec3 uComp;uniform float uT;uniform float uExc;uniform vec4 uVivo;uniform vec4 uRol;uniform vec4 uRoda;uniform vec4 uProj;uniform float uProjOn;
+in vec3 aP;in vec3 aN;in vec3 aC;in float aM;in float aK;in float aG;
+uniform mat4 uVP;uniform mat4 uMod;uniform mat3 uNM;uniform vec3 uCor;uniform vec3 uCor2;uniform vec3 uComp;uniform float uT;uniform float uExc;uniform vec4 uVivo;uniform vec4 uRol;uniform vec4 uRoda;uniform vec4 uSusp;uniform vec4 uProj;uniform float uProjOn;
 out vec3 vW;out vec3 vN;out vec3 vC;out float vM;out vec3 vMP;out vec3 vMN;
 mat2 rot(float a){return mat2(cos(a),sin(a),-sin(a),cos(a));}
 void main(){vec3 P=aP;int mm=int(aM+.5);
@@ -474,7 +587,10 @@ void main(){vec3 P=aP;int mm=int(aM+.5);
     else{if(P.x>3988.&&P.x<4265.&&P.z>790.&&abs(P.y)<507.){vec2 c=vec2(3995.,818.);P.xz=c+rot(-uVivo.z*.42)*(P.xz-c);}
       if(uRol.z>.5&&P.x<-560.&&P.z<450.&&abs(P.y)>230.)P=vec3(P.x,P.y*.3,-900.);
       if(uRol.w>.5&&P.x>3690.&&P.z>620.){P.z-=(P.y>0.?260.:120.);P.x+=60.;}
-      vec3 c0=vec3(1600.,0.,300.),d=P-c0;d.yz=rot(uRol.x)*d.yz;d.xz=rot(uRol.y)*d.xz;P=c0+d;}}
+      // suspensão: cada canto afunda (uSusp, mm; + = desce) conforme a carga daquela roda; a carroceria segue o plano dos 4 cantos.
+      // rodas, cubos e dutos ficam no chão; braços e hastes inclinam (a ponta do chassi acompanha o carro, a da roda não)
+      float dz=mix(mix(uSusp.x,uSusp.y,(P.y+800.)/1600.),mix(uSusp.z,uSusp.w,(P.y+800.)/1600.),P.x/3400.);
+      float wz=aG<.5?1.:aG<1.5?0.:clamp(((P.x<1700.?660.:567.)-abs(P.y))/((P.x<1700.?660.:567.)-140.),0.,1.);P.z-=dz*wz;}}
   vec4 w=uMod*vec4(P,1.);if(uProjOn>.5){vec3 L=uProj.xyz;float t=(w.z-uProj.w)/max(.2,L.z);w.xyz-=L*t;w.z=uProj.w+.12;}if(aM>19.5&&aM<20.5){float ph=(aK-4.)*6.2832;w.z+=max(0.,sin(uT*(8.+aK)+ph))*uExc;}vW=w.xyz;vN=uNM*aN;vC=aK>3.5?aC:aK>2.5?uComp:aK>1.5?uCor2:aK>.5?uCor:aC;vM=aM;vMP=P;vMN=aN;gl_Position=uVP*w;}`;
 const FS=`#version 300 es
 precision highp float;in vec3 vW;in vec3 vN;in vec3 vC;in float vM;in vec3 vMP;in vec3 vMN;
@@ -513,13 +629,13 @@ void main(){int m=int(vM+.5);if(abs(float(m)-uDbg)<.5)discard;if(uProjOn>.5||m==
 let gl,cv,P,UN={},car=null,pista=null,sombra=null;
 function prog(v,f){const p=gl.createProgram();for(const[t,s]of[[gl.VERTEX_SHADER,v],[gl.FRAGMENT_SHADER,f]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh)}gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p}
 function sobe(M){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const b=(a,n,l)=>{const B=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,B);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(a),gl.STATIC_DRAW);const L=gl.getAttribLocation(P,l);if(L>=0){gl.enableVertexAttribArray(L);gl.vertexAttribPointer(L,n,gl.FLOAT,false,0,0)}};
-  b(M.p,3,"aP");b(M.n,3,"aN");b(M.c,3,"aC");b(M.m,1,"aM");b(M.k,1,"aK");const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(M.i),gl.STATIC_DRAW);gl.bindVertexArray(null);return{vao,n:M.i.length}}
+  b(M.p,3,"aP");b(M.n,3,"aN");b(M.c,3,"aC");b(M.m,1,"aM");b(M.k,1,"aK");if(M.gc)b(M.gc,1,"aG");const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(M.i),gl.STATIC_DRAW);gl.bindVertexArray(null);return{vao,n:M.i.length}}
 // dois contextos: A (pista, e também os carros nas câmeras em perspectiva) e B (só carros, transparente, para a câmera isométrica)
 const CX={};
 function semAA(){try{const q=new URLSearchParams(location.search).get("aa");if(q)return q==="0";return (window.devicePixelRatio||1)>=2&&matchMedia("(pointer:coarse)").matches}catch(e){return false}}
 function criaCtx(id,alpha){const c=document.createElement("canvas");c.id=id;c.style.cssText="position:absolute;left:0;top:0;pointer-events:none;display:none";
   const g=c.getContext("webgl2",{antialias:!semAA(),alpha,premultipliedAlpha:true,stencil:true});if(!g)throw new Error("sem WebGL2");const o={cv:c,gl:g,UN:{},tex:new Map()};usa(o);o.P=P=prog(VS,FS);
-  for(const n of["uVP","uMod","uNM","uCor","uCor2","uComp","uEye","uSol","uLuz","uCeu","uNeb","uMolh","uDT","uDN","uDA","uDB","uDR","uT","uExc","uGT","uVS","uNoite","uSobre","uOculta","uVivo","uRol","uRoda","uProj","uProjOn","uAT","uDbg","uSM","uSMR","uSMon"])o.UN[n]=g.getUniformLocation(P,n);
+  for(const n of["uVP","uMod","uNM","uCor","uCor2","uComp","uEye","uSol","uLuz","uCeu","uNeb","uMolh","uDT","uDN","uDA","uDB","uDR","uT","uExc","uGT","uVS","uNoite","uSobre","uOculta","uVivo","uRol","uRoda","uSusp","uProj","uProjOn","uAT","uDbg","uSM","uSMR","uSMon"])o.UN[n]=g.getUniformLocation(P,n);
   o.car=sobe(malhaCarro(.5));o.carM=sobe(malhaCarro(.2));o.carB=sobe(malhaCarro(.05));P3.trisCarro=malhaCarro(.5).i.length/3;
   const S=new MB();S.quad([-1150,-1000,4],[4350,-1000,4],[4350,1000,4],[-1150,1000,4],[0,0,0],19);o.sombra=sobe(S);const K=new MB();for(const t of ICO)for(const q of t){const b=K.p.length/3;}const Kc=new MB();Kc.copa(0,0,0,1,1,[1,1,1],22,0);o.ceu=sobe(Kc);return o}
 function usa(o){CTX=o;gl=o.gl;P=o.P;UN=o.UN;cv=o.cv;car=o.car;sombra=o.sombra;TEXA=o.tex}
@@ -815,12 +931,28 @@ function animo(){let e=.12;if(typeof crowdExc==="function"&&TRACKGEO.stands)for(
 function desenhaPista(){gl.uniform1i(UN.uDN,0);gl.uniformMatrix4fv(UN.uMod,false,ID);gl.uniformMatrix3fv(UN.uNM,false,ID3);gl.uniform3f(UN.uCor,1,1,1);gl.uniform3f(UN.uCor2,1,1,1);gl.uniform3f(UN.uComp,1,1,1);
   desenhaMalha(pista)}
 // estado de cada carro para o desenho: rodas girando, esterço, asa ativa, rolagem e arfagem
-const VIVO=new Map();
+const VIVO=new Map();P3.vivo=id=>VIVO.get(id);// leitura do estado de desenho de um carro (rodas, suspensão), para testes
 function vivo(c,p,real){let s=VIVO.get(c.id);const t=performance.now()/1000;if(!s){s={t,h:p.h,v:c.v||0,gir:0,est:0,asa:0,rol:0,arf:0};VIVO.set(c.id,s)}
   const dt=Math.min(.1,Math.max(.001,t-s.t));if(real&&!UI.paused){const v=Math.max(0,c.v||0);let dh=p.h-s.h;while(dh>Math.PI)dh-=2*Math.PI;while(dh<-Math.PI)dh+=2*Math.PI;const w=dh/dt;
     s.gir+=v*dt/.36;const est=Math.max(-.32,Math.min(.32,w*3.4/Math.max(8,v)));s.est+=(est-s.est)*Math.min(1,dt*8);
     const lat=v*w,lon=(v-s.v)/dt;s.rol+=(Math.max(-.035,Math.min(.035,-lat*.0009))-s.rol)*Math.min(1,dt*5);s.arf+=(Math.max(-.025,Math.min(.025,lon*.0016))-s.arf)*Math.min(1,dt*5);
-    const reta=Math.abs(w)<.04&&v>52;s.asa+=((reta?1:0)-s.asa)*Math.min(1,dt*3);s.v=v}s.h=p.h;s.t=t;return s}
+    const reta=Math.abs(w)<.04&&v>52;s.asa+=((reta?1:0)-s.asa)*Math.min(1,dt*3);
+    // suspensão: aceleração da física (dyn.js) quando existe; nos clientes do multijogador, a estimada pela própria tela
+    const dy=c.dyn||null;s.latE=lat;suspensao(s,c,v,dy?dy.ax||0:lon,dy?dy.ay||0:lat,dt);s.v=v}s.h=p.h;s.t=t;return s}
+// carga em cada roda (estática + aerodinâmica + transferência na freada/aceleração e na curva; mesmas constantes do dyn.js)
+// → quanto aquele canto afunda. A mola visual é mais macia que a real (um F1 quase não se mexe) e limitada pela altura do assoalho.
+// A carroceria responde como massa e mola amortecida (assenta com um pequeno balanço depois da freada ou da curva).
+// O downforce pesa no "heave" (mola central, bem mais dura): o carro abaixa nas retas sem esgotar o curso que sobra para rolar e mergulhar.
+// Perto do fim do curso, o batente segura de forma progressiva (tanh).
+const SUSP={KV:80,KA:260,DESCE:30,SOBE:40,HZ:2.4,ZETA:.55};
+function suspensao(s,c,v,ax,ay,dt){const Lp=typeof LOAD!=="undefined"?LOAD:{L:3.6,H:.3,WF:.453,AF:.44,TR:1.6,RF:.52};const m=(c.ph&&c.ph.mass)||770,cl=(c.ph&&c.ph.cl)||1;
+  const down=.5*1.2*4.2*cl*v*v,dx=m*Math.max(-60,Math.min(25,ax))*Lp.H/Lp.L/2,lat=m*Math.max(-60,Math.min(60,ay))*Lp.H/Lp.TR,dF=lat*Lp.RF/2,dR=lat*(1-Lp.RF)/2;
+  const fa=down*Lp.AF/2,ra=down*(1-Lp.AF)/2;
+  // ay > 0 = curva para a esquerda: carrega as rodas da direita (y > 0 no modelo). Ordem: dianteira esq., dianteira dir., traseira esq., traseira dir.
+  const F=[-dx-dF,-dx+dF,dx-dR,dx+dR],A=[fa,fa,ra,ra];if(!s.sz){s.sz=[0,0,0,0];s.sv=[0,0,0,0]}const w=2*Math.PI*SUSP.HZ;
+  for(let i=0;i<4;i++){const x=F[i]/SUSP.KV+A[i]/SUSP.KA;const alvo=x>0?SUSP.DESCE*Math.tanh(x/SUSP.DESCE):-SUSP.SOBE*Math.tanh(-x/SUSP.SOBE);let n=Math.ceil(dt/.016);const h=dt/n;
+    while(n--){const a=w*w*(alvo-s.sz[i])-2*SUSP.ZETA*w*s.sv[i];s.sv[i]+=a*h;s.sz[i]+=s.sv[i]*h}
+    s.sz[i]=Math.max(-SUSP.SOBE-8,Math.min(SUSP.DESCE+4,s.sz[i]))}}
 function danos(c){const d=c.dmg||{},wh=d.whl||[];return{fw:(d.wing||0)>.6?1:0,rw:(d.rwing||0)>.6?1:0,r:[wh[0]>.97?1:0,wh[1]>.97?1:0,wh[2]>.97?1:0,wh[3]>.97?1:0]}}
 // tamanho do carro 3D = tamanho do carro da física (5,6 m × 2,0 m): assim, quando dois carros se encostam na tela, se encostaram de verdade
 function escalaFisica(){if(P3.E)return P3.E;const p=malhaCarro(.5).p;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let k=0;k<p.length;k+=3){const x=p[k],y=p[k+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
@@ -829,7 +961,7 @@ function desenhaCarros(lista,du,iso,C,pv){const E=escalaFisica();const real=!(P3
   const m=WS,CL=5.6*m*CSC;const est=[];for(const q of lista){const s=vivo(q.c,q.p,real),z=q.p.z||0;
     if(CUR.VP&&!caixaVis(CUR.VP,[q.p.x-3.4*m,q.p.y-3.4*m,z-.3*m,q.p.x+3.4*m,q.p.y+3.4*m,z+1.6*m]))continue;
     const px=iso?CAM.z*CL*CUR.dpr:CUR.hpx*CL/Math.max(1,Math.hypot(q.p.x-C.e[0],q.p.y-C.e[1],z-C.e[2]));
-    est.push({...q,s,d:danos(q.c),M:px>260||!CTX.carM?car:px>95?CTX.carM:CTX.carB})}CUR.stat.carros=est.length;const setCarro=q=>{gl.uniform4f(UN.uVivo,q.s.gir,q.s.est,q.s.asa,1);gl.uniform4f(UN.uRol,q.s.rol,q.s.arf,q.d.fw,q.d.rw);gl.uniform4f(UN.uRoda,q.d.r[0],q.d.r[1],q.d.r[2],q.d.r[3])};
+    est.push({...q,s,d:danos(q.c),M:px>260||!CTX.carM?car:px>95?CTX.carM:CTX.carB})}CUR.stat.carros=est.length;const setCarro=q=>{gl.uniform4f(UN.uVivo,q.s.gir,q.s.est,q.s.asa,1);gl.uniform4f(UN.uRol,q.s.rol,q.s.arf,q.d.fw,q.d.rw);gl.uniform4f(UN.uRoda,q.d.r[0],q.d.r[1],q.d.r[2],q.d.r[3]);const z=q.s.sz||[0,0,0,0];gl.uniform4f(UN.uSusp,z[0],z[1],z[2],z[3])};
   // sombras: das construções (fixas) e dos carros (forma real do carro projetada no chão); o stencil evita escurecer duas vezes
   gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-4);
   gl.uniform1i(UN.uDN,0);if(pv&&pv.somb&&pv.somb.n&&(P3.semMapa||CTX.smGeo!==pv)){gl.uniform4f(UN.uVivo,0,0,0,0);gl.uniformMatrix4fv(UN.uMod,false,ID);desenhaMalha(pv.somb)}
@@ -908,7 +1040,7 @@ P3.cardFotos=function(){if(!R||!R.fotos||!R.fotos.length)return"";return`<div cl
 P3.cardPodio=function(){return(typeof WebGL2RenderingContext!=="undefined"&&P3.on)?`<div class="card" style="grid-column:1/-1;padding:0;overflow:hidden"><canvas id="p3dPodio" style="width:100%;height:340px;display:block;background:#0c0d10"></canvas></div>`:""};
 let PD=null;
 function podio(cv){try{const w=cv.clientWidth,h=cv.clientHeight,dpr=Math.min(2,window.devicePixelRatio||1);if(!w||!h)return;if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr)}
-  if(!PD||PD.cv!==cv){const o={cv,gl:cv.getContext("webgl2",{antialias:true,stencil:true}),UN:{},tex:new Map()};if(!o.gl)return;usa(o);o.P=P=prog(VS,FS);for(const n of["uVP","uMod","uNM","uCor","uCor2","uComp","uEye","uSol","uLuz","uCeu","uNeb","uMolh","uDT","uDN","uDA","uDB","uDR","uT","uExc","uGT","uVS","uNoite","uSobre","uOculta","uVivo","uRol","uRoda","uProj","uProjOn","uAT","uDbg","uSM","uSMR","uSMon"])o.UN[n]=o.gl.getUniformLocation(P,n);
+  if(!PD||PD.cv!==cv){const o={cv,gl:cv.getContext("webgl2",{antialias:true,stencil:true}),UN:{},tex:new Map()};if(!o.gl)return;usa(o);o.P=P=prog(VS,FS);for(const n of["uVP","uMod","uNM","uCor","uCor2","uComp","uEye","uSol","uLuz","uCeu","uNeb","uMolh","uDT","uDN","uDA","uDB","uDR","uT","uExc","uGT","uVS","uNoite","uSobre","uOculta","uVivo","uRol","uRoda","uSusp","uProj","uProjOn","uAT","uDbg","uSM","uSMR","uSMon"])o.UN[n]=o.gl.getUniformLocation(P,n);
     const D=CARRO.construir({lod:.5,cor:"#FF0000",cor2:"#00FF00"});o.car=sobe(D.mesh);const S=new MB();S.quad([-1150,-1000,4],[4350,-1000,4],[4350,1000,4],[-1150,1000,4],[0,0,0],19);o.sombra=sobe(S);const K=new MB();K.copa(0,0,0,1,1,[1,1,1],22,0);o.ceu=sobe(K);
     const B=new MB();const m=WS;B.quad([-200*m,-200*m,0],[200*m,-200*m,0],[200*m,200*m,0],[-200*m,200*m,0],hex("#2B2F36"),13);
     [[0,0,1.6,"#E9ECEF"],[0,-6.4,1.1,"#D7DBE0"],[0,6.4,.7,"#D7DBE0"]].forEach(([x,y,hh,c])=>{B.caixa(x*m,y*m,0,7*m,6.2*m,hh*m,0,hex(c),hex("#FF4D2E"),13)});B.caixa(-8*m,0,0,.6*m,30*m,9*m,0,hex("#FF4D2E"),hex("#FF4D2E"),13);

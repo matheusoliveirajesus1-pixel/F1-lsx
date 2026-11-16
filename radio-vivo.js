@@ -1,7 +1,6 @@
 // ===================== RÁDIO VIVO =====================
-// 1) O seu piloto nunca fala sozinho: quando acontece algo (ganhou/perdeu posição, toque, box lento...), o rádio oferece
-//    respostas rápidas por alguns segundos. Se você não escolher, ele fica calado. O que você escolhe vira fato na memória.
-// 2) Um botão "Rádio" na corrida abre tudo o que você pode falar ou perguntar à equipe.
+// 1) O seu piloto nunca fala sozinho (sem respostas rápidas).
+// 2) Um botão "Rádio" na corrida serve para perguntar à equipe (respostas com os dados reais) e pedir pneus, como na vida real.
 // 3) Os outros pilotos seguem a mesma lógica: falam conforme o temperamento, a situação e a relação com você,
 //    perguntam à própria equipe, e a TV decide o que vai ao ar. O que envolve você (ou o seu rival e o seu companheiro)
 //    entra na memória e pode virar pergunta, manchete ou post.
@@ -15,36 +14,43 @@ function eu(){return typeof R!=="undefined"&&R&&R.cars?R.cars.find(c=>c.isP):nul
 function gp(){try{return CIR[G.calendar[Math.min(G.round,G.calendar.length-1)]].gp}catch(e){return""}}
 function carroCod(code){return R.cars.find(c=>c.code===code)}
 function noAr(c){const me=eu();if(!me)return false;const i=R.order.indexOf(me),j=R.order.indexOf(c);return Math.abs(i-j)<=1}
-// ---------- 1. respostas rápidas do seu piloto
-// família de fato conforme a situação e o tom escolhido
-const CONFLITO=new Set(["me_lost","me_door","me_contact","me_pen","me_blueAnnoy","me_traffic","me_defend","q_me_impeded","q_me_traffic"]);
-const EQUIPE=new Set(["me_slowPit","me_dmg","me_tyre","me_heat","q_me_meh","q_me_elim","me_bad"]);
-const FESTA=new Set(["me_win","me_podium","me_points","me_lead","q_me_pole","q_me_front","q_me_good"]);
-const PROVOCA=new Set(["me_gain","me_start","q_me_through"]);
-function opcoes(kind,c,v){const L=typeof VOX!=="undefined"&&VOX[kind];if(!L)return[];const N=c.d.n.split(" ")[0];const vv={N,...v};
-  const has=x=>!(x.match(/\{(\w)\}/g)||[]).some(m=>vv[m[1]]==null);const fill=x=>x.replace(/\{(\w)\}/g,(m,k)=>vv[k]!=null?String(vv[k]):m);const out=[];
-  if(Array.isArray(L)){const ok=L.filter(has);for(let i=0;i<2&&ok.length;i++){const s=ok.splice(Math.floor(rnd()*ok.length),1)[0];out.push({t:fill(s),tom:"normal"})}}
-  else for(const tom of["quente","normal","frio"]){const ok=(L[tom]||[]).filter(has);if(ok.length)out.push({t:fill(pk(ok)),tom})}
-  return out}
-let PROMPT=null;
-function pede(kind,c,v,pri){const ops=opcoes(kind,c,v);if(!ops.length)return;if(PROMPT&&PROMPT.pri>pri&&R.t-PROMPT.t0<5)return;
-  PROMPT={kind,c,v,pri,ops,t0:R.t,ate:performance.now()+(window.__rvLongo?60000:7000)};desenhaPrompt()}
-function escolhe(i){const P=PROMPT;if(!P)return;PROMPT=null;desenhaPrompt();const o=P.ops[i];if(!o)return;const c=P.c;
-  try{radio(c,o.t,{me:1,k:"vox",vox:1})}catch(e){}try{if(typeof tvMyRadioSay==="function")tvMyRadioSay(c,o.t,"me")}catch(e){}
-  try{(R.vox.log=R.vox.log||[]).push({t:R.t,lap:Math.max(1,R.lead+1),who:"me",txt:o.t})}catch(e){}
-  fatoDoPiloto(P.kind,o,P.v)}
-function fatoDoPiloto(kind,o,v){const M=GL.MEMO;if(!M)return;const me=eu();const alvoC=v&&v.A?carroCod(v.A):null;const alvo=alvoC?alvoC.id:undefined;const quente=o.tom==="quente";const xingo=PALAVRAO.test(o.t);
-  const tv=(alvoC&&noAr(alvoC)?.32:.12)+((G.fame&&G.fame.pop)||30)/300+(quente?.12:0);let f=null;
-  if(CONFLITO.has(kind)&&(quente||xingo))f=M.registra(xingo?"radio_ofensa":"radio_reclamacao",{alvo,gp:gp(),volta:me&&me.lap});
-  else if(EQUIPE.has(kind)&&quente)f=M.registra("radio_carro",{gp:gp()});
-  else if(PROVOCA.has(kind)&&quente&&alvo)f=M.registra("radio_provocou",{alvo,gp:gp()});
-  else if(FESTA.has(kind)&&o.tom!=="frio")f=M.registra("radio_elogio",{gp:gp(),peso:kind==="me_win"?26:15});
-  if(f){if(M.tvEscuta(f,tv))aviso("A TV transmitiu o seu rádio"+(xingo?", com bip.":"."))}}
-function aviso(t){try{rcMsg("Transmissão: "+t,"warn");R.toast={t:R.t,text:t}}catch(e){}}
-// intercepta as falas automáticas do seu piloto
+// ---------- 1. o seu piloto não fala sozinho
+// As falas automáticas do seu piloto ficam caladas (sem cartões de resposta rápida). Só as confirmações das suas ordens continuam.
+function pede(){}function escolhe(){}
 if(typeof vox==="function"&&!vox._vivo){const base=vox;GL.vox=function(kind,c,v,pri,who){
-    if((who==null||who==="me")&&c&&c.isP&&!AUTO.has(kind)&&typeof R!=="undefined"&&R&&R.vox){pri=pri||1;const k=kind+"me";if((R.vox.said[k]||-99)>R.t-(pri>=3?0:pri===2?22:45))return;R.vox.said[k]=R.t;pede(kind,c,v||{},pri);return}
+    if((who==null||who==="me")&&c&&c.isP&&!AUTO.has(kind))return;
     return base.apply(this,arguments)};GL.vox._vivo=1}
+// ---------- perguntas à equipe: respostas tiradas dos dados reais do carro e da corrida
+const PEDACO={wingL:"asa dianteira esquerda",wingR:"asa dianteira direita",nose:"bico",floor:"assoalho",cool:"radiador",side:"lateral",rwing:"asa traseira",gear:"câmbio",body:"carroceria",susp:"suspensão",power:"ERS"};
+const RODAS=["dianteiro esquerdo","dianteiro direito","traseiro esquerdo","traseiro direito"];
+function lista(a){return a.length<2?a.join(""):a.slice(0,-1).join(", ")+" e "+a[a.length-1]}
+function nPneu(k){return COMP[k]?COMP[k].n.toLowerCase():k}
+function vidaPneu(c){try{const r=wearRate(c);if(!(r>0))return null;return Math.max(0,Math.floor((.8-c.tyre.wear)/r))}catch(e){return null}}
+function gapS(a,b){return Math.abs(a.prog-b.prog)*(b.L||90)}
+const PERGS=[["carro","Como está o carro?"],["pneus","Como estão os pneus?"],["frente","E o carro da frente?"],["tras","E quem vem atrás?"],["chuva","Vai chover?"],["box","Quando a gente para?"],["comb","Combustível e bateria?"],["ritmo","Como está o meu ritmo?"]];
+function respostaDe(k,me){const i=R.order.indexOf(me),A=R.order[i-1],B=R.order[i+1];const ty=me.tyre||{};const d=me.dmg||{};
+  if(k==="carro"){const p=[];for(const x in PEDACO)if((d[x]||0)>.05)p.push(PEDACO[x]+((d[x]||0)>.55?" (grave)":(d[x]||0)<.2?" (leve)":""));(d.whl||[]).forEach((w,j)=>{if(w>.2)p.push("suspensão "+RODAS[j])});
+    const furo=ty.punct||ty.flat;let t=p.length?`Temos dano: ${lista(p)}.`:"O carro está limpo, nenhum dano nos dados.";if(furo)t+=" E o pneu está furado, box agora!";
+    if(me.latFail)t+=` Atenção: a leitura ${me.latFail==="Câmbio"?"do câmbio":me.latFail==="Motor"?"do motor":"de "+me.latFail.toLowerCase()} piorou depois do toque. Poupa nas trocas, pode não aguentar.`;
+    if(me.bo)t+=" A direção de prova mostrou bandeira preta e laranja: tem que vir ao box.";return t}
+  if(k==="pneus"){const v=vidaPneu(me),w=Math.round((ty.wear||0)*100),T=COMP[ty.c]||{};const tmp=ty.temp!=null&&T.opt?(ty.temp<T.opt-12?"ainda frios":ty.temp>T.opt+10?"superaquecendo":"na temperatura certa"):"";
+    return `${(T.n||"Pneu")} com ${Math.round(ty.age||0)} voltas, ${w}% gastos${tmp?", "+tmp:""}. `+(v==null?"":v<=1?"Estão no fim, precisamos parar.":`Devem aguentar umas ${v} voltas.`)+(ty.grain?" Tem granulação.":"")+(ty.blister?" Tem bolha na borracha.":"")}
+  if(k==="frente"){if(!A)return"Ninguém na sua frente. Você é o líder!";const g=gapS(A,me),ta=A.tyre||{};const dif=Math.round((ta.age||0)-(ty.age||0));
+    return `${A.code} a ${g.toFixed(1)} segundos, de ${nPneu(ta.c)} com ${Math.round(ta.age||0)} voltas`+(dif>=3?`, ${dif} voltas mais velho que o seu. Deve cair.`:dif<=-3?`, ${-dif} voltas mais novo. Cuidado.`:".")+(A.pit||A.pitCall?" Parece que vai parar.":"")+(g<1?" Você está no DRS.":"")}
+  if(k==="tras"){if(!B)return"Ninguém atrás de você.";const g=gapS(me,B),tb=B.tyre||{};return `${B.code} a ${g.toFixed(1)} segundos, de ${nPneu(tb.c)} com ${Math.round(tb.age||0)} voltas.`+(g<1?" Ele está no seu DRS, defende!":g<2.5?" Está se aproximando.":" Margem tranquila.")}
+  if(k==="chuva"){let em=-1,int=0;for(let l=me.lap+1;l<=me.lap+15;l++){const r=typeof rainAt==="function"?rainAt(l):0;if(r>(R.rain||0)+.05){em=l-me.lap;int=r;break}}
+    const seco=COMP[ty.c]&&COMP[ty.c].dry;if(em>0)return`Radar mostra chuva em ${em} volta${em>1?"s":""}, ${int>.6?"forte, vai precisar de pneu de chuva":int>.3?"moderada, intermediário":"fraca, talvez dê pra seguir no seco"}.`;
+    if((R.rain||0)>.3)return seco?"Está chovendo e você está de pneu de seco. Precisa parar!":"A chuva deve continuar. Fica no pneu de chuva.";return"Sem chuva no radar."}
+  if(k==="box"){const st=me.plan&&me.plan.stops&&me.plan.stops[me.planIdx];if(me.pitCall)return`Você já pediu box: ${nPneu(me.pitCall)} pronto.`;const v=vidaPneu(me);
+    return st?`O plano é parar perto da volta ${st.lap} para o ${nPneu(st.c)}${v!=null&&me.lap+v<st.lap?", mas os pneus não chegam até lá. Talvez antes":""}.`:`Sem parada no plano. ${v!=null&&v<R.L-me.lap?"Mas os pneus não chegam ao fim, vamos ter que parar.":"Cuida dos pneus até o fim."}`}
+  if(k==="comb"){let t=`Bateria em ${Math.round(me.batt||0)}%.`;if(me.fuelWarn)t="Combustível no limite, precisa poupar. "+t;else t="Combustível dá até o fim. "+t;return t}
+  if(k==="ritmo"){if(!me.last)return"Ainda sem volta completa.";const r=A&&A.last?me.last-A.last:null;return`Última volta ${me.last.toFixed(1)}.`+(r==null?"":Math.abs(r)<.15?` Mesmo ritmo do ${A.code}.`:r<0?` ${(-r).toFixed(1)} mais rápido que o ${A.code}.`:` ${r.toFixed(1)} mais lento que o ${A.code}.`)}
+  return""}
+function pergunta(k){const me=eu();if(!me)return;const q=(PERGS.find(x=>x[0]===k)||[])[1];if(!q)return;try{radio(me,q,{me:1})}catch(e){}
+  const t=respostaDe(k,me);R._rvPerg=(R._rvPerg||0)+1;setTimeout(()=>{try{radio(me,`${G.engineer||"Engenheiro"}: "${t}"`)}catch(e){}},1200+Math.random()*900);return t}
+function pedePneu(comp){const me=eu();if(!me)return;if(comp==="fica"){cmdBoxC(me,null);return}cmdBoxC(me,comp);
+  const T=COMP[comp];const chuva=R.rain||0;let aviso=null;if(T&&T.dry&&chuva>.45)aviso="A pista está molhada. Tem certeza que quer pneu de seco?";else if(T&&!T.dry&&chuva<.1&&!(typeof rainAt==="function"&&rainAt(me.lap+2)>.2))aviso="Não tem chuva prevista, esse pneu vai derreter.";
+  if(aviso)setTimeout(()=>{try{radio(me,`${G.engineer||"Engenheiro"}: "${aviso}"`)}catch(e){}},2200)}
 // ---------- 2. botão do rádio e painel
 const css=document.createElement("style");css.textContent=`
 .rvBox{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:80;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-width:min(92vw,420px);pointer-events:none}
@@ -60,22 +66,20 @@ const css=document.createElement("style");css.textContent=`
 .rvOp.quente small{color:#FF9A88}.rvOp.frio small{color:#8FC2FF}
 .rvBar{height:3px;border-radius:2px;background:#2C3038;overflow:hidden}.rvBar i{display:block;height:100%;background:#E8432A}
 .rvGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.rvTy{display:flex;align-items:center;gap:8px}.rvTy i{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 2px rgba(0,0,0,.35)}.rvTy small{margin:0 0 0 auto;display:inline}
 .rvX{all:unset;pointer-events:auto;cursor:pointer;align-self:flex-end;font-size:13px;color:#9097A3;padding:4px 6px}`;document.head.appendChild(css);
 const box=document.createElement("div");box.className="rvBox";box.hidden=true;box.innerHTML=`<div class="rvCard" id="rvPrompt" hidden></div><div class="rvCard" id="rvMenu" hidden></div><button class="rvBtn" id="rvBtn" aria-haspopup="dialog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="7" y="7" width="10" height="14" rx="2"/><path d="M12 7V3M9 3h6M10 12h4M10 16h4"/></svg>Rádio</button>`;
 document.body.appendChild(box);
-const TOM={quente:"Quente",normal:"Normal",frio:"Frio"};
-function desenhaPrompt(){const el=box.querySelector("#rvPrompt");if(!PROMPT){el.hidden=true;el.innerHTML="";return}
-  el.hidden=false;el.innerHTML=`<h4>Responder no rádio?</h4><div class="rvOps">${PROMPT.ops.map((o,i)=>`<button class="rvOp ${o.tom}" data-rv="${i}"><small>${TOM[o.tom]}</small>${esc(o.t)}</button>`).join("")}<button class="rvOp" data-rv="x"><small>Ficar calado</small>Não falar nada</button></div><div class="rvBar"><i id="rvT"></i></div>`}
-function desenhaMenu(abre){const el=box.querySelector("#rvMenu");if(!abre){el.hidden=true;return}el.hidden=false;
-  el.innerHTML=`<button class="rvX" data-rvm="fecha" aria-label="Fechar">Fechar ✕</button><h4>Falar</h4><div class="rvGrid">${[["reclamar","Reclamar de quem está perto"],["explodir","Explodir"],["elogiar","Agradecer a equipe"],["carro","Reclamar do carro"]].map(([k,n])=>`<button class="rvOp" data-rvm="${k}">${n}</button>`).join("")}</div>
-   <h4>Perguntar à equipe</h4><div class="rvGrid">${[["q_frente","Pneu do carro da frente"],["q_chuva","Vai chover?"],["q_box","Quando paramos?"]].map(([k,n])=>`<button class="rvOp" data-rvm="${k}">${n}</button>`).join("")}</div>`}
-box.addEventListener("click",e=>{const a=e.target.closest("[data-rv]");if(a){e.preventDefault();if(a.dataset.rv==="x"){PROMPT=null;desenhaPrompt()}else escolhe(+a.dataset.rv);return}
-  const m=e.target.closest("[data-rvm]");if(m){e.preventDefault();const k=m.dataset.rvm;desenhaMenu(false);if(k!=="fecha"&&GL.MEMO)GL.MEMO.falaRadio(k);return}
+function desenhaMenu(abre){const el=box.querySelector("#rvMenu");if(!abre){el.hidden=true;return}el.hidden=false;const me=eu();const atual=me&&me.tyre?me.tyre.c:null;
+  el.innerHTML=`<button class="rvX" data-rvm="fecha" aria-label="Fechar">Fechar ✕</button><h4>Perguntar à equipe</h4><div class="rvGrid">${PERGS.map(([k,n])=>`<button class="rvOp" data-rvq="${k}">${n}</button>`).join("")}</div>
+   <h4>Pedir pneus (box)</h4><div class="rvGrid rvPn">${Object.keys(COMP).map(k=>`<button class="rvOp rvTy" data-rvp="${k}"><i style="background:${COMP[k].c}"></i>${COMP[k].n}${k===atual?" <small>atual</small>":""}</button>`).join("")}<button class="rvOp" data-rvp="fica">Ficar na pista</button></div>`}
+box.addEventListener("click",e=>{const q=e.target.closest("[data-rvq]");if(q){e.preventDefault();desenhaMenu(false);pergunta(q.dataset.rvq);return}
+  const p=e.target.closest("[data-rvp]");if(p){e.preventDefault();desenhaMenu(false);pedePneu(p.dataset.rvp);return}
+  const m=e.target.closest("[data-rvm]");if(m){e.preventDefault();desenhaMenu(false);return}
   if(e.target.closest("#rvBtn")){const el=box.querySelector("#rvMenu");desenhaMenu(el.hidden)}});
 // mostra o botão só durante a corrida ou a classificação
 const _h1=setInterval(()=>{const ativo=typeof R!=="undefined"&&R&&R.started&&!R.over&&!!document.querySelector("#app .stage")&&!!eu();if(box.hidden===ativo)box.hidden=!ativo;
-  if(!ativo&&PROMPT){PROMPT=null;desenhaPrompt()}
-  if(PROMPT){const left=PROMPT.ate-performance.now();const b=document.getElementById("rvT");if(b)b.style.width=Math.max(0,left/70)+"%";if(left<=0){PROMPT=null;desenhaPrompt()}}},150);if(_h1&&_h1.unref)_h1.unref();
+  if(!ativo){const el=box.querySelector("#rvMenu");if(!el.hidden)desenhaMenu(false)}},150);if(_h1&&_h1.unref)_h1.unref();
 // ---------- 3. os outros pilotos
 // fala (ou não) conforme temperamento, situação e relação com você; a TV decide se vai ao ar
 const PERG={tyre:["Quantas voltas esses pneus aguentam?","Os pneus estão caindo. Qual é o plano?","Não tenho mais aderência. Quando paramos?"],rain:["Vai chover? Preciso saber agora.","Estou vendo nuvens. Qual é a previsão?"],attack:["Posso usar a bateria toda pra atacar?","Me dá o gap. Dá pra passar?"]};
@@ -110,5 +114,5 @@ const _h2=setInterval(()=>{try{if(typeof R==="undefined"||!R||!R.started||R.over
   const cand=R.order.slice(0,12).filter(c=>running(c)&&!c.hum&&!c.pit);if(!cand.length)return;const c=pk(cand);const st=c._rv=c._rv||{};if(R.t-(st.t||-99)<90)return;
   let tipo=null;if(c.tyre&&c.tyre.wear>.62&&!c.pitCall)tipo="tyre";else if(typeof rainAt==="function"&&rainAt(c.lap+4)>(R.rain||0))tipo="rain";else{const i=R.order.indexOf(c),A=R.order[i-1];if(A&&(A.prog-c.prog)*c.L<30)tipo="attack"}
   if(tipo&&rnd()<.5){st.t=R.t;M(c,tipo);if(tipo==="tyre"&&temper(c)==="quente")npcFala(c,"tyre",null,1)}}catch(e){}},4000);if(_h2&&_h2.unref)_h2.unref();
-GL.RADIOVIVO={pede,escolhe,npcFala};
+GL.RADIOVIVO={pede,escolhe,npcFala,pergunta,pedePneu,respostaDe};
 })(typeof window!=="undefined"?window:globalThis);

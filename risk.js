@@ -57,7 +57,7 @@ function errorOutcome(c,ev,kind,ro,fast,cn,saved){const f=fr(c.prog),nm=cn?cn.n:
   // O resultado (travar, alargar, sair da pista, segurar, rodar, bater) sai dos pneus e do carro no núcleo de dinâmica (dyn.js),
   // que também gera as mensagens. Assim o que é anunciado é o que de fato aconteceu.
   if(!c.dyn)dynInit(c);c.dyn.errCtx={ev,kind,nm,t:R.t,ro};
-  if(kind==="save"){dynError(c,"gripLoss",{axle:"r",k:.6,t:.3});return}
+  if(kind==="save"){/* com o giro próprio do carro, perder 40% da traseira já rodava: o "segurou o carro" é uma escorregada menor */dynError(c,"gripLoss",{axle:"r",k:.74,t:.3});return}
   if(kind==="minor"){if(ev==="brake")dynError(c,"lateBrake",{t:.16});else if(ev==="apex"){dynError(c,"overspeed",{k:.05,t:.7});if(rnd()<.25*kk)kerbHit(c,.5)}else dynError(c,"earlyThrottle",{t:.3});return}
   if(kind==="off"){if(ev==="brake")dynError(c,"lateBrake",{t:.42+fast*.25});else dynError(c,"overspeed",{k:.1+fast*.06,t:1});return}
   if(kind==="spin"){if(ev==="exit")dynError(c,"earlyThrottle",{t:.6});dynError(c,"gripLoss",{axle:"r",k:.45,t:.5});dynError(c,"noCorrect",{t:.3});return}

@@ -35,6 +35,10 @@ const TIPOS={
     q:{provocacao:["Que manobra em cima do {rival}! Foi recado?"],tecnico:["Como você preparou a ultrapassagem no {rival}?"]}},
   perdeu_rival:{nome:"Foi passado pelo rival",peso:24,val:2,grupo:"conflito",visto:{equipe:1,tv:1,publico:1,imprensa:1},
     q:{provocacao:["O {rival} te passou na pista. Ele foi melhor hoje?"],tecnico:["O que faltou para segurar o {rival}?"]}},
+  vitima_toque:{nome:"Foi atingido por outro piloto",peso:30,val:3,grupo:"vitima",visto:{equipe:1,tv:1,publico:1,imprensa:1},
+    q:{tecnico:["Na última corrida o {alvo} te acertou. Já conversaram?"],polemica:["O {alvo} saiu sem punição depois de te acertar. Isso ainda incomoda?"],provocacao:["Você vai ter o {alvo} por perto de novo. Vai deixar espaço pra ele?"]}},
+  abandono_por_dano:{nome:"Abandonou por dano de um toque",peso:44,val:4,grupo:"vitima",visto:{equipe:1,tv:1,publico:1,imprensa:1},
+    q:{humano:["Você abandonou {gp} por causa do dano daquele toque com o {alvo}. Já superou?"],polemica:["O {alvo} acabou com a sua corrida no {gp}. Vai cobrar dele?"]}},
   abandono:{nome:"Abandonou a corrida",peso:28,val:2,grupo:"equipe_erro",visto:{equipe:1,tv:1,publico:1,imprensa:1},
     q:{humano:["Abandono no {gp}. Como você está?"],tecnico:["O que aconteceu para você abandonar?"]}},
   declaracao_polemica:{nome:"Declaração polêmica",peso:40,val:4,grupo:"conflito",depois:1,visto:{imprensa:1,publico:1},
@@ -58,6 +62,11 @@ const RESP={
     polemico:{t:["Ele pilota como se a pista fosse só dele. Alguém precisa falar.","Se ele fizer de novo, vai ouvir de novo. Simples."],ef:{alvo:-8,heat:8,pop:5,rep:-2},decl:1},
     piada:{t:["Ainda bem que a TV colocou o bip. Minha mãe estava assistindo!","Na hora eu só estava elogiando a pilotagem dele. Do meu jeito."],ef:{heat:-3,pop:4}},
     evasivo:{t:["Isso fica entre mim e a equipe.","Prefiro falar da corrida."],ef:{heat:1}}},
+  vitima:{humilde:{t:["Já passou. Ele errou, eu sigo em frente.","Não guardo mágoa. Corrida tem disso."],ef:{alvo:3,rep:2}},
+    confiante:{t:["Eu estava na minha linha. Quem tem que explicar é ele.","A pista mostrou quem estava certo."],ef:{alvo:-2,pop:2}},
+    polemico:{t:["Os comissários deixaram passar. Da próxima vez eu não alivio.","Se ninguém pune, a gente resolve na pista."],ef:{alvo:-7,heat:7,pop:4,rep:-2},decl:1},
+    piada:{t:["Mandei a conta da asa nova pra equipe dele.","Pelo menos agora eu sei que meu carro é resistente."],ef:{heat:-3,pop:4}},
+    evasivo:{t:["Isso já foi resolvido.","Prefiro falar da próxima corrida."],ef:{}}},
   ordem:{humilde:{t:["A equipe vem primeiro. Se pediram, tinha motivo.","Somos dois carros, um time."],ef:{trust:6,mate:4}},
     confiante:{t:["Eu estava mais rápido. Fiz o que achei melhor para o resultado.","Eu sei o que faço dentro do carro."],ef:{trust:-3,mate:-2,pop:2}},
     polemico:{t:["Não vim para ser escudeiro de ninguém.","Ordem de equipe a essa altura? Não contem comigo pra isso."],ef:{trust:-9,mate:-7,heat:8,pop:5},decl:1},
@@ -124,7 +133,7 @@ function emDisputa(c){const i=R.order.indexOf(c);const A=R.order[i-1],B=R.order[
 function observa(){if(typeof R==="undefined"||!R||!R.cars||!R.order)return;noFimDeSemana();const me=carroEu();if(!me)return;const gp=CIR[G.calendar[G.round]].gp;
   if(OBS.R!==R){OBS={R,inc:0,pit:0,to:0,pos:{},pens:me.pen||0}}
   // incidentes com o jogador
-  (R.incidents||[]).slice(OBS.inc).forEach(inc=>{const outro=[inc.a,inc.b,inc.A,inc.B,inc.o,inc.other].find(x=>x&&x!==me.id&&typeof x==="string")||(inc.oc&&inc.oc.id);registra("toque",{alvo:outro||G.rival,gp,volta:me.lap})});OBS.inc=(R.incidents||[]).length;
+  (R.incidents||[]).slice(OBS.inc).forEach(inc=>{const outro=inc.other;if(!outro)return;/* culpa vem dos dados do lance: quem bateu em quem */if(inc.meCulprit)registra("toque",{alvo:outro,gp,volta:inc.lap});else registra("vitima_toque",{alvo:outro,quem:outro,gp,volta:inc.lap})});OBS.inc=(R.incidents||[]).length;
   // ordem de equipe
   if(R.teamOrder&&!OBS.to){OBS.to=1;const f=registra(R.teamOrder.obeyed?"ordem_cumprida":"ordem_ignorada",{gp,volta:R.teamOrder.lap});if(!R.teamOrder.obeyed&&f)tvEscuta(f,.45)}
   // box: tempo parado
@@ -160,7 +169,7 @@ if(typeof document!=="undefined")document.addEventListener("click",e=>{const b=e
 // ---------- ligações com o resto do jogo
 function instala(){
   if(typeof raceStep==="function"&&!raceStep._mem){const b=raceStep;GL.raceStep=function(){const r=b.apply(this,arguments);try{noFimDeSemana()}catch(e){}return r};GL.raceStep._mem=1}
-  if(typeof resultsStep==="function"&&!resultsStep._mem){const b=resultsStep;GL.resultsStep=function(){try{if(typeof R!=="undefined"&&R&&R.result&&OBS.fim!==R){OBS.fim=R;const e=R.result.cls.find(x=>x.d===G.me);const gp=CIR[G.calendar[Math.max(0,G.round-1)]]?CIR[G.calendar[Math.max(0,G.round-1)]].gp:"";if(e&&e.status!=="ok")registra("abandono",{gp})}}catch(x){}return b.apply(this,arguments)};GL.resultsStep._mem=1}
+  if(typeof resultsStep==="function"&&!resultsStep._mem){const b=resultsStep;GL.resultsStep=function(){try{if(typeof R!=="undefined"&&R&&R.result&&OBS.fim!==R){OBS.fim=R;const e=R.result.cls.find(x=>x.d===G.me);const gp=CIR[G.calendar[Math.max(0,G.round-1)]]?CIR[G.calendar[Math.max(0,G.round-1)]].gp:"";if(e&&e.status!=="ok"){const H=GL.CEREBRO&&GL.CEREBRO.historia();const bd=H&&H.beats.find(b=>b.k==="abandono_dano"&&b.quem&&!b.culpa);if(bd){registra("abandono_por_dano",{alvo:bd.quem,quem:bd.quem,gp,peca:bd.peca});H.guardado=1}else registra("abandono",{gp})}}}catch(x){}return b.apply(this,arguments)};GL.resultsStep._mem=1}
   if(typeof makeInterview==="function"&&!makeInterview._mem){const b=makeInterview;GL.makeInterview=function(type){noFimDeSemana();
       // o que só a equipe viu pode vazar até a entrevista (mais quando a confiança está baixa)
       const m=M();if(m)m.f.filter(f=>!f.visto.imprensa&&f.sem>=semana()-1).forEach(f=>vaza(f,G.trust<45?.45:.2));

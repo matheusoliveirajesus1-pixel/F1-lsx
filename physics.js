@@ -16,6 +16,8 @@ function tyreMu(comp,wet,wear,temp){const T=TYRES[comp];let mu=T.mu;
   mu*=1-(wear<.7?wear*.06:.042+(wear-.7)*.45);
   if(temp!=null)mu*=1-Math.min(.12,Math.abs(temp-T.opt)*.0022);
   return mu}
+// transferência de carga (ver dyn.js, dynLoad)
+const LOAD={L:3.6,H:.3,WF:.453,AF:.44,TR:1.6,RF:.52,S:-2.6e-5,FZ0:3000,WT:1,TAU_X:.12,TAU_Y:.15};
 const PCACHE={};
 // perfil de velocidade (m/s) ao longo da volta; car={pw,cd,cl,mass}, mu, energia ERS (MJ), gk (aderência do circuito)
 function speedProfile(geo,car,mu,ersMJ,gk,out){ersMJ*=PH.ersK||1;const N=geo.N,ds=DS,k=geo.k;const m=car.mass,rho=PH.rho,g=PH.g;
@@ -26,7 +28,7 @@ function speedProfile(geo,car,mu,ersMJ,gk,out){ersMJ*=PH.ersK||1;const N=geo.N,d
     let tpl=0;v[0]=vmax[0];
     for(let it=0;it<2;it++)for(let i=0;i<N;i++){const j=(i+1)%N;const vi=Math.max(5,v[i]);const cda=(zone[i]?PH.cdaStraight:PH.cdaCorner)*car.cd;
       const lat=vi*vi*Math.abs(k[i]),amax=muE*(g+kd*vi*vi/m);const comb=Math.sqrt(Math.max(.04,1-(lat/amax)**2));
-      const fp=Pw/vi,ft=amax*m*comb;const pl=fp<ft;const a=(Math.min(fp,ft)-.5*rho*cda*vi*vi)/m;
+      let fp=Pw/vi,ft=amax*m*comb;/* acelerar alivia a dianteira (dyn.js, LOAD): a frente precisa continuar segurando a curva */if(lat>.5){const Ff=m*g*LOAD.WF+kd*vi*vi*LOAD.AF,aF=Math.max(0,(1-lat/amax)*Ff*LOAD.L/(m*LOAD.H*Math.max(.01,LOAD.WT)));ft=Math.min(ft,aF*m)}const pl=fp<ft;const a=(Math.min(fp,ft)-.5*rho*cda*vi*vi)/m;
       let vn=Math.sqrt(Math.max(1,vi*vi+2*a*ds));if(vn>vmax[j])vn=vmax[j];if(it===1)v[j]=vn;else v[j]=vn;if(it===1&&pl)tpl+=ds/vi}
     for(let it=0;it<2;it++)for(let i=N-1;i>=0;i--){const j=(i+1)%N;const vj=v[j];const cda=(zone[i]?PH.cdaStraight:PH.cdaCorner)*car.cd;
       const ab=Math.min(PH.decMax,PH.muBrake*(car.bk||1)*muE*(g+kd*vj*vj/m)+.5*rho*cda*vj*vj/m);/* o piloto não freia acima de ~6 g (mesmo limite do núcleo de dinâmica) */const vb=Math.sqrt(vj*vj+2*ab*ds);if(v[i]>vb)v[i]=vb}

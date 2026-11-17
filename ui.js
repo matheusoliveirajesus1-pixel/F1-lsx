@@ -413,7 +413,7 @@ function wheelPanel(me){const el=$("#wheel");if(!el||!me)return;if(!el.dataset.o
   setT("w_spd",String(running(me)?Math.round(me.v*3.6):0));setT("w_gear",`km/h · marcha ${running(me)?g.gear:"N"} · ${Math.round(rpm)} rpm`);
   setT("w_bat",Math.round(me.batt)+"%");const bb=$("#w_batb");if(bb){bb.style.width=me.batt+"%";bb.style.background=me.batt<15?"#FF4D4F":"#B65CFF"}
   $("#w_ot").classList.toggle("on",!!me.ovMode);$("#w_aero").classList.toggle("on",!!zone);$("#w_clip").classList.toggle("on",!!me.clip);
-  const ty=setT("w_ty",`${T.n.slice(0,5)} ${Math.round((1-me.tyre.wear)*100)}%`);ty.style.color=T.c;setT("w_tys",`${Math.round(me.tyre.temp)}°C (ideal ${T.opt}) · ${me.tyre.age} v`);
+  const ty=setT("w_ty",`${T.n.slice(0,5)} ${Math.round((1-me.tyre.wear)*100)}%`);ty.style.color=T.c;setT("w_tys",me.tyre.ts4?`F ${Math.round((me.tyre.ts4[0]+me.tyre.ts4[1])/2)}° T ${Math.round((me.tyre.ts4[2]+me.tyre.ts4[3])/2)}° · carc. ${Math.round(me.tyre.tc)}° (ideal ${T.opt}) · ${me.tyre.age} v`:`${Math.round(me.tyre.temp)}°C (ideal ${T.opt}) · ${me.tyre.age} v`);
   setT("w_fu",me.fuel.toFixed(1)+" kg");const fs=setT("w_fus",`margem ${fuelM>=0?"+":""}${fuelM.toFixed(1)} kg`);fs.style.color=fuelM<.5?"#FF9C9E":"";
   setT("w_gap",ga!=null?"−"+ga.toFixed(2):"—");setT("w_gaps",`frente${A?" "+A.code:""} · atrás ${gb!=null?"+"+gb.toFixed(2):"—"}${B?" "+B.code:""}`);
   setT("w_lap",fmtT(me.last));setT("w_laps",`melhor ${fmtT(me.best)} · ${me.pen?`pun. ${me.pen}s`:`adv. ${me.warn}/3`}`);

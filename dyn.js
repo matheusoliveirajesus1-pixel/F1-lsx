@@ -119,17 +119,20 @@ function dynBici(c,d,v,aLatD,AF,AR,dt,noc,out,surpresa,aG){aG=aG||0;/* aG: parte
   const dSS=L*wd/v-pneuAl(clamp(ffN,-ffm,ffm),ffm)+pneuAl(clamp(frN,-frD,frD),frD);
   for(let q=0;q<n;q++){const vx=Math.max(v*Math.cos(bv),3),vy=v*Math.sin(bv);const ar=Math.atan2(vy-B*wz,vx),fr=pneuF(ar,frm);
     /* contra-esterço: só quando a traseira passa de ~80% do pico (escapando), na medida do que passou */const arX=Math.abs(ar)-.8*BICI.AP;let delta=dSS+kr*(wd-wz)*L/v*30+(noc||arX<=0?0:Math.sign(ar)*kr*3*arX);/* o piloto sente a frente no limite e não esterça além do pico do pneu (mais volante ali só faria a frente escorregar mais) */if(!out){const k0=Math.atan2(vy+A*wz,vx);delta=clamp(delta,k0-BICI.AP*1.05,k0+BICI.AP*1.05)}else delta=out.dir*.2;delta=clamp(delta,-BICI.DMAX,BICI.DMAX);
-    dl+=(delta-dl)*Math.min(1,h/.06);const af=Math.atan2(vy+A*wz,vx)-dl,ff=pneuF(af,ffm);
+    dl+=(delta-dl)*Math.min(1,h/.06);const af=Math.atan2(vy+A*wz,vx)-dl,ff=pneuF(af,ffm);d.alF=af;d.alR=ar;/* ângulos de deriva (pneu.js usa para o aquecimento) */
     const ayq=(ff+fr)*Math.cos(bv);wz=clamp(wz+(A*ff-B*fr)/K2*h,-3.4,3.4);bv+=((ayq+aG)/v-wz)*h;ay+=ayq+aG}
   d.wz=clamp(wz,-3.4,3.4);/* nenhum carro gira mais que ~3,4 rad/s (rodada de verdade) */d.beta=-bv;d.delta=dl;d._dbg=[aLatD,ay/n,ffm,frm];return{ay:ay/n,fSat}}
-function dynStep(c,dt,vT,hard,brk,yT,o){if(!c.dyn)dynInit(c);o=o||{};const n=Math.max(1,Math.ceil(dt/.0501));for(let k=0;k<n;k++)dynSub(c,dt/n,vT,hard,brk,yT,o)}
+function dynStep(c,dt,vT,hard,brk,yT,o){if(!c.dyn)dynInit(c);o=o||{};const n=Math.max(1,Math.ceil(dt/.0501));for(let k=0;k<n;k++)dynSub(c,dt/n,vT,hard,brk,yT,o);
+  /* encalhado: parado fora da pista (brita, grama, quina de muro) por ~25 s sem conseguir voltar = abandono, como na vida real
+     (sem isso, uma bandeira vermelha esperava esse carro para sempre) */
+  if(!c.pit&&R.started&&typeof running==="function"&&running(c)&&(c.v||0)<1&&Math.abs(c.y||0)>TRK_H+.5){c._preso=(c._preso||0)+dt;if(c._preso>25&&typeof dnf==="function"){const brita=typeof supAt==="function"&&supAt(c.prog,c.y)==="brita";if(typeof rcMsg==="function")rcMsg(`${c.code} ficou preso ${brita?"na brita":"fora da pista"} e abandona.`,"bad");dnf(c,brita?"Preso na brita":"Preso fora da pista","stop")}}else c._preso=0}
 function dynSub(c,dt,vT,hard,brk,yT,o){/* o piloto mira dentro da pista (rodas sobre a linha branca ou na zebra baixa, não na grama) */if(yT!=null&&!(o&&o.pit)&&!c.pit&&!c.ex&&!c.rev){const lim=typeof supLimY==="function"?supLimY(c.prog,yT):TRK_H-.95;yT=clamp(yT,-lim,lim)}const d=c.dyn,L=R.geo.len,f=fr(c.prog);dynPrep();const y=c.y||0,mt=dynMetric(f,y),kap=mt.kn,den=mt.den;
   /* relevo neste ponto (rampa, compressão/crista, inclinação lateral); no pit lane a pista é plana */const rl=c._rel=(!c.pit&&typeof relevoAt==="function")?relevoAt(R.geo,f):null;const gS=rl?PH.g*rl.sn:0,aBk=rl?PH.g*Math.sin(rl.ph):0;/* aerodinâmica deste instante; assoalho raspando solta faíscas */if(typeof aeroEstado==="function"){const ae=aeroEstado(c,c.v||0,rl);if(ae.raspa&&c.v>55&&R.fxq&&R.t-(c._raspaT||-9)>.3){c._raspaT=R.t;R.fxq.push({type:"sparks",f,lat:y,t0:R.t,peq:1})}}
   let v=Math.max(0,c.v||0);const vp=v;const sf=surfK(c);const ax=axleK(c);let G=gripG(c,Math.max(v,5))*sf.k;
   // erros de comando ativos
   const push=dynCmd(c,"pushOut"),late=dynCmd(c,"lateBrake"),ovs=dynCmd(c,"overspeed"),thr=dynCmd(c,"earlyThrottle"),out=dynCmd(c,"steerOut"),noc=dynCmd(c,"noCorrect"),gl=dynCmd(c,"gripLoss");
   if(ovs)vT*=1+ovs.k;if(late&&vT<v)vT=v;
-  let bf=ax.bf*(sf.kF||1),br=ax.br*(sf.kR||1);G*=1-.08*((c.tyre&&c.tyre.suja)||0);if(!d.spin&&v>2){const lt=dynLoad(c,v,dt);bf*=lt.kF;br*=lt.kR;d.kF=lt.kF;d.kR=lt.kR}if(gl){if(gl.axle==="f")bf*=gl.k||.5;else br*=gl.k||.5}
+  let bf=ax.bf*(sf.kF||1),br=ax.br*(sf.kR||1);G*=1-.08*((c.tyre&&c.tyre.suja)||0);if(!d.spin&&v>2){const lt=dynLoad(c,v,dt);bf*=lt.kF;br*=lt.kR;d.kF=lt.kF;d.kR=lt.kR}/* pneus (pneu.js): temperatura de superfície e carcaça, pressão, cambagem, granulação e bolhas de cada eixo */if(typeof pneuEixo==="function"&&!c.pit){bf*=pneuEixo(c,0);br*=pneuEixo(c,1)}if(gl){if(gl.axle==="f")bf*=gl.k||.5;else br*=gl.k||.5}
   // ---- o piloto planeja a freada com a frenagem que o carro tem agora (pneu, dano, chuva, tanque): olha até 160 m à frente
   if(!o.pit&&c.prof&&v>12&&!late&&!ovs){const N=R.geo.N,i0=Math.floor(f*N)%N,aPlan=Math.max(2,.86*Math.min(PH.decMax,PH.muBrake*((c.ph&&c.ph.bk)||1)*G*Math.min(1,(bf+br)/2))+gS);/* descendo, freia antes */
     // o perfil supõe a linha de corrida; fora dela (vácuo, defesa, disputa) o carro só muda de linha na velocidade lateral que tem,
@@ -167,7 +170,7 @@ function dynSub(c,dt,vT,hard,brk,yT,o){/* o piloto mira dentro da pista (rodas s
     // fim de pista: se a saída está levando o carro para fora (velocidade lateral para a borda e pouca margem), o piloto alivia o acelerador
     // (a frente volta a carregar e segura a curva), como na vida real; quem erra de propósito (acelerar cedo) não alivia
     let trac=trac0;if(!thr&&!c.pit&&!c.ex){const sd=Math.sign(y)||1,vOut=(c.vy||0)*sd,marg=TRK_H-.9-Math.abs(y);if(vOut>.25&&marg<1.4){const tt=Math.max(0,marg)/vOut;if(tt<.9)trac=trac0*clamp((tt-.15)/.75,0,1)}}if(thr&&aL>trac*.9){spinW=clamp((aL-trac*.9)/Math.max(1,trac),.3,1);aL=trac*.85}else aL=Math.min(aL,trac*.9)}
-  if(lock>.05){d.lockT+=dt;bf*=.38}else d.lockT=Math.max(0,d.lockT-dt*2);if(spinW>.05)br*=.62;
+  if(lock>.05){d.lockT+=dt;bf*=.38}else d.lockT=Math.max(0,d.lockT-dt*2);if(spinW>.05)br*=.62;d.spinW=spinW;
   /* divisão da freada entre os eixos acompanha a carga (o balanço de freio do piloto e a pressão no pedal fazem isso no carro real) */let shF=.62*(d.kF||1)/(.62*(d.kF||1)+.38*(d.kR||1));/* alívio (sem pedal de freio): freio motor e recuperação do MGU-K seguram pelas rodas de trás */if(aL<0&&aL>-4&&!hard&&!brk&&!(v-vT>2.5)&&typeof MOTOR!=="undefined")shF=MOTOR.FREIO_MOTOR;
   const AF=Math.sqrt(Math.max(0,(G*bf)**2-(aL<0?aL*shF:aL*.1)**2)),AR=Math.sqrt(Math.max(0,(G*br)**2-(aL<0?aL*(1-shF):aL)**2));
   // ---- rodada: o piloto não controla mais; o carro desliza pela inércia e o atrito vai parando o giro
@@ -183,7 +186,7 @@ function dynSub(c,dt,vT,hard,brk,yT,o){/* o piloto mira dentro da pista (rodas s
     // ---- carroceria com giro próprio (modelo de dois eixos): cada eixo faz força lateral pelo seu ângulo de deriva, até o pico do pneu;
     // a diferença entre o que a frente e a traseira fazem gira o carro (inércia de giro). O piloto esterça o volante para conseguir o giro
     // que a curva pede e contra-esterça quando a traseira escapa, com a rapidez da sua habilidade. Subesterço e sobresterço saem daí.
-    const bi=dynBici(c,d,v,aLatD,AF,AR,dt,noc,out,gl&&gl.axle!=="f"?(gl.k||.5):1,aBk);aLat=bi.ay;d.ayA=aLat;under=Math.max(0,Math.abs(aLatD)-Math.abs(bi.ay))*(bi.fSat?1:0);
+    const bi=dynBici(c,d,v,aLatD,AF,AR,dt,noc,out,gl&&gl.axle!=="f"?(gl.k||.5):1,aBk);aLat=bi.ay;d.ayA=aLat;/* uso de cada eixo (0 a 1+): quanto do pneu está sendo pedido — é o que esquenta a superfície (pneu.js) */{const gF=Math.max(1,G*bf),gR=Math.max(1,G*br);const pk=BICI.AP,lF=Math.abs(aLat)/gF,lR=Math.abs(aLat)/gR;/* metade pela força pedida, metade pelo ângulo de deriva (quem escorrega mais esquenta mais) */d.uF=Math.hypot(v>6?.5*lF+.5*Math.abs(d.alF||0)/pk:lF,aL<0?aL*shF/gF:0);d.uR=Math.hypot(v>6?.5*lR+.5*Math.abs(d.alR||0)/pk:lR,aL<0?aL*(1-shF)/gR:aL*.6/gR)}under=Math.max(0,Math.abs(aLatD)-Math.abs(bi.ay))*(bi.fSat?1:0);
     if(Math.abs(d.beta)>.28&&!d.saveT)d.saveT=R.t;
     if(Math.abs(d.beta)>DYN.BETA_SPIN&&v>6){d.spin=true;d.nSpin=(d.nSpin||0)+1;d.spinT=R.t;d.r=(d.wz!=null?d.wz:(d.beta-(d.lastBeta||0))/dt+v*kap);d.r=clamp(d.r,-3.2,3.2);d.wz=null;exStatus(c,"spin",{dir:Math.sign(d.beta)});dynEvent(c,"spin")}
     else if(d.saveT&&Math.abs(d.beta)<.1){if(R.t-d.saveT<3)dynEvent(c,"save");d.saveT=0}}

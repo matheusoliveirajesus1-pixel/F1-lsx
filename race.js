@@ -190,7 +190,7 @@ function running(c){return c.status==="run"}
 
 // energia elétrica por volta (MJ) conforme o modo e a situação
 function ersBudget(c){let e={auto:4.0,attack:4.4,defend:4.2,save:3.3}[c.ers]||4;if(c.ers==="auto"){if(c.atk)e=4.35;else if(c.defend)e=4.2}if(c.ovMode)e+=.5;if(c.dmg.power)e*=.4;return e}
-function recalc(c){const w=R.w,ty=c.tyre;let mu=tyreMu(ty.c,w,ty.wear,ty.temp)*driverMu(c.d,false,w)*setupMu(c.id)*(1+(c.form||0));
+function recalc(c){const w=R.w,ty=c.tyre;if(typeof pneuRef==="function")pneuRef(c);let mu=tyreMu(ty.c,w,ty.wear,ty.temp)*driverMu(c.d,false,w)*setupMu(c.id)*(1+(c.form||0));
   mu*={attack:1.006,normal:1,save:.992+((c.d.a.fuel||75)-75)*.00015}[c.mode];if(c.d.trait==="rua"&&R.C.street)mu*=1.002;
   mu*=famMu(c.d,R.C.id,raceExtraLaps(c))*stateMu(c)*rubberMu();
   if(c.lap>R.L*.7&&c.d.a.fitness<70)mu*=1-(70-c.d.a.fitness)*.0002;
@@ -352,9 +352,10 @@ function onLap(c){// cruzou a linha de chegada
   const burn=c.fuel0/R.L*{attack:1.06,normal:1,save:.9-((c.d.a.fuel||75)-75)*.002}[c.mode];
   if(c.hum){const proj=c.fuel-burn*(R.L-c.lap);if(proj<1.2&&!c.fuelWarn){c.fuelWarn=1;radio(c,"Combustível no limite! Precisa poupar ou não chega ao fim.",{pause:true,sug:"save"})}if(proj>2.5)c.fuelWarn=0}
   // pneus: problemas
+  /* granulação e bolhas agora saem das temperaturas (pneu.js); sem ele, o sorteio antigo */if(typeof pneuPasso!=="function"){
   if(c.tyre.c!=="H"&&c.tyre.age<=3&&R.C.wear<1&&rnd()<.04&&COMP[c.tyre.c].dry){c.tyre.grain=1;if(c.hum)radio(c,"Os pneus estão granulando, sem aderência.")}
   if(c.tyre.grain&&c.tyre.age>5)c.tyre.grain=0;
-  if(c.mode==="attack"&&COMP[c.tyre.c].dry&&R.C.wear>1.1&&rnd()<.03&&!c.tyre.blister){c.tyre.blister=1;if(c.hum)radio(c,"Bolhas nos pneus! Preciso pegar leve.")}
+  if(c.mode==="attack"&&COMP[c.tyre.c].dry&&R.C.wear>1.1&&rnd()<.03&&!c.tyre.blister){c.tyre.blister=1;if(c.hum)radio(c,"Bolhas nos pneus! Preciso pegar leve.")}}
   if(typeof tyreBlowCheck==="function")tyreBlowCheck(c);else if(c.tyre.wear>.86&&!c.tyre.punct&&rnd()<(c.tyre.wear-.82)*.9){c.tyre.punct=true;rcMsg(`${c.code} com pneu furado!`);if(c.hum)radio(c,"PNEU FURADO! Vou para o box.",{pause:true});if(!c.pitCall)c.pitCall=COMP[c.tyre.c].dry?pickDry(R.L-c.lap):c.tyre.c}
   if(c.hum&&c.tyre.wear>.7&&!c.wearWarn&&COMP[c.tyre.c].dry){c.wearWarn=1;radio(c,`Pneus ${COMP[c.tyre.c].n.toLowerCase()} acabando (${Math.round(c.tyre.wear*100)}% gastos).`,{sug:"box"})}
   if(c.tyre.wear<.5)c.wearWarn=0;
@@ -444,7 +445,7 @@ function step(dt){
       else if(!c.pitMissLap||c.pitMissLap!==c.lap){c.pitMissLap=c.lap;R.pitMiss=(R.pitMiss||0)+1;bubble(c,"Perdeu a entrada do box","warn",3);if(c.hum)radio(c,"Não deu para entrar no box, estava do lado errado. Paro na próxima volta.",{k:"box"})}}}
     // bateria: recupera nas freadas (o gasto nas retas é calculado pelo piloto)
     if(c.acc<-5)c.batt+=(-c.acc)*dt*.155*(1+((c.d.a.ers||75)-75)*.004);c.batt=clamp(c.batt,0,100);c._cross=R.t-(c.prog-Math.floor(c.prog))*c.L;
-    {const _wi=wearRate(c)*dt/c.L;c.tyre.wear=Math.min(1,c.tyre.wear+_wi);if(typeof tyreStep==="function")tyreStep(c,dt,_wi)}{const T=TYRES[c.tyre.c];const tgt=(R.sc?T.opt-25:T.opt+({attack:8,normal:0,save:-6}[c.mode]))-R.w*25+(c.dirty?4:0);c.tyre.temp+=(tgt-c.tyre.temp)*dt/(R.sc?60:22)}
+    {const _wi=wearRate(c)*dt/c.L;c.tyre.wear=Math.min(1,c.tyre.wear+_wi);if(typeof tyreStep==="function")tyreStep(c,dt,_wi)}if(typeof pneuPasso==="function")pneuPasso(c,dt);/* pneu completo (pneu.js): superfície e carcaça de cada roda pelo que o carro faz */else{const T=TYRES[c.tyre.c];const tgt=(R.sc?T.opt-25:T.opt+({attack:8,normal:0,save:-6}[c.mode]))-R.w*25+(c.dirty?4:0);c.tyre.temp+=(tgt-c.tyre.temp)*dt/(R.sc?60:22)}
     {const fol=(c.tow||0)>.35||c.dirty;c.heat=clamp((c.heat||0)+dt*(fol?.011:-.018),0,1);if(c.heat>.8&&c.hum&&!c.heatMsg){c.heatMsg=1;radio(c,"Temperaturas de freio e motor subindo atrás do carro da frente. Se puder, saia um pouco do vácuo para esfriar.",{k:"vacuo"})}if(c.heat<.4)c.heatMsg=0}
     c.fuel-=ds/geo.len*c.fuel0/R.L*{attack:1.05,normal:1,save:.9}[c.mode]*(c.ers==="save"?.97:1)*(R.sc||R.red?.55:1);
     if(c.fuel<=0){c.fuel=0;dnf(c,"Sem combustível","stop");rcMsg(`${c.code} ficou sem combustível!`,"bad");continue}

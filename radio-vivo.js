@@ -34,7 +34,12 @@ function respostaDe(k,me){const i=R.order.indexOf(me),A=R.order[i-1],B=R.order[i
     if(me.latFail)t+=` Atenção: a leitura ${me.latFail==="Câmbio"?"do câmbio":me.latFail==="Motor"?"do motor":"de "+me.latFail.toLowerCase()} piorou depois do toque. Poupa nas trocas, pode não aguentar.`;
     if(me.bo)t+=" A direção de prova mostrou bandeira preta e laranja: tem que vir ao box.";return t}
   if(k==="pneus"){const v=vidaPneu(me),w=Math.round((ty.wear||0)*100),T=COMP[ty.c]||{};const tmp=ty.temp!=null&&T.opt?(ty.temp<T.opt-12?"ainda frios":ty.temp>T.opt+10?"superaquecendo":"na temperatura certa"):"";
-    return `${(T.n||"Pneu")} com ${Math.round(ty.age||0)} voltas, ${w}% gastos${tmp?", "+tmp:""}. `+(v==null?"":v<=1?"Estão no fim, precisamos parar.":`Devem aguentar umas ${v} voltas.`)+(ty.grain?" Tem granulação.":"")+(ty.blister?" Tem bolha na borracha.":"")}
+    return `${(T.n||"Pneu")} com ${Math.round(ty.age||0)} voltas, ${w}% gastos${tmp?", "+tmp:""}. `+(v==null?"":v<=1?"Estão no fim, precisamos parar.":`Devem aguentar umas ${v} voltas.`)+(ty.grain>.15?" Tem granulação.":"")+(ty.blister>.15?" Tem bolha na borracha.":"")+detPneu(ty,T)}
+  /* detalhe das quatro rodas (pneu.js): qual eixo está fora da janela, carcaça e pressão */
+  function detPneu(ty,T){if(!ty.ts4||!T.opt)return"";const f=(ty.ts4[0]+ty.ts4[1])/2,t=(ty.ts4[2]+ty.ts4[3])/2,dif=f-t;let s="";
+    if(Math.abs(dif)>8)s+=dif>0?` A dianteira está ${Math.round(dif)}° mais quente que a traseira.`:` A traseira está ${Math.round(-dif)}° mais quente que a dianteira.`;
+    if(ty.tc!=null)s+=` Carcaça em ${Math.round(ty.tc)}°${ty.tc>T.opt+12?", quente demais":ty.tc<T.opt-20?", ainda fria":""}.`;
+    if(ty.p4)s+=` Pressões ${ty.p4.map(x=>(x*14.5).toFixed(1)).join(" / ")} psi.`;return s}
   if(k==="frente"){if(!A)return"Ninguém na sua frente. Você é o líder!";const g=gapS(A,me),ta=A.tyre||{};const dif=Math.round((ta.age||0)-(ty.age||0));
     return `${A.code} a ${g.toFixed(1)} segundos, de ${nPneu(ta.c)} com ${Math.round(ta.age||0)} voltas`+(dif>=3?`, ${dif} voltas mais velho que o seu. Deve cair.`:dif<=-3?`, ${-dif} voltas mais novo. Cuidado.`:".")+(A.pit||A.pitCall?" Parece que vai parar.":"")+(g<1?" Você está no DRS.":"")}
   if(k==="tras"){if(!B)return"Ninguém atrás de você.";const g=gapS(me,B),tb=B.tyre||{};return `${B.code} a ${g.toFixed(1)} segundos, de ${nPneu(tb.c)} com ${Math.round(tb.age||0)} voltas.`+(g<1?" Ele está no seu DRS, defende!":g<2.5?" Está se aproximando.":" Margem tranquila.")}

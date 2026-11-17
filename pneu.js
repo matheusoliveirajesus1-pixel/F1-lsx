@@ -56,7 +56,7 @@ function pneuPasso(c,dt){if(!c.tyre)return;let st=c._pn;if(!st||st.ref!==c.tyre)
   for(let j=0;j<4;j++){const carga=fz?Math.min(2.5,Math.max(.2,fz[j]/q)):1,u=Math.min(1.3,uA[j]);
     // trabalho do pneu: força × escorregamento cresce com u² e com a velocidade; a flexão da carcaça rolando soma um pouco;
     // travada (dianteiras), patinada (traseiras) e carro de lado esquentam a superfície de uma vez
-    const extra=Math.min(1.5,(j<2?lk*1.2:pat*1.5)+Math.min(.5,beta)*Math.min(.5,beta)*6);
+    const lw=d.lockW?d.lockW[j]||0:0;const extra=Math.min(1.5,(j<2?lk*1.2:pat*1.5)+lw*1.6+Math.min(.5,beta)*Math.min(.5,beta)*6);
     const trab=(carga*(.05*Math.min(1.3,v/55)+u*u*Math.min(1.4,v/50))+extra*Math.min(1,v/30))*(P.ESTILO[c.mode]||1);
     st.w=(st.w||0)+trab*dt;st.wt=(st.wt||0)+dt;if(v>15)pneuTrkAprende(trab/(P.ESTILO[c.mode]||1),dt);
     // carcaça: vai devagar para o equilíbrio do trabalho médio

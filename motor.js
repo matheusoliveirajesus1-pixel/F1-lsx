@@ -20,11 +20,11 @@ const MOTOR={
   CORTE:.05,// corte de potência numa troca normal (s): câmbio sem embreagem, quase imperceptível
   // fração do MGU-K (350 kW) despejada atacando ou no modo de ultrapassagem. Desligado (0): nos duelos de teste o carro chegava
   // rápido demais às freadas e ultrapassava menos; volta junto com a IA que busca o limite
-  ATAQUE:0,
+  ATAQUE:.35,
   FOLGA:5,// m/s² além da aceleração planejada naquele ponto, para recuperar pequenas perdas (ver motorFolga)
   // fração da desaceleração de alívio (sem pedal) que fica na dianteira; o resto é freio motor e MGU-K, nas rodas de trás.
   // Na freada de verdade o freio eletrônico (brake-by-wire) compensa e a divisão volta a seguir a carga
-  FREIO_MOTOR:.55
+  FREIO_MOTOR:.42
 };
 // marcha e giro na velocidade v (m/s): a marcha mais curta que não passa do limite de giro
 function motorMarcha(v){const kmh=v*3.6,G=PH.gears;let g=0;while(g<7&&kmh>G[g]*.985)g++;const rpm=Math.min(MOTOR.RPM_MAX,Math.max(4200,MOTOR.RPM_MAX*kmh/G[g]));return{gear:g+1,rpm}}
@@ -36,7 +36,9 @@ function motorPot(c,v){const ph=c.ph||{},d=c.dmg||{};const ice=PH.ice*(ph.pw||1)
   let fr_=(c.dep==null?.85:c.dep)*(c.depNow||1);
   /* modo de ultrapassagem (regra 2026: a menos de 1 s do carro da frente, energia extra) e ataque comprometido: o piloto despeja o elétrico nessa reta */
   // (2026: o carro que ataca despeja o elétrico e o que está colhendo energia fica para trás; a diferença chega a 20–30 km/h)
-  if((c.ovMode||(c.att&&c.att.commit))&&(c.batt==null||c.batt>12)&&v>25){const fb=Math.max(fr_,MOTOR.ATAQUE);c._boost=fb-fr_;fr_=fb}else c._boost=0;
+  /* só despeja quando já saiu de trás (lado a lado ou de lado no vácuo): energia para completar a passagem, não para encostar */
+  const ladoALado=c.att&&c.att.commit&&c.aheadO==null||(c.alongs&&c.alongs.length>0)||(c.att&&c.att.commit&&R.order&&(()=>{const i=R.order.indexOf(c),A=R.order[i-1];return A&&Math.abs((A.y||0)-(c.y||0))>2.2&&(A.prog-c.prog)*R.geo.len<25})());
+  if(ladoALado&&(c.ovMode||(c.att&&c.att.commit))&&(c.batt==null||c.batt>12)&&v>25){const fb=Math.max(fr_,MOTOR.ATAQUE);c._boost=fb-fr_;fr_=fb}else c._boost=0;
   let ers=PH.ers*Math.min(1,fr_)*(d.power?.4:1);if(c.batt!=null&&c.batt<4)ers*=.3;if(R&&(R.sc||R.red))ers*=.5;
   return ice+ers}
 // força de arrasto (N) na velocidade v (com o vácuo do carro da frente e a asa móvel da reta)

@@ -119,13 +119,14 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   if(c.hzYT!=null)yT=c.hzYT;
   // custo de sair da linha ideal nas curvas
   const off=Math.min(1,Math.abs(c.y-ideal)/5);m*=1-.085*cw*off*off;if(Math.abs(c.y)>TRK_H)m*=.93;
+  /* piloto no limite (limite.js): a margem que ele aprendeu para esta curva */if(typeof limPasso==="function"){limPasso(c,i,neutral);if(ph!==0&&!R.sc&&!R.red&&R.started)m*=limFator(c,i)}
   // vácuo na reta, ar sujo na curva (só quando está atrás, na mesma faixa)
   const F=c.aheadO,dF=c.dAO;c.tow=0;c.dirtyK=0;
   if(A&&dA<110&&!neutral&&running(A)&&!A.pit){const dy=Math.abs((A.y||0)-(c.y||0));const al=dy<1.1?1:dy<3.2?1-(dy-1.1)/2.1:0;
     if(ph===0&&c.v>40&&al>0){c.tow=al*clamp(1-(dA-10)/95,0,1);m*=1+.045*c.tow}
     else if(ph!==0&&dA<36&&al>.15){const k=al*clamp(1-(dA-6)/30,0,1);/* ar sujo (aero.js): o carro de trás perde pressão e precisa tirar nas curvas, mais nas rápidas (onde a asa pesa mais) */{const kd=.5*PH.rho*PH.cla*((c.ph&&c.ph.cl)||1)*c.v*c.v,sh=kd/(kd+((c.ph&&c.ph.mass)||PH.mass)*PH.g),lo=(typeof AERO!=="undefined"?AERO.SUJO:.05)*k*sh;m*=Math.sqrt(Math.max(.5,1-lo))}c.dirtyK=k;c.dirty=k>.25}}
   // mergulho por dentro na freada: freia mais tarde, com risco de travar e passar reto
-  if(c.att&&c.att.commit&&ph===1&&c.att.side===ins&&A&&dA<CARL*(c.att.go?2.3:1.6)){m*=1+.02*(.6+(c.d.a.ovt*.5+(c.d.a.brk||75)*.5)/250)*(c.att.go?1.35:1);
+  if(c.att&&c.att.commit&&ph===1&&c.att.side===ins&&A&&dA<CARL*(c.att.go?2.3:1.6)){/* o quanto ele estica a freada depende do quanto essa curva ainda tem de folga (limite.js): curva já no limite, mergulho curto */const fol=typeof limFator==="function"?clamp((1.012-limFator(c,i))/.03+.35,.35,1.2):1;m*=1+.02*fol*(.6+(c.d.a.ovt*.5+(c.d.a.brk||75)*.5)/250)*(c.att.go?1.35:1);
     if(!c.diveRoll){c.diveRoll=true;if(rnd()<.055*(1+R.w*3)*(1.25-(c.d.a.ovt*.4+(c.d.a.brk||75)*.6)/120)*(.6+aggrEff(c,A))*(c.tyre.wear>.6?1.5:1)*(c.att.go?(dA>CARL*1.6?2.2:1.4):1))lockUp(c,A)}}
   // energia elétrica nas retas: boost, defesa, recarga e clipping (bateria vazia no fim da reta)
   if(ph===0&&c.v>40&&R.started&&!R.sc&&!R.red){const dep=Math.min(1.42,deployRate(c)*planK(c));c.depNow=dep;m*=1+.019*(dep-1)/.35+(c.ovMode?.014:0);/* bateria vazia: o motor (motor.js) perde o elétrico e o carro não chega à velocidade */c.batt-=dt*1.08*dep*(c.ovMode?.8:1)*(1-((c.d.a.ers||75)-75)*.003);c.clip=c.batt<4}else{c.clip=false;c.depNow=1}

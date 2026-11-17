@@ -23,13 +23,18 @@ const DYN={BETA_SPIN:.62,KC:4.2,KC_EM:6.5,KOS:2.2,CR:.9,GK:1.08,SLIDE:.8,MARKS:3
 // A suspensão leva ~0,12 s para assentar (d.ax e d.ay filtrados), e o desenho usa os mesmos valores para inclinar o carro.
 // (constantes LOAD ficam em physics.js, que o perfil de velocidade também usa)
 function axleCap(Fz,dL){const s=LOAD.S,a=Fz/2+dL,b=Fz/2-dL,f=x=>x>0?x*(1+s*(x-LOAD.FZ0)):0;return f(a)+f(b)}
-function dynLoad(c,v){const d=c.dyn,m=(c.ph&&c.ph.mass)||PH.mass,kd=.5*PH.rho*relRhoR()*PH.cla*((c.ph&&c.ph.cl)||1)*(typeof aeroK==="function"?aeroK(c):1),g=PH.g,L=LOAD,AF=c._aero?c._aero.af:L.AF;
+function dynLoad(c,v,dt){const d=c.dyn,m=(c.ph&&c.ph.mass)||PH.mass,kd=.5*PH.rho*relRhoR()*PH.cla*((c.ph&&c.ph.cl)||1)*(typeof aeroK==="function"?aeroK(c):1),g=PH.g,L=LOAD,AF=c._aero?c._aero.af:L.AF;
   const down=kd*v*v,ax=clamp(d.ax||0,-60,20)*L.WT,ay=Math.abs(d.ay||0);const dLx=m*ax*L.H/L.L,lat=m*ay*L.H/L.TR;
   const Ff=m*g*L.WF+down*AF,Fr=m*g*(1-L.WF)+down*(1-AF),dF=lat*L.RF/2,dR=lat*(1-L.RF)/2;
   // capacidade de cada eixo por unidade da massa que ele carrega na curva, normalizada pelo eixo mais fraco sem frear/acelerar
   const nF=axleCap(Ff,dF)/L.WF,nR=axleCap(Fr,dR)/(1-L.WF),n0=Math.min(nF,nR)||1;
   const kF=axleCap(Math.max(60,Ff-dLx),dF)/L.WF/n0,kR=axleCap(Math.max(60,Fr+dLx),dR)/(1-L.WF)/n0;
-  d.fz=[Ff-dLx,Fr+dLx];return{kF:clamp(kF,.35,1.6),kR:clamp(kR,.35,1.6)}}
+  d.fz=[Ff-dLx,Fr+dLx];
+  /* suspensão física (suspfis.js): zebras, ondulação e chão irregular fazem a carga de cada roda oscilar; carga que oscila rende
+     menos (sensibilidade do pneu) e roda no ar não segura nada */
+  let rF=1,rR=1;if(dt&&typeof susPasso==="function"){const fz0=susCargas(Math.max(60,Ff-dLx),Math.max(60,Fr+dLx),dF,dR,d.ay||0),st=susPasso(c,dt,v,fz0),q=st.dF;
+    const f=x=>x>0?x*(1+L.S*(x-L.FZ0)):0;rF=(f(fz0[0]+q[0])+f(fz0[1]+q[1]))/Math.max(1,f(fz0[0])+f(fz0[1]));rR=(f(fz0[2]+q[2])+f(fz0[3]+q[3]))/Math.max(1,f(fz0[2])+f(fz0[3]));d.fz4=fz0.map((x,i)=>x+q[i])}
+  return{kF:clamp(kF*rF,.3,1.6),kR:clamp(kR*rR,.3,1.6)}}
 function dynWrap(a){a=(a+Math.PI)%(2*Math.PI);if(a<0)a+=2*Math.PI;return a-Math.PI}
 // curvatura da linha central (1/m) a partir da geometria já existente (TRACKGEO.path/heading); nada da pista é alterado
 function dynPrep(){if(R._dynK&&R._dynKid===TRACKGEO)return;if(typeof supZebraNaLinha==="function")supZebraNaLinha(R.geo);const g=TRACKGEO,M=g.M,raw=new Float32Array(M),k=new Float32Array(M);
@@ -51,7 +56,7 @@ function dynReset(c){if(!c.dyn)dynInit(c);const d=c.dyn;d.chi=0;d.beta=0;d.r=0;d
 // aderência total disponível por unidade de massa (m/s²) na velocidade v, sem dano (o dano entra por eixo)
 function gripG(c,v){const kd=.5*PH.rho*relRhoR()*PH.cla*((c.ph&&c.ph.cl)||1)*(typeof aeroK==="function"?aeroK(c):1);/* altura do chão, arfagem, derrapagem e ar sujo (aero.js) */const mu=(c.muBase||c.mu||1.6)*R.geo.gk*DYN.GK;
   /* relevo: no fundo do vale o carro é apertado no chão, na crista fica leve; rampa e inclinação lateral mudam a parte da gravidade; ondulação tira um pouco */
-  const r=c._rel;return mu*relBumpK(r,v)*(relGn(r,v)+kd*v*v/((c.ph&&c.ph.mass)||PH.mass))}
+  const r=c._rel;return mu*(typeof susPasso==="function"?1:relBumpK(r,v))/* a ondulação agora age pela suspensão física (suspfis.js); o perfil continua contando com ela */*(relGn(r,v)+kd*v*v/((c.ph&&c.ph.mass)||PH.mass))}
 // densidade do ar da pista atual (altitude)
 function relRhoR(){const g=R&&R.geo;if(!g)return 1;if(g._rho==null)g._rho=typeof relRho==="function"?relRho(g):1;return g._rho}
 // fatores de aderência por eixo vindos do estado do carro (danos, furo, pneu quadrado não altera aderência)
@@ -124,7 +129,7 @@ function dynSub(c,dt,vT,hard,brk,yT,o){/* o piloto mira dentro da pista (rodas s
   // erros de comando ativos
   const push=dynCmd(c,"pushOut"),late=dynCmd(c,"lateBrake"),ovs=dynCmd(c,"overspeed"),thr=dynCmd(c,"earlyThrottle"),out=dynCmd(c,"steerOut"),noc=dynCmd(c,"noCorrect"),gl=dynCmd(c,"gripLoss");
   if(ovs)vT*=1+ovs.k;if(late&&vT<v)vT=v;
-  let bf=ax.bf*(sf.kF||1),br=ax.br*(sf.kR||1);G*=1-.08*((c.tyre&&c.tyre.suja)||0);if(!d.spin&&v>2){const lt=dynLoad(c,v);bf*=lt.kF;br*=lt.kR;d.kF=lt.kF;d.kR=lt.kR}if(gl){if(gl.axle==="f")bf*=gl.k||.5;else br*=gl.k||.5}
+  let bf=ax.bf*(sf.kF||1),br=ax.br*(sf.kR||1);G*=1-.08*((c.tyre&&c.tyre.suja)||0);if(!d.spin&&v>2){const lt=dynLoad(c,v,dt);bf*=lt.kF;br*=lt.kR;d.kF=lt.kF;d.kR=lt.kR}if(gl){if(gl.axle==="f")bf*=gl.k||.5;else br*=gl.k||.5}
   // ---- o piloto planeja a freada com a frenagem que o carro tem agora (pneu, dano, chuva, tanque): olha até 160 m à frente
   if(!o.pit&&c.prof&&v>12&&!late&&!ovs){const N=R.geo.N,i0=Math.floor(f*N)%N,aPlan=Math.max(2,.86*Math.min(PH.decMax,PH.muBrake*((c.ph&&c.ph.bk)||1)*G*Math.min(1,(bf+br)/2))+gS);/* descendo, freia antes */
     // o perfil supõe a linha de corrida; fora dela (vácuo, defesa, disputa) o carro só muda de linha na velocidade lateral que tem,

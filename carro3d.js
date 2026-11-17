@@ -948,7 +948,8 @@ function suspensao(s,c,v,ax,ay,dt){const Lp=typeof LOAD!=="undefined"?LOAD:{L:3.
   const fa=down*Lp.AF/2,ra=down*(1-Lp.AF)/2;
   // ay > 0 = curva para a esquerda: carrega as rodas da direita (y > 0 no modelo). Ordem: dianteira esq., dianteira dir., traseira esq., traseira dir.
   const F=[-dx-dF,-dx+dF,dx-dR,dx+dR],A=[fa,fa,ra,ra];
-  /* relevo: compressão (fundo de vale) afunda, crista estica; ondulação do asfalto faz as rodas trabalharem */const rl=c._rel;if(rl&&v>3){const cz=m*v*v*rl.kv/4,pz=(c.prog||0)*((typeof R!=="undefined"&&R&&R.geo&&R.geo.len)||5000);for(let i=0;i<4;i++)F[i]+=cz+rl.bu*m*9.81*.12*Math.min(1,v/40)*Math.sin(pz*.9+i*1.7+(i>1?2.1:0))*Math.sin(pz*.37+i)}if(!s.sz){s.sz=[0,0,0,0];s.sv=[0,0,0,0]}const w=2*Math.PI*SUSP.HZ;
+  /* relevo: compressão (fundo de vale) afunda, crista estica */const rl=c._rel;if(rl&&v>3){const cz=m*v*v*rl.kv/4;for(let i=0;i<4;i++)F[i]+=cz}
+  /* suspensão física (suspfis.js): o que zebras e ondulações fazem em cada roda */const su=c._sus;if(su&&su.dF)for(let i=0;i<4;i++)F[i]+=su.dF[i]*1.6;if(!s.sz){s.sz=[0,0,0,0];s.sv=[0,0,0,0]}const w=2*Math.PI*SUSP.HZ;
   for(let i=0;i<4;i++){const x=F[i]/SUSP.KV+A[i]/SUSP.KA;const alvo=x>0?SUSP.DESCE*Math.tanh(x/SUSP.DESCE):-SUSP.SOBE*Math.tanh(-x/SUSP.SOBE);let n=Math.ceil(dt/.016);const h=dt/n;
     while(n--){const a=w*w*(alvo-s.sz[i])-2*SUSP.ZETA*w*s.sv[i];s.sv[i]+=a*h;s.sz[i]+=s.sv[i]*h}
     s.sz[i]=Math.max(-SUSP.SOBE-8,Math.min(SUSP.DESCE+4,s.sz[i]))}}

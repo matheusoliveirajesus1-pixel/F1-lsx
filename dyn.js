@@ -23,9 +23,9 @@ const DYN={BETA_SPIN:.62,KC:4.2,KC_EM:6.5,KOS:2.2,CR:.9,GK:1.08,SLIDE:.8,MARKS:3
 // A suspensão leva ~0,12 s para assentar (d.ax e d.ay filtrados), e o desenho usa os mesmos valores para inclinar o carro.
 // (constantes LOAD ficam em physics.js, que o perfil de velocidade também usa)
 function axleCap(Fz,dL){const s=LOAD.S,a=Fz/2+dL,b=Fz/2-dL,f=x=>x>0?x*(1+s*(x-LOAD.FZ0)):0;return f(a)+f(b)}
-function dynLoad(c,v){const d=c.dyn,m=(c.ph&&c.ph.mass)||PH.mass,kd=.5*PH.rho*relRhoR()*PH.cla*((c.ph&&c.ph.cl)||1),g=PH.g,L=LOAD;
+function dynLoad(c,v){const d=c.dyn,m=(c.ph&&c.ph.mass)||PH.mass,kd=.5*PH.rho*relRhoR()*PH.cla*((c.ph&&c.ph.cl)||1)*(typeof aeroK==="function"?aeroK(c):1),g=PH.g,L=LOAD,AF=c._aero?c._aero.af:L.AF;
   const down=kd*v*v,ax=clamp(d.ax||0,-60,20)*L.WT,ay=Math.abs(d.ay||0);const dLx=m*ax*L.H/L.L,lat=m*ay*L.H/L.TR;
-  const Ff=m*g*L.WF+down*L.AF,Fr=m*g*(1-L.WF)+down*(1-L.AF),dF=lat*L.RF/2,dR=lat*(1-L.RF)/2;
+  const Ff=m*g*L.WF+down*AF,Fr=m*g*(1-L.WF)+down*(1-AF),dF=lat*L.RF/2,dR=lat*(1-L.RF)/2;
   // capacidade de cada eixo por unidade da massa que ele carrega na curva, normalizada pelo eixo mais fraco sem frear/acelerar
   const nF=axleCap(Ff,dF)/L.WF,nR=axleCap(Fr,dR)/(1-L.WF),n0=Math.min(nF,nR)||1;
   const kF=axleCap(Math.max(60,Ff-dLx),dF)/L.WF/n0,kR=axleCap(Math.max(60,Fr+dLx),dR)/(1-L.WF)/n0;
@@ -49,7 +49,7 @@ function pitLatAt(f){const pl=R._pitLat;if(!pl||!pl.length)return null;const M=T
 function dynInit(c){c.dyn={ax:0,ay:0,chi:0,beta:0,r:0,satF:0,satR:0,lock:0,spin:false,cmd:[],wl:null,lockT:0,spinT:0,under:0,gravV:0,frozen:false,ev:{}};c.psi=0;c.yaw=0}
 function dynReset(c){if(!c.dyn)dynInit(c);const d=c.dyn;d.chi=0;d.beta=0;d.r=0;d.wz=null;d.delta=0;d.ax=0;d.ay=0;d.spin=false;d.lock=0;d.cmd=[];d.wl=null;c.psi=0;c.yaw=0;c.vy=0}
 // aderência total disponível por unidade de massa (m/s²) na velocidade v, sem dano (o dano entra por eixo)
-function gripG(c,v){const kd=.5*PH.rho*relRhoR()*PH.cla*((c.ph&&c.ph.cl)||1);const mu=(c.muBase||c.mu||1.6)*R.geo.gk*DYN.GK;
+function gripG(c,v){const kd=.5*PH.rho*relRhoR()*PH.cla*((c.ph&&c.ph.cl)||1)*(typeof aeroK==="function"?aeroK(c):1);/* altura do chão, arfagem, derrapagem e ar sujo (aero.js) */const mu=(c.muBase||c.mu||1.6)*R.geo.gk*DYN.GK;
   /* relevo: no fundo do vale o carro é apertado no chão, na crista fica leve; rampa e inclinação lateral mudam a parte da gravidade; ondulação tira um pouco */
   const r=c._rel;return mu*relBumpK(r,v)*(relGn(r,v)+kd*v*v/((c.ph&&c.ph.mass)||PH.mass))}
 // densidade do ar da pista atual (altitude)
@@ -119,7 +119,7 @@ function dynBici(c,d,v,aLatD,AF,AR,dt,noc,out,surpresa,aG){aG=aG||0;/* aG: parte
   d.wz=clamp(wz,-3.4,3.4);/* nenhum carro gira mais que ~3,4 rad/s (rodada de verdade) */d.beta=-bv;d.delta=dl;d._dbg=[aLatD,ay/n,ffm,frm];return{ay:ay/n,fSat}}
 function dynStep(c,dt,vT,hard,brk,yT,o){if(!c.dyn)dynInit(c);o=o||{};const n=Math.max(1,Math.ceil(dt/.0501));for(let k=0;k<n;k++)dynSub(c,dt/n,vT,hard,brk,yT,o)}
 function dynSub(c,dt,vT,hard,brk,yT,o){/* o piloto mira dentro da pista (rodas sobre a linha branca ou na zebra baixa, não na grama) */if(yT!=null&&!(o&&o.pit)&&!c.pit&&!c.ex&&!c.rev){const lim=typeof supLimY==="function"?supLimY(c.prog,yT):TRK_H-.95;yT=clamp(yT,-lim,lim)}const d=c.dyn,L=R.geo.len,f=fr(c.prog);dynPrep();const y=c.y||0,mt=dynMetric(f,y),kap=mt.kn,den=mt.den;
-  /* relevo neste ponto (rampa, compressão/crista, inclinação lateral); no pit lane a pista é plana */const rl=c._rel=(!c.pit&&typeof relevoAt==="function")?relevoAt(R.geo,f):null;const gS=rl?PH.g*rl.sn:0,aBk=rl?PH.g*Math.sin(rl.ph):0;
+  /* relevo neste ponto (rampa, compressão/crista, inclinação lateral); no pit lane a pista é plana */const rl=c._rel=(!c.pit&&typeof relevoAt==="function")?relevoAt(R.geo,f):null;const gS=rl?PH.g*rl.sn:0,aBk=rl?PH.g*Math.sin(rl.ph):0;/* aerodinâmica deste instante; assoalho raspando solta faíscas */if(typeof aeroEstado==="function"){const ae=aeroEstado(c,c.v||0,rl);if(ae.raspa&&c.v>55&&R.fxq&&R.t-(c._raspaT||-9)>.3){c._raspaT=R.t;R.fxq.push({type:"sparks",f,lat:y,t0:R.t,peq:1})}}
   let v=Math.max(0,c.v||0);const vp=v;const sf=surfK(c);const ax=axleK(c);let G=gripG(c,Math.max(v,5))*sf.k;
   // erros de comando ativos
   const push=dynCmd(c,"pushOut"),late=dynCmd(c,"lateBrake"),ovs=dynCmd(c,"overspeed"),thr=dynCmd(c,"earlyThrottle"),out=dynCmd(c,"steerOut"),noc=dynCmd(c,"noCorrect"),gl=dynCmd(c,"gripLoss");

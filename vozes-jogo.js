@@ -1,6 +1,6 @@
 // ===================== VOZES NO JOGO =====================
 // Liga a voz gerada pelo próprio jogo (voz-pt.js) às cenas e entrevistas: cada personagem tem uma voz estável
-// (escolhida pelo nome), a emoção muda a fala e a boca segue o áudio. Pode ser desligada em Configurações > Vozes.
+// (escolhida pelo nome), a emoção muda a fala e a boca segue o áudio. Pode ser desligada em Configurações > Vozes ou no botão de voz do rádio, das cenas e das entrevistas.
 (function(GL){
 let AC=null,OUT=null,REV=null,RU=null,atual=null;
 function audio(){if(AC)return AC;const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;AC=new C();const comp=AC.createDynamicsCompressor();comp.connect(AC.destination);OUT=AC.createGain();OUT.gain.value=.9;OUT.connect(comp);
@@ -25,5 +25,13 @@ function fala(txt,o){o=o||{};if(!ativo())return null;const ac=audio();if(!ac)ret
   else{s.connect(OUT);s.connect(REV)}
   s.start(t0);atual=s;const tl=R.tl;
   return{dur:R.dur+.05,boca:R.boca,indice(){const t=ac.currentTime-t0;if(t<0)return 0;let k=0;while(k<tl.length-1&&tl[k+1][0]<=t)k++;const a=tl[k],n=tl[k+1];return a[1]+(n?Math.min(1,(t-a[0])/(n[0]-a[0])):1)},para(){try{s.stop()}catch(e){}}}}catch(e){console.warn("voz",e);return null}}
-GL.VOZJ={fala,ativo,vozDe};
+// liga/desliga a voz de onde ela toca (rádio da corrida, cenas, entrevistas): o mesmo ajuste de Configurações > Vozes
+function ligada(){return!(typeof PREFS!=="undefined"&&PREFS.vozes===false)}
+function rotulo(){return ligada()?"🔊 Voz ligada":"🔇 Voz desligada"}
+function botao(cls){return`<button type="button" class="${cls||"btn sm"} vozbt" data-voz="1" aria-pressed="${ligada()}" title="Liga ou desliga as vozes dos personagens (também em Configurações)">${rotulo()}</button>`}
+function alterna(on){if(typeof PREFS==="undefined")return;PREFS.vozes=on==null?!ligada():!!on;if(typeof prefsSave==="function")prefsSave();
+  if(!ligada()&&atual){try{atual.stop()}catch(e){}atual=null}
+  if(typeof document!=="undefined")document.querySelectorAll("[data-voz]").forEach(b=>{b.textContent=rotulo();b.setAttribute("aria-pressed",String(ligada()))});return ligada()}
+if(typeof document!=="undefined")document.addEventListener("click",e=>{const b=e.target&&e.target.closest&&e.target.closest("[data-voz]");if(!b)return;e.preventDefault();e.stopPropagation();alterna()},true);
+GL.VOZJ={fala,ativo,vozDe,alterna,botao,ligada};
 })(typeof window!=="undefined"?window:globalThis);

@@ -23,7 +23,7 @@ function estilo(){if(GL.AVZ)GL.AVZ.estilo();if(cssOk)return;cssOk=true;const s=d
 .avz.vert .sub{font-size:5.4cqw;max-width:90%;bottom:10%;padding:1.6cqw 3cqw;border-radius:1.2cqw}.avz.vert .sub small{font-size:3cqw;margin-bottom:1cqw}
 .avz.vert .bug{font-size:3.2cqw;gap:2cqw}.avz.vert .bug b{font-size:3.6cqw;padding:1.4cqw 2cqw}.avz.vert .bug i{display:none}.avz.vert .bug .live{padding:1.4cqw 2cqw}
 .avz.vert .strap b{font-size:6cqw;padding:2cqw 3.4cqw}.avz.vert .strap span{font-size:3.2cqw;padding:1.4cqw 3.4cqw}.avz.vert .strap{bottom:24%;left:5%}
-.cnrad{display:inline-flex;align-items:center;gap:10px}.cnrad svg{width:54px;height:54px;border-radius:50%;background:#E9ECEF;flex:none}
+.cnrad{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cnrad-voz{margin-left:auto}.vozbt{white-space:nowrap}.cnrad svg{width:54px;height:54px;border-radius:50%;background:#E9ECEF;flex:none}
 .cnrad small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted,#8D929C)}
 .cnfoto{position:relative;border-radius:8px;overflow:hidden;background:#E9ECEF;aspect-ratio:4/3;max-height:230px}
 .cnfoto svg{width:100%;height:100%;display:block}
@@ -43,7 +43,7 @@ function Palco(o){estilo();o=o||{};this.o=o;const id="cn"+(++UID);this.id=id;con
     <div class="ov"><div class="bug"><b>${esc(o.marca||"PADDOCK TV")}</b>${o.local?`<i>${esc(o.local)}</i>`:""}${o.aoVivo?`<span class="live">Ao vivo</span>`:""}</div>
       <div class="card2 q"><h4 class="qWho"></h4><p class="qTxt"></p></div><div class="card2 a"><h4 class="aWho"></h4><div class="aBody"></div></div>
       <div class="painel cnp"><h4 class="pT"></h4><div class="opts pOpts"></div></div><div class="strap"><b class="sB"></b><span class="sS"></span></div><div class="sub"></div></div></div>
-    ${o.barra===false?"":`<div class="barra"><span class="dica">${esc(o.dica||"")}</span><span class="row" style="gap:6px"><button class="btn sm" data-pc="pausa">Pausar</button><button class="btn sm" data-pc="pula">Pular</button></span></div>`}`;
+    ${o.barra===false?"":`<div class="barra"><span class="dica">${esc(o.dica||"")}</span><span class="row" style="gap:6px">${GL.VOZJ?GL.VOZJ.botao():""}<button class="btn sm" data-pc="pausa">Pausar</button><button class="btn sm" data-pc="pula">Pular</button></span></div>`}`;
   const q=s=>no.querySelector(s);this.$={fundo:q(".fundo"),rigs:q(".rigs"),frente:q(".frente"),efx:q(".efx"),tela:q(".flashTela"),q:q(".q"),qWho:q(".qWho"),qTxt:q(".qTxt"),a:q(".a"),aWho:q(".aWho"),aBody:q(".aBody"),
     painel:q(".painel"),pT:q(".pT"),pOpts:q(".pOpts"),strap:q(".strap"),sB:q(".sB"),sS:q(".sS"),sub:q(".sub")};
   no.addEventListener("click",e=>{const b=e.target.closest("[data-pc]");if(!b)return;if(b.dataset.pc==="pausa"){this.T.pausa=!this.T.pausa;b.textContent=this.T.pausa?"Continuar":"Pausar"}else this.T.gen++});
@@ -260,7 +260,7 @@ const RAD={rig:null,ult:null,svg:null,t:0,fim:0};
 function humorDo(t){t=String(t).toLowerCase();if(/perfeit|boa|isso!|excelente|ótim|parab|vitória|pódio|ganh|melhor volta/.test(t))return"feliz";if(/punição|investiga|limites|cuidado|chuva|dano|problema|furo|batida|abandon|bandeira amarela|safety/.test(t))return"serio";if(/box|pneu|parada/.test(t))return"confiante";return"neutro"}
 function radioRosto(){try{const f=document.getElementById("rfeed");if(!f||!GL.AV)return;const card=f.closest(".card");if(!card||card.querySelector(".cnrad"))return;estilo();const t=myTeam(),u=uniEquipe(t);const h=card.querySelector("h3");
     const w=document.createElement("div");w.className="cnrad";const svg=document.createElementNS(NS,"svg");svg.setAttribute("viewBox","-150 205 300 300");svg.setAttribute("aria-hidden","true");w.appendChild(svg);
-    const tx=document.createElement("div");tx.innerHTML=`<small>Engenheiro de corrida</small><b>${esc(G.engineer||"Engenheiro")}</b>`;w.appendChild(tx);
+    const tx=document.createElement("div");tx.innerHTML=`<small>Engenheiro de corrida</small><b>${esc(G.engineer||"Engenheiro")}</b>`;w.appendChild(tx);/* desligar a voz direto no rádio */if(GL.VOZJ){const vb=document.createElement("span");vb.className="cnrad-voz";vb.innerHTML=GL.VOZJ.botao("btn sm");w.appendChild(vb)}
     if(h){h.style.display="none";card.insertBefore(w,h)}RAD.rig=new (AV().Rig)(svg,AV().pessoa(G.engineer||"Bruno"),{...u,roupa:"polo",fone:true,x:0,y:0,s:1});RAD.svg=svg;RAD.ult=R&&R.radio?R.radio[0]:null;
     let ult=performance.now(),acc=0;const q=n=>{if(!svg.isConnected){RAD.rig=null;return}const dt=Math.max(0,Math.min(.1,(n-ult)/1000));ult=n;acc+=dt;RAD.t+=dt;
       const m=R&&R.radio?R.radio[0]:null;if(m&&m!==RAD.ult){RAD.ult=m;const meC=R.cars.find(c=>c.isP);if(!meC||m.c===meC.id){const deEng=!m.me;const fala=String(m.t).replace(/^[^:"]{1,24}:\s*/,"").replace(/^"|"$/g,"");

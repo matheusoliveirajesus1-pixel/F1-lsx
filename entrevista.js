@@ -105,7 +105,7 @@ function Cena(tipo,I){estilo();this.tipo=tipo;this.I=I;const AV=GL.AV;const me=M
       <div class="painel"><h4>Como responder? <span style="font-weight:600;letter-spacing:.06em;text-transform:none">· toque numa opção ou use 1 a 4</span></h4><div class="opts pOpts"></div></div>
       <div class="strap"><b>${esc(me.n)}</b><span>${esc(t?t.n:"")} · #${esc(me.num)}</span></div><div class="sub"></div></div></div>
     <div class="barra"><span class="dica">${tipo==="pre"?"Coletiva de imprensa de quinta-feira":"Zona mista depois da corrida"} · as respostas valem como sempre</span>
-      <span class="row" style="gap:6px"><button class="btn sm" data-avz="pausa">Pausar</button><button class="btn sm" data-avz="pula">Pular fala</button><button class="btn sm" data-avz="texto">Ver em texto</button></span></div>`;
+      <span class="row" style="gap:6px">${GL.VOZJ?GL.VOZJ.botao():""}<button class="btn sm" data-avz="pausa">Pausar</button><button class="btn sm" data-avz="pula">Pular fala</button><button class="btn sm" data-avz="texto">Ver em texto</button></span></div>`;
   const q=s=>no.querySelector(s);this.$={svg:q("svg"),fundo:q(".fundo"),rigs:q(".rigs"),frente:q(".frente"),fl:q(".flashes"),tela:q(".flashTela"),q:q(".q"),qWho:q(".qWho"),qTxt:q(".qTxt"),
     a:q(".a"),aBody:q(".aBody"),painel:q(".painel"),pOpts:q(".pOpts"),strap:q(".strap"),sub:q(".sub"),bPausa:q('[data-avz="pausa"]')};
   no.addEventListener("click",e=>{const b=e.target.closest("[data-avz]");if(!b)return;const a=b.dataset.avz;

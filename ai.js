@@ -128,7 +128,7 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   if(c.att&&c.att.commit&&ph===1&&c.att.side===ins&&A&&dA<CARL*(c.att.go?2.3:1.6)){m*=1+.02*(.6+(c.d.a.ovt*.5+(c.d.a.brk||75)*.5)/250)*(c.att.go?1.35:1);
     if(!c.diveRoll){c.diveRoll=true;if(rnd()<.055*(1+R.w*3)*(1.25-(c.d.a.ovt*.4+(c.d.a.brk||75)*.6)/120)*(.6+aggrEff(c,A))*(c.tyre.wear>.6?1.5:1)*(c.att.go?(dA>CARL*1.6?2.2:1.4):1))lockUp(c,A)}}
   // energia elétrica nas retas: boost, defesa, recarga e clipping (bateria vazia no fim da reta)
-  if(ph===0&&c.v>40&&R.started&&!R.sc&&!R.red){const dep=Math.min(1.42,deployRate(c)*planK(c));m*=1+.019*(dep-1)/.35+(c.ovMode?.014:0)-(c.batt<4?.045:0);c.batt-=dt*1.08*dep*(c.ovMode?.8:1)*(1-((c.d.a.ers||75)-75)*.003);c.clip=c.batt<4}else c.clip=false;
+  if(ph===0&&c.v>40&&R.started&&!R.sc&&!R.red){const dep=Math.min(1.42,deployRate(c)*planK(c));c.depNow=dep;m*=1+.019*(dep-1)/.35+(c.ovMode?.014:0);/* bateria vazia: o motor (motor.js) perde o elétrico e o carro não chega à velocidade */c.batt-=dt*1.08*dep*(c.ovMode?.8:1)*(1-((c.d.a.ers||75)-75)*.003);c.clip=c.batt<4}else{c.clip=false;c.depNow=1}
   if(c.ers==="save"&&ph===0)c.batt+=dt*.45;
   // reflexo: carro rodado, parado ou destroços à frente (desvia para o lado livre ou freia)
   {const hz=hazardAvoid(c);c.emerg=false;c.hzYT=null;if(hz&&!hz.late){if(hz.yT!=null){yT=hz.yT;c.hzYT=hz.yT;c.emerg=true;c.bypass=true}if(hz.cap!=null){c.hzCap=hz.cap;c.emerg=true}else c.hzCap=null}else c.hzCap=null}

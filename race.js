@@ -196,7 +196,7 @@ function recalc(c){const w=R.w,ty=c.tyre;let mu=tyreMu(ty.c,w,ty.wear,ty.temp)*d
   if(c.lap>R.L*.7&&c.d.a.fitness<70)mu*=1-(70-c.d.a.fitness)*.0002;
   c.muBase=mu;if(typeof dynMuK==="function")mu*=dynMuK(c);c.mu=mu;// o perfil já usa a aderência que sobra com o dano (o piloto anda dentro do que o carro aguenta)
   const ph=c.ph;ph.mass=PH.mass+c.fuel*R.C.laps/R.L;const p=speedProfile(R.geo,ph,mu,4.0,R.geo.gk,c.prof);c.prof=p;
-  let extra=ty.grain*.5+ty.blister*.8+(ty.punct?22:0)+(ty.flat?.15:0)+((c.dmg.gear||0)*.45+(c.dmg.body||0)*.35+(c.dmg.wing||0)*.25+(c.dmg.rwing||0)*.3)*realK(c,"dmg")/* asa, assoalho e suspensão agora tiram aderência no núcleo de dinâmica; aqui sobra só o arrasto e o câmbio */+(c.brakeHot>0?.3:0)+c.noise;
+  let extra=ty.grain*.5+ty.blister*.8+(ty.punct?22:0)+(ty.flat?.15:0)+((c.dmg.gear||0)*.25/* o câmbio avariado agora também corta potência nas trocas (motor.js) */+(c.dmg.body||0)*.35+(c.dmg.wing||0)*.25+(c.dmg.rwing||0)*.3)*realK(c,"dmg")/* asa, assoalho e suspensão agora tiram aderência no núcleo de dinâmica; aqui sobra só o arrasto e o câmbio */+(c.brakeHot>0?.3:0)+c.noise;
   c.base=p.t+extra;c.dep=p.deploy;ersK(c);c.Ls=c.Ls==null?c.L:c.Ls*.6+c.L*.4}
 // energia extra/menor muda o tempo sem recalcular o perfil (≈0,32 s por MJ)
 function ersK(c){c.k=c.prof.t/c.base;c.L=c.base}

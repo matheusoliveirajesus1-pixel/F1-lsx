@@ -715,15 +715,12 @@ P3.prepara=function(){try{if(typeof TRACKGEO!=="undefined"&&TRACKGEO&&TRACKGEO.p
 function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"};const B=new MB();const SB=new MB();B.somb=SB;const AT=atlasPista();const GC=(typeof GROUND!=="undefined"&&GROUND[th.g])||["#3D7A3B","#478A43","#4E9449"];
   const urb=/urban/i.test(th.g||"");const CI=typeof CIRCUITS!=="undefined"?CIRCUITS.find(c=>c.id===g.id):null;const street=!!(CI?CI.street:(typeof R!=="undefined"&&R&&R.C&&R.C.street));
   // relevo: altura da pista ao longo da volta (perfis aproximados dos circuitos reais; nos outros, ondulação suave)
-  const ELEV={spielberg:[[0,0],[.06,14],[.12,30],[.2,38],[.27,26],[.36,10],[.45,4],[.55,10],[.66,16],[.76,8],[.88,2],[1,0]],
-    spa:[[0,0],[.04,-6],[.07,-10],[.1,8],[.16,30],[.25,34],[.36,14],[.5,-4],[.62,-12],[.75,2],[.86,6],[1,0]],
-    interlagos:[[0,0],[.06,-8],[.14,-16],[.3,-12],[.45,-4],[.6,-12],[.72,-4],[.85,8],[1,0]],
-    austin:[[0,0],[.03,24],[.08,20],[.2,10],[.35,4],[.55,2],[.7,8],[.85,4],[1,0]],
-    suzuka:[[0,0],[.1,6],[.25,16],[.4,22],[.55,14],[.7,8],[.85,4],[1,0]],
-    barcelona:[[0,0],[.15,-6],[.35,4],[.55,10],[.75,4],[1,0]],budapest:[[0,0],[.2,-8],[.4,2],[.6,8],[.8,-2],[1,0]],
-    zandvoort:[[0,0],[.1,6],[.3,10],[.5,4],[.7,8],[1,0]],mexico:[[0,0],[.3,3],[.6,-2],[1,0]],baku:[[0,0],[.45,0],[.55,14],[.62,10],[1,0]],
-    monaco:[[0,0],[.12,20],[.2,30],[.3,26],[.42,4],[.6,2],[1,0]]};
-  const ko=ELEV[g.id];const elev=f=>{f=fr(f);if(!ko)return(1.6*Math.sin(f*6.283*2+.7)+1.1*Math.sin(f*6.283*5+1.9))*(street?0:1);let i=0;while(i<ko.length-2&&ko[i+1][0]<f)i++;const a=ko[i],b=ko[i+1];const t=(f-a[0])/(b[0]-a[0]||1),s=t*t*(3-2*t);return a[1]+(b[1]-a[1])*s};
+  // relevo: a mesma altura que a física usa (relevo.js); sem a tabela, ondulação suave
+  const RLg=typeof relevoGeo==="function"?relevoGeo(typeof R!=="undefined"&&R&&R.geo&&R.geo.id===g.id?R.geo:{...g,N:M,len:g.len,C:CI||{street}}):null;
+  const elev=f=>{f=fr(f);if(RLg){const x=f*M,i=Math.floor(x)%M,k=x-Math.floor(x);return RLg.zs[i]*(1-k)+RLg.zs[(i+1)%M]*k}return(1.6*Math.sin(f*6.283*2+.7)+1.1*Math.sin(f*6.283*5+1.9))*(street?0:1)};
+  // inclinação lateral (curvas inclinadas): o lado de dentro fica mais baixo; tb[i] = tangente, + quando a esquerda (+lado) é mais baixa
+  const tb=new Float32Array(M);if(RLg)for(let i=0;i<M;i++)tb[i]=Math.tan(RLg.ph[i]);P3.tb=tb;
+  const bnk=(i,L)=>{const Lc=Math.max(-(TW+5*U),Math.min(TW+5*U,L));return-Lc*tb[i]};P3.bnk=bnk;
   const ze=new Float32Array(M);for(let i=0;i<M;i++)ze[i]=elev(i/M)*m;P3.ze=ze;
   // terreno: grade de alturas; perto da pista acompanha a pista, longe sobe em morros e montanhas conforme o lugar
   const bb0=g.bb,E0=Math.max(bb0.x1-bb0.x0,bb0.y1-bb0.y0)*1.6+3000,gcx=(bb0.x0+bb0.x1)/2,gcy=(bb0.y0+bb0.y1)/2;const CEL=40,NX=Math.ceil(2*E0/CEL)+1,X0=gcx-E0,Y0=gcy-E0;
@@ -780,7 +777,7 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
   for(const gr of(g.gravel||[])){const wv=gr.wall||[];const hT=1*m;for(let k=0;k<wv.length-1;k++){const a=wv[k],b=wv[k+1];if(Math.hypot(b.x-a.x,b.y-a.y)>60*m)continue;const c=hex(k%2?"#F2F2F2":"#D32F2F");
     const ha=H(a.x,a.y),hb=H(b.x,b.y);B.quad([a.x,a.y,ha],[b.x,b.y,hb],[b.x,b.y,hT+hb],[a.x,a.y,hT+ha],c,14);const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1,ox=-dy/L*1.1*m*gr.o,oy=dx/L*1.1*m*gr.o;const px=-oy/1.1*0,py=0;B.quad([a.x-ox*.95,a.y-oy*.95,hT+ha],[b.x-ox*.95,b.y-oy*.95,hT+hb],[b.x+ox*.95,b.y+oy*.95,hT+hb],[a.x+ox*.95,a.y+oy*.95,hT+ha],hex("#1D1D1D"),2);B.quad([a.x-ox*.45,a.y-oy*.45,hT+.05+ha],[b.x-ox*.45,b.y-oy*.45,hT+.05+hb],[b.x+ox*.45,b.y+oy*.45,hT+.05+hb],[a.x+ox*.45,a.y+oy*.45,hT+.05+ha],c,14)}}
   // asfalto e linhas brancas
-  const N=M*2,pos=(f,L)=>{const p=trackPos(f,L);return[p.x,p.y,zAt(f)]};const lado=L=>Array.from({length:N},(_,k)=>pos(k/N,L));const plano=a=>a.map(q=>[q[0],q[1]]);
+  const N=M*2,pos=(f,L)=>{const p=trackPos(f,L),x=fr(f)*M,i=Math.floor(x)%M,k=x-Math.floor(x);return[p.x,p.y,zAt(f)+bnk(i,L)*(1-k)+bnk((i+1)%M,L)*k]};const lado=L=>Array.from({length:N},(_,k)=>pos(k/N,L));const plano=a=>a.map(q=>[q[0],q[1]]);
   B.faixa(lado(TW+5*U),lado(TW-.5*U),.0,hex(street?"#9AA1A9":"#2E7D32"),street?13:11,true);B.faixa(lado(-TW+.5*U),lado(-TW-5*U),.0,hex(street?"#9AA1A9":"#2E7D32"),street?13:11,true);
   {const cS=hex(street?"#8A9098":"#2A6B2E");for(const sg of[1,-1]){const Lb=sg*(TW+5*U),Pa=lado(Lb);for(let k=0;k<N;k++){const a=Pa[k],b=Pa[(k+1)%N];const d=4*m;
       if(sg>0)B.quad([a[0],a[1],a[2]-d],[b[0],b[1],b[2]-d],[b[0],b[1],b[2]],[a[0],a[1],a[2]],cS,street?13:11);else B.quad([b[0],b[1],b[2]-d],[a[0],a[1],a[2]-d],[a[0],a[1],a[2]],[b[0],b[1],b[2]],cS,street?13:11)}}}
@@ -792,14 +789,14 @@ function montaPista(){const g=TRACKGEO,S=g.scn||{},M=g.M,m=WS,th=S.th||{g:"park"
   // zebras
   for(const k of(S.kerbs||[])){const off=TW-.55*m;for(let q=k.a;q<k.b;q++){const i=(q%M+M)%M,j=(i+1)%M;const p=g.path[i],pp=g.path[j],h=g.heading[i],h2=g.heading[j];
     const at=(P,H,L)=>[P.x-Math.sin(H)*L*k.s,P.y+Math.cos(H)*L*k.s];const a0=at(p,h,off-.8*m),a1=at(p,h,off+.8*m),b0=at(pp,h2,off-.8*m),b1=at(pp,h2,off+.8*m);
-    const c=q%2?hex("#F2F2F2"):hex(street?"#D84040":"#E53935");const za=zp[i],zb2=zp[j];B.quad([a0[0],a0[1],.12+za],[b0[0],b0[1],.12+zb2],[b1[0],b1[1],.12+.25*m+zb2],[a1[0],a1[1],.12+.25*m+za],c,14)}}
+    const c=q%2?hex("#F2F2F2"):hex(street?"#D84040":"#E53935");const za=zp[i]+bnk(i,k.s*off),zb2=zp[j]+bnk(j,k.s*off);B.quad([a0[0],a0[1],.12+za],[b0[0],b0[1],.12+zb2],[b1[0],b1[1],.12+.25*m+zb2],[a1[0],a1[1],.12+.25*m+za],c,14)}}
   // muros / barreiras
   const suav=a=>{const o=new Array(M),RW=20;for(let i=0;i<M;i++){const w=[];for(let k=-RW;k<=RW;k++){const v=a[((i+k)%M+M)%M];if(v!=null&&isFinite(v))w.push(v)}if(w.length<RW){o[i]=null;continue}w.sort((x,y)=>x-y);const md=w[w.length>>1];const v=a[i];o[i]=v==null||!isFinite(v)?null:Math.abs(v-md)>3*m?null:v}return o};
   // muro paralelo à pista por dentro de curva fechada: a linha "dobra" e forma um laço; tiramos os pontos que ficam mais perto da pista do que deveriam
   const laco=(a,sg)=>{const o=a.slice();for(let i=0;i<M;i++){const L=a[i];if(L==null)continue;const p0=g.path[i],h=g.heading[i];const x=p0.x-Math.sin(h)*sg*L,y=p0.y+Math.cos(h)*sg*L;
       for(let k=-120;k<=120;k+=2){const q=g.path[((i+k)%M+M)%M];if(Math.hypot(q.x-x,q.y-y)<L*.9){o[i]=null;break}}}return o};
   P3.wlVis={};for(const sg of[1,-1]){const a0=S.wl&&S.wl[sg];if(!a0)continue;const a=laco(Array.from(a0),sg);P3.wlVis[sg]=a;/* o muro desenhado é o mesmo da física (scene.js já tira as dobras) */const hW=(street?2.2:1)*m;let prev=null;
-    for(let i=0;i<=M;i++){const ii=i%M,L=a[ii];if(L==null||!isFinite(L)){prev=null;continue}const p=g.path[ii],h=g.heading[ii];const x=p.x-Math.sin(h)*sg*L,y=p.y+Math.cos(h)*sg*L,zz=zp[ii];
+    for(let i=0;i<=M;i++){const ii=i%M,L=a[ii];if(L==null||!isFinite(L)){prev=null;continue}const p=g.path[ii],h=g.heading[ii];const x=p.x-Math.sin(h)*sg*L,y=p.y+Math.cos(h)*sg*L,zz=zp[ii]+bnk(ii,sg*L);
       if(prev&&Math.hypot(x-prev[0],y-prev[1])<12*m){const z0=prev[2];const c=(i>>1)%2?hex(street?"#C9CFD6":"#9AA3AD"):hex(street?"#B9C0C8":"#8E97A2");B.quad([prev[0],prev[1],z0],[x,y,zz],[x,y,hW+zz],[prev[0],prev[1],hW+z0],c,13);{const h2=g.heading[ii],ox=-Math.sin(h2)*sg*.7*m,oy=Math.cos(h2)*sg*.7*m;B.quad([prev[0],prev[1],hW+z0],[x,y,hW+zz],[x+ox,y+oy,hW+zz],[prev[0]+ox,prev[1]+oy,hW+z0],hex(street?"#E1E5EA":"#B7BEC6"),13)}
         if(!street&&i%2)B.quad([prev[0],prev[1],hW*.62+z0],[x,y,hW*.62+zz],[x,y,hW*.8+zz],[prev[0],prev[1],hW*.8+z0],hex(i%4<2?"#D92B2B":"#F1F1F1"),14)}prev=[x,y,zz]}}
   // estrutura da ponte: muretas, laterais do tabuleiro e pilares fora da pista de baixo
@@ -874,10 +871,11 @@ const ID=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]),ID3=new Float32Arra
 const S_MM=15.9/3400,XC=7.6;
 function matCarro(p,E){const s=S_MM*CSC,c=Math.cos(p.h),si=Math.sin(p.h);const ax=-s*E[0],ay=-s*E[1],az=s*E[2],tx=XC*CSC*E[0];const pz=p.z||0,pt=p.pt||0,cp=Math.cos(pt),sp=Math.sin(pt);
   // mundo = T·R·(diag(ax,ay,az)·m + (tx,0,0)); R inclui a inclinação da rampa
-  const f=[c*cp,si*cp,sp],l=[-si,c,0],u=[-c*sp,-si*sp,cp];
-  const M=new Float32Array([f[0]*ax,f[1]*ax,f[2]*ax,0,l[0]*ay,l[1]*ay,0,0,u[0]*az,u[1]*az,u[2]*az,0,p.x+f[0]*tx,p.y+f[1]*tx,pz+f[2]*tx,1]);
-  const N=new Float32Array([f[0]/ax*s,f[1]/ax*s,f[2]/ax*s,l[0]/ay*s,l[1]/ay*s,0,u[0]/az*s,u[1]/az*s,u[2]/az*s]);return[M,N]}
-function posCarro(c){const p=carWorld(c);const o={x:p.x,y:p.y,h:p.h};if(P3.zAt&&!c.pit&&c.prog!=null){const L=TRACKGEO.len,d=4*WS/L;o.z=P3.zAt(c.prog);o.pt=Math.atan2(P3.zAt(c.prog+d)-P3.zAt(c.prog-d),8*WS);const lat=Math.abs((c.y||0)*WS),borda=TW+5*U;if(lat>borda&&P3.H){const t=Math.min(1,(lat-borda)/(3*U)),s2=t*t*(3-2*t);o.z+=(Math.max(P3.H(p.x,p.y)-.25,o.z-6*WS)-o.z)*s2}}else if(P3.Hc)o.z=P3.Hc(p.x,p.y);return o}
+  const f=[c*cp,si*cp,sp],l0=[-si,c,0],u0=[-c*sp,-si*sp,cp];/* inclinação lateral da pista: o carro rola junto (lado de dentro mais baixo) */const rl=p.rl||0,cr=Math.cos(rl),sr=Math.sin(rl);
+  const l=[l0[0]*cr-u0[0]*sr,l0[1]*cr-u0[1]*sr,l0[2]*cr-u0[2]*sr],u=[u0[0]*cr+l0[0]*sr,u0[1]*cr+l0[1]*sr,u0[2]*cr+l0[2]*sr];
+  const M=new Float32Array([f[0]*ax,f[1]*ax,f[2]*ax,0,l[0]*ay,l[1]*ay,l[2]*ay,0,u[0]*az,u[1]*az,u[2]*az,0,p.x+f[0]*tx,p.y+f[1]*tx,pz+f[2]*tx,1]);
+  const N=new Float32Array([f[0]/ax*s,f[1]/ax*s,f[2]/ax*s,l[0]/ay*s,l[1]/ay*s,l[2]/ay*s,u[0]/az*s,u[1]/az*s,u[2]/az*s]);return[M,N]}
+function posCarro(c){const p=carWorld(c);const o={x:p.x,y:p.y,h:p.h};if(P3.zAt&&!c.pit&&c.prog!=null){const L=TRACKGEO.len,d=4*WS/L;o.z=P3.zAt(c.prog);o.pt=Math.atan2(P3.zAt(c.prog+d)-P3.zAt(c.prog-d),8*WS);if(P3.tb&&P3.bnk){const M=P3.tb.length,i=Math.floor(fr(c.prog)*M)%M;if(P3.tb[i]){o.z+=P3.bnk(i,(c.y||0)*WS);o.rl=Math.atan(P3.tb[i])*Math.cos((c.psi||0))}}const lat=Math.abs((c.y||0)*WS),borda=TW+5*U;if(lat>borda&&P3.H){const t=Math.min(1,(lat-borda)/(3*U)),s2=t*t*(3-2*t);o.z+=(Math.max(P3.H(p.x,p.y)-.25,o.z-6*WS)-o.z)*s2}}else if(P3.Hc)o.z=P3.Hc(p.x,p.y);return o}
 // ---------- câmera isométrica: a mesma projeção do toScreen do jogo
 function isoVP(cw,ch){const Z=CAM.z,A=2*Z/cw,Bc=2*Z/ch,ox=-CAM.x*Z+cw/2+(CAM.sx||0),oy=-CAM.y*Z+ch/2+(CAM.sy||0);const S=ISO_S,C=ISO_C;
   const dc=CAM.y/S,RG=(ch/Z)/S*1.6+600;
@@ -949,7 +947,8 @@ function suspensao(s,c,v,ax,ay,dt){const Lp=typeof LOAD!=="undefined"?LOAD:{L:3.
   const down=.5*1.2*4.2*cl*v*v,dx=m*Math.max(-60,Math.min(25,ax))*Lp.H/Lp.L/2,lat=m*Math.max(-60,Math.min(60,ay))*Lp.H/Lp.TR,dF=lat*Lp.RF/2,dR=lat*(1-Lp.RF)/2;
   const fa=down*Lp.AF/2,ra=down*(1-Lp.AF)/2;
   // ay > 0 = curva para a esquerda: carrega as rodas da direita (y > 0 no modelo). Ordem: dianteira esq., dianteira dir., traseira esq., traseira dir.
-  const F=[-dx-dF,-dx+dF,dx-dR,dx+dR],A=[fa,fa,ra,ra];if(!s.sz){s.sz=[0,0,0,0];s.sv=[0,0,0,0]}const w=2*Math.PI*SUSP.HZ;
+  const F=[-dx-dF,-dx+dF,dx-dR,dx+dR],A=[fa,fa,ra,ra];
+  /* relevo: compressão (fundo de vale) afunda, crista estica; ondulação do asfalto faz as rodas trabalharem */const rl=c._rel;if(rl&&v>3){const cz=m*v*v*rl.kv/4,pz=(c.prog||0)*((typeof R!=="undefined"&&R&&R.geo&&R.geo.len)||5000);for(let i=0;i<4;i++)F[i]+=cz+rl.bu*m*9.81*.12*Math.min(1,v/40)*Math.sin(pz*.9+i*1.7+(i>1?2.1:0))*Math.sin(pz*.37+i)}if(!s.sz){s.sz=[0,0,0,0];s.sv=[0,0,0,0]}const w=2*Math.PI*SUSP.HZ;
   for(let i=0;i<4;i++){const x=F[i]/SUSP.KV+A[i]/SUSP.KA;const alvo=x>0?SUSP.DESCE*Math.tanh(x/SUSP.DESCE):-SUSP.SOBE*Math.tanh(-x/SUSP.SOBE);let n=Math.ceil(dt/.016);const h=dt/n;
     while(n--){const a=w*w*(alvo-s.sz[i])-2*SUSP.ZETA*w*s.sv[i];s.sv[i]+=a*h;s.sz[i]+=s.sv[i]*h}
     s.sz[i]=Math.max(-SUSP.SOBE-8,Math.min(SUSP.DESCE+4,s.sz[i]))}}

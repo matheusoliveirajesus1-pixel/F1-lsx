@@ -20,28 +20,42 @@ function tyreMu(comp,wet,wear,temp){const T=TYRES[comp];let mu=T.mu;
 const LOAD={L:3.6,H:.3,WF:.453,AF:.44,TR:1.6,RF:.52,S:-2.6e-5,FZ0:3000,WT:1,TAU_X:.12,TAU_Y:.15};
 const PCACHE={};
 // perfil de velocidade (m/s) ao longo da volta; car={pw,cd,cl,mass}, mu, energia ERS (MJ), gk (aderência do circuito)
-function speedProfile(geo,car,mu,ersMJ,gk,out){ersMJ*=PH.ersK||1;const N=geo.N,ds=DS,k=geo.k;const m=car.mass,rho=PH.rho,g=PH.g;
+function speedProfile(geo,car,mu,ersMJ,gk,out){ersMJ*=PH.ersK||1;const N=geo.N,ds=DS,k=geo.k;const m=car.mass,g=PH.g;
+  /* relevo (relevo.js): rampa, compressão/crista, inclinação lateral, ondulação e altitude (ar mais fino) */const RL=typeof relevoGeo==="function"?relevoGeo(geo):null,rho=PH.rho*(RL?RL.rho:1);
   const kd=.5*rho*PH.cla*car.cl;const vmax=out&&out.vmax||new Float32Array(N);const v=out&&out.v||new Float32Array(N);
   const muE=mu*gk;const zone=geo.zoneMask;
-  for(let i=0;i<N;i++){const kap=Math.abs(k[i]);if(kap<1e-5){vmax[i]=110;continue}const den=m*kap-muE*kd;vmax[i]=den<=0?110:Math.min(110,Math.sqrt(muE*m*g/den))}
-  const pass=(Pw)=>{// para frente (aceleração) e para trás (frenagem)
+  const SN=RL?RL.sn:null,KV=RL?RL.kv:null,PHI=RL?RL.ph:null,BU=RL?RL.bu:null;
+  const gN=(i,vv)=>RL?Math.max(g*.35,g*Math.sqrt(1-SN[i]*SN[i])*Math.cos(PHI[i])+vv*vv*KV[i]):g;// carga "para o chão" sem a asa
+  const muI=(i,vv)=>BU?muE*(1-.03*BU[i]*Math.min(1,vv/70)):muE;
+  for(let i=0;i<N;i++){const kap=Math.abs(k[i]);if(kap<1e-5){vmax[i]=110;continue}
+    if(!RL){const den=m*kap-muE*kd;vmax[i]=den<=0?110:Math.min(110,Math.sqrt(muE*m*g/den));continue}
+    // curva inclinada para dentro (pe>0): a gravidade ajuda a fazer a curva e o pneu fica mais carregado; compressão/crista mudam a carga
+    // v²·κ·cosφ − g·senφ ≤ μ·(g·cosθ·cosφ + v²·κv + kd·v²/m)  →  resolvido em v² (μ com a ondulação na velocidade da iteração)
+    // (a carga extra que a própria curva põe no pneu inclinado, v²κ·senφ, fica de fora: o pneu perde rendimento com carga, e com ela
+    // a conta daria curvas inclinadas absurdamente rápidas; o mesmo vale no núcleo de dinâmica)
+    const pe=PHI[i]*Math.sign(k[i]||1),cp=Math.cos(pe),sp=Math.sin(pe),ct=Math.sqrt(1-SN[i]*SN[i]);let vv=60;
+    for(let it=0;it<3;it++){const mu_=muI(i,vv),den=kap*cp-mu_*KV[i]-mu_*kd/m,num=mu_*g*ct*cp+g*sp;vv=den<=0?110:Math.min(110,Math.sqrt(Math.max(1,num/den)))}vmax[i]=vv}
+  /* motor a combustão pela rotação na marcha engatada (motor.js); o elétrico entra inteiro */const MC=typeof motorCurvaV==="function"?motorCurvaV:null;
+  const pass=(Pi,Pe)=>{// para frente (aceleração) e para trás (frenagem)
     let tpl=0;v[0]=vmax[0];
     for(let it=0;it<2;it++)for(let i=0;i<N;i++){const j=(i+1)%N;const vi=Math.max(5,v[i]);const cda=(zone[i]?PH.cdaStraight:PH.cdaCorner)*car.cd;
-      const lat=vi*vi*Math.abs(k[i]),amax=muE*(g+kd*vi*vi/m);const comb=Math.sqrt(Math.max(.04,1-(lat/amax)**2));
-      let fp=Pw/vi,ft=amax*m*comb;/* acelerar alivia a dianteira (dyn.js, LOAD): a frente precisa continuar segurando a curva */if(lat>.5){const Ff=m*g*LOAD.WF+kd*vi*vi*LOAD.AF,aF=Math.max(0,(1-lat/amax)*Ff*LOAD.L/(m*LOAD.H*Math.max(.01,LOAD.WT)));ft=Math.min(ft,aF*m)}const pl=fp<ft;const a=(Math.min(fp,ft)-.5*rho*cda*vi*vi)/m;
+      const lat=Math.max(0,vi*vi*Math.abs(k[i])-(RL?g*Math.sin(PHI[i]*Math.sign(k[i]||1)):0)),amax=muI(i,vi)*(gN(i,vi)+kd*vi*vi/m);const comb=Math.sqrt(Math.max(.04,1-(lat/amax)**2));
+      let fp=(Pi*(MC?MC(vi):1)+Pe)/vi,ft=amax*m*comb;/* acelerar alivia a dianteira (dyn.js, LOAD): a frente precisa continuar segurando a curva */if(lat>.5){const Ff=m*g*LOAD.WF+kd*vi*vi*LOAD.AF,aF=Math.max(0,(1-lat/amax)*Ff*LOAD.L/(m*LOAD.H*Math.max(.01,LOAD.WT)));ft=Math.min(ft,aF*m)}const pl=fp<ft;const a=(Math.min(fp,ft)-.5*rho*cda*vi*vi)/m-(RL?g*SN[i]:0);/* subida segura, descida empurra */
       let vn=Math.sqrt(Math.max(1,vi*vi+2*a*ds));if(vn>vmax[j])vn=vmax[j];if(it===1)v[j]=vn;else v[j]=vn;if(it===1&&pl)tpl+=ds/vi}
     for(let it=0;it<2;it++)for(let i=N-1;i>=0;i--){const j=(i+1)%N;const vj=v[j];const cda=(zone[i]?PH.cdaStraight:PH.cdaCorner)*car.cd;
-      const ab=Math.min(PH.decMax,PH.muBrake*(car.bk||1)*muE*(g+kd*vj*vj/m)+.5*rho*cda*vj*vj/m);/* o piloto não freia acima de ~6 g (mesmo limite do núcleo de dinâmica) */const vb=Math.sqrt(vj*vj+2*ab*ds);if(v[i]>vb)v[i]=vb}
+      const ab=Math.max(2,Math.min(PH.decMax,PH.muBrake*(car.bk||1)*muI(i,vj)*(gN(i,vj)+kd*vj*vj/m)+.5*rho*cda*vj*vj/m)+(RL?g*SN[i]:0));/* subida ajuda a frear, descida atrapalha *//* o piloto não freia acima de ~6 g (mesmo limite do núcleo de dinâmica) */const vb=Math.sqrt(vj*vj+2*ab*ds);if(v[i]>vb)v[i]=vb}
     return tpl};
-  const iceP=PH.ice*car.pw;let tpl=pass(iceP);
+  const iceP=PH.ice*car.pw;let tpl=pass(iceP,0);
   const need=PH.ers/1e6*tpl;const d=Math.min(1,ersMJ/Math.max(.01,need));
-  pass(iceP+PH.ers*d);
+  pass(iceP,PH.ers*d);
   let t=0;for(let i=0;i<N;i++)t+=ds/((v[i]+v[(i+1)%N])/2);
   return{v,vmax,t,deploy:d}}
 function prepGeo(geo){const m=new Uint8Array(geo.N);geo.zones.forEach(([a,b])=>{for(let i=a;;i=(i+1)%geo.N){m[i]=1;if(i===b)break}});geo.zoneMask=m}
 // calibra a aderência do circuito para o tempo de volta de referência (melhor carro, macio novo, sem combustível)
+// o perfil é a volta perfeita; com o motor limitando a retomada (motor.js), as pequenas imperfeições do piloto custam ~0,5%
+const CAL_PERFEITA=.995;
 function calibrate(geo){if(geo.gk)return geo.gk;prepGeo(geo);const car={pw:1.04,cd:.98,cl:1.06,mass:PH.mass+2};const mu=tyreMu("S",0,0,null);
-  let lo=.6,hi=2.2;for(let it=0;it<28;it++){const mid=(lo+hi)/2;const t=speedProfile(geo,car,mu,4.2,mid).t;if(t>geo.C.target)lo=mid;else hi=mid}geo.gk=(lo+hi)/2;return geo.gk}
+  let lo=.6,hi=2.2;for(let it=0;it<28;it++){const mid=(lo+hi)/2;const t=speedProfile(geo,car,mu,4.2,mid).t;if(t>geo.C.target*CAL_PERFEITA)lo=mid;else hi=mid}geo.gk=(lo+hi)/2;return geo.gk}
 function gearRpm(v){const kmh=v*3.6;let g=0;while(g<7&&kmh>PH.gears[g]*.985)g++;const rpm=Math.min(PH.ratioRpm,Math.max(4200,PH.ratioRpm*kmh/PH.gears[g]));return{gear:g+1,rpm}}
 function carPhys(team,driver){const c=team.car;const ph={pw:1+(c.eng-85)*.0045,cd:1-(c.aero-85)*.0012-(c.chas-85)*.0008,cl:1+(c.aero-85)*.0055+(c.chas-85)*.002,bk:1+((c.brk||85)-85)*.003,mass:PH.mass};
   /* ajustes finos da oficina (só a equipe do jogador, só na carreira) */const T=typeof tuneFor==="function"?tuneFor(team):null;return T?tuneApply(ph,T):ph}

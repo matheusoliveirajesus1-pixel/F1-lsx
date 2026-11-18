@@ -8,7 +8,7 @@ function sk(c,k){const a=c.d.a;if(a[k]!=null)return a[k];
     case"ctrl":return a.wet*.35+a.mental*.3+a.cons*.35;case"craft":return a.ovt*.5+a.def*.5;default:return 75}}
 // corridas curtas concentram os acontecimentos de uma corrida inteira
 function riskK(){return clamp(1/Math.sqrt((G&&G.settings&&G.settings.dist)||.25),1,2)}
-function riskCheck(c,ev,i){if(!R.started||c.pit||c.parked||c.ex||(c.dyn&&c.dyn.cmd.length)||c.lose>.5||!running(c))return;const AI=R.geo.ai,a=c.d.a,T=TYRES[c.tyre.c],w=wetAt(c);
+function riskCheck(c,ev,i){if(!R.started||c.man||c.pit||c.parked||c.ex||(c.dyn&&c.dyn.cmd.length)||c.lose>.5||!running(c))return;const AI=R.geo.ai,a=c.d.a,T=TYRES[c.tyre.c],w=wetAt(c);
   let push={attack:1.7,normal:1,save:.55}[c.mode]||1;
   if(ev==="brake"&&c.att&&c.att.commit)push*=(c.att.side===AI.insN[i]?2.3:1.5)*(c.att.go?1.25:1);// mergulho
   if(ev==="brake"&&c.defend)push*=1.4;

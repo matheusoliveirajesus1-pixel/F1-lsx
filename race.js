@@ -419,7 +419,7 @@ function step(dt){
     if(!c.dyn)dynInit(c);
     if(c.pit){pitMove(c,dt);continue}
     if(c.hold){if(R.t-R.go>1.4)releasePlayer(c,1.4);else{c.v=0;continue}}
-    const f=fr(c.prog),i=Math.floor(f*N)%N;const m=aiDrive(c,dt);
+    const f=fr(c.prog),i=Math.floor(f*N)%N;const m=aiDrive(c,dt);/* o jogador está guiando (volante.js)? */const vm=c.isP&&typeof volCmd==="function"?volCmd(c):null;
     let v1=speedAt(c,f)*c.k*m,hard=c.hard;
     if(R.yellows.length){const yk=yellowK(c);if(yk<1)v1*=yk}
     if(!R.sc&&c.unlap)c.unlap=null;
@@ -431,12 +431,14 @@ function step(dt){
     if(typeof ccAdj==="function")v1=ccAdj(c,v1,i);
     if(v1>c.vCap){v1=c.vCap;hard=true}
     const brk=geo.ai.ph[i]===1||c.prof.v[(i+1)%N]<c.prof.v[i]-.02;
-    if(typeof revStep==="function"&&!c.ex)revStep(c,dt,v1);
+    if(typeof revStep==="function"&&!c.ex&&!vm)revStep(c,dt,v1);
     // o núcleo de dinâmica move o carro (única autoridade); na recuperação de uma escapada o alvo é voltar à pista
     let yT=c.yT;if(R.sc&&R.sc.unlapOn&&!c.emerg&&!(toPit&&pitDist(c)<600))yT=c.unlap?-4.4:2.4;/* quem vai ao box sai da fila para pegar a entrada (antes perdia a entrada volta após volta e rodava no aro até quebrar) */// retardatários passando: a fila anda pela direita e deixa a esquerda livre
     if(c.tyre.rim){/* no aro o eixo quase não segura: devagar também nas curvas (antes só limitava a 137 km/h e o carro saía reto na curva antes do box, volta após volta) */const vr=Math.min(38,speedAt(c,f)*.62);if(v1>vr){v1=vr;hard=true}}// rodando no aro
-    if(c.ex){const rc=dynRecover(c);v1=rc.v;yT=rc.y;hard=true}
-    let dopt={em:!!c.emerg};if(R.rs&&c.rsSlot!=null&&!c.ex){const r=rsDrive(c,dt);if(r.stop){c.v=0;continue}v1=r.v;yT=r.y;hard=true;dopt={amax:6,dmax:12,sMax:c.rsSlot}}
+    if(c.ex&&!vm){const rc=dynRecover(c);v1=rc.v;yT=rc.y;hard=true}
+    let dopt={em:!!c.emerg};
+    /* jogador guiando: o alvo de velocidade só serve ao freio automático (curva, bandeira amarela, carro danificado; nunca o tráfego) */
+    if(vm){let va=speedAt(c,f)*(c.tyre.rim?.62:1);if(R.yellows.length){const yk=yellowK(c);if(yk<1)va*=yk}v1=Math.min(va,c.vCap);dopt={man:vm,vCap:c.vCap};if(c.ex&&c.ex.ph==="stop"&&vm.thr>.3)c.ex.ph="rejoin"}if(R.rs&&c.rsSlot!=null&&!c.ex){const r=rsDrive(c,dt);if(r.stop){c.v=0;continue}v1=r.v;yT=r.y;hard=true;dopt={amax:6,dmax:12,sMax:c.rsSlot}}
     const before=Math.floor(c.prog),pb=c.prog;dynStep(c,dt,Math.max(0,v1),hard,brk,yT,dopt);if(!running(c))continue;
     let ds=(c.prog-pb)*geo.len;secCheck(c,pb);
     if(toPit){const E=Math.floor(pb-R.pitLane.fe)+1+R.pitLane.fe;if(pb<E&&c.prog>=E){

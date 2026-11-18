@@ -893,13 +893,14 @@ function isoVP(cw,ch){const Z=CAM.z,A=2*Z/cw,Bc=2*Z/ch,ox=-CAM.x*Z+cw/2+(CAM.sx|
   const dc=CAM.y/S,RG=(ch/Z)/S*1.6+600;
   return new Float32Array([A*C,-Bc*S,-1/RG,0, -A*C,-Bc*S,-1/RG,0, 0,Bc,-2*S/RG,0, 2*ox/cw-1,1-2*oy/ch,dc/RG,1])}
 // ---------- câmera
-const CAMST={};const MODO={chase:1,tv:2,onboard:3,aerea:4,grid:5};
+const CAMST={};const MODO={chase:1,tv:2,onboard:3,aerea:4,grid:5,topo:6};
 function camera(c,p,dt,md,chave){const cam=CAMST[chave]||(CAMST[chave]={});const m=WS,dir=[Math.cos(p.h),Math.sin(p.h),0],z0=p.z||0;let e,t,fov=55;const k=CSC/.82;
   if(md===1){e=[p.x-dir[0]*9*m*k,p.y-dir[1]*9*m*k,3.1*m+z0];t=[p.x+dir[0]*7*m,p.y+dir[1]*7*m,.9*m+z0];fov=52}
   else if(md===2){const cs=TRACKGEO.cams||[];let best=null,bd=1e18;for(const q of cs){const d=Math.hypot(q.x-p.x,q.y-p.y);const ahead=(q.x-p.x)*dir[0]+(q.y-p.y)*dir[1];const sc=d-(ahead>0?d*.4:0);if(sc<bd){bd=sc;best=q}}
     if(best){e=[best.x,best.y,9*m];t=[p.x,p.y,.6*m+z0];const d=Math.hypot(best.x-p.x,best.y-p.y);fov=Math.max(7,Math.min(48,2*Math.atan(16*m/d)*180/Math.PI))}else{e=[p.x-dir[0]*30*m,p.y-dir[1]*30*m,12*m];t=[p.x,p.y,z0]}}
   else if(md===3){const sp=Math.sin(p.pt||0);e=[p.x+dir[0]*.2*m,p.y+dir[1]*.2*m,1.25*m+z0];t=[p.x+dir[0]*30*m,p.y+dir[1]*30*m,.7*m+z0+sp*30*m];fov=68}
   else if(md===5){const l=[-Math.sin(p.h),Math.cos(p.h)];e=[p.x+l[0]*5*m-dir[0]*2.5*m,p.y+l[1]*5*m-dir[1]*2.5*m,1.4*m+z0];t=[p.x+dir[0]*2.5*m,p.y+dir[1]*2.5*m,.45*m+z0];fov=46}
+  else if(md===6){/* de cima, girando com o carro (para guiar vendo a pista como num mapa) */e=[p.x-dir[0]*16*m,p.y-dir[1]*16*m,70*m+z0];t=[p.x+dir[0]*18*m,p.y+dir[1]*18*m,z0];fov=50}
   else{e=[p.x-dir[0]*45*m,p.y-dir[1]*45*m,38*m+z0];t=[p.x+dir[0]*8*m,p.y+dir[1]*8*m,z0];fov=48}
   /* câmera livre para capturas de teste (tests/pistasshots.js) */if(P3.camForce){const F=P3.camForce;e=F.e;t=F.t;fov=F.fov||50}
   const corte=cam.alvo!==c||cam.md!==md||!cam.e||(cam.tt&&performance.now()-cam.tt>500);cam.alvo=c;cam.md=md;cam.tt=performance.now();const a=corte||md===3||md===2?1:1-Math.exp(-dt*7);
@@ -1100,6 +1101,7 @@ function particulas(o,VP,Hpx){if(!o.pp){o.pp=prog(PVS,PFS);o.pb=gl.createBuffer(
     if((R.w||0)>.3&&(c.v||0)>25)for(let k=0;k<10;k++){const d=(1.5+k*.8)*m*2;add(p.x-dx*d+(sh(k,3)-.5)*1.6*m,p.y-dy*d+(sh(k,4)-.5)*1.6*m,z0+.35*m+k*.08*m,(1.4+k*.3)*m,.86,.88,.9,.28*(1-k/10)*R.w)}}
   for(const e of(R.fxq||[])){const age=R.t-e.t0;if(age<0||age>1.6||e.f==null)continue;const q=trackPos(e.f,e.lat||0),z0=P3.H?P3.H(q.x,q.y):0;const fa=e.type==="sparks"?1:0;
     for(let k=0;k<(fa?40:18);k++){const a=sh(k,e.t0)*6.283,s=sh(k+5,e.t0);const r=(fa?6:3)*m*age*(.4+s);const zz=fa?Math.max(0,(3*s-4.9*age*age))*m:(.4+age*1.5)*m;add(q.x+Math.cos(a)*r,q.y+Math.sin(a)*r,z0+zz,fa?.22*m:(1.5+age*2)*m,fa?1:.66,fa?.7:.56,fa?.25:.42,fa?Math.max(0,1-age*1.4):.45*(1-age/1.6))}}
+  /* pontos extras na tela principal: linha ideal de quem está guiando (volante.js) */if(o===CX.A&&typeof P3.extraPts==="function"){try{P3.extraPts(add,m)}catch(e){}}
   if(!Q.length)return;gl.useProgram(o.pp);gl.bindVertexArray(o.pv);gl.bindBuffer(gl.ARRAY_BUFFER,o.pb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(Q),gl.DYNAMIC_DRAW);let L=gl.getAttribLocation(o.pp,"aQ");gl.enableVertexAttribArray(L);gl.vertexAttribPointer(L,4,gl.FLOAT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,o.pk);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(K),gl.DYNAMIC_DRAW);L=gl.getAttribLocation(o.pp,"aK");gl.enableVertexAttribArray(L);gl.vertexAttribPointer(L,4,gl.FLOAT,false,0,0);
   gl.uniformMatrix4fv(gl.getUniformLocation(o.pp,"uVP"),false,VP);gl.uniform1f(gl.getUniformLocation(o.pp,"uH"),Hpx);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.POINTS,0,Q.length/4);gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(null);gl.useProgram(P)}

@@ -13,7 +13,6 @@ function lapsLeft(me){return Math.max(0,R.L-(me.lap||0))}
 function bestDry(me){const left=lapsLeft(me);return left<=Math.max(6,R.L*.32)?"S":left<=R.L*.6?"M":"H"}
 function wetComp(){return R.w>.78?"W":"I"}
 function secs(m,me){return m/Math.max(30,me.v||60)}
-function nextCornerName(me){const g=R.geo;if(!g||!g.corners.length)return"próxima curva";const i=Math.floor(fr(me.prog)*g.N);let best=null,bd=1e9;for(const c of g.corners){const d=(c.i-i+g.N)%g.N;if(d>8&&d<bd){bd=d;best=c}}return best?best.n:"próxima curva"}
 const fmtS=s=>s.toFixed(1).replace(".",",");
 // regras em ordem de prioridade: devolvem {txt, btn:[[rótulo, ação, k]], dur}
 const TIP_RULES=[

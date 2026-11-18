@@ -145,7 +145,11 @@ function mpCollect(){const out=[];
   for(const h of R.hl){if(h._n)continue;h._n=1;out.push(["hl",+h.t.toFixed(2),h.type,h.cars.map(id=>{const c=R.cars.find(x=>x.id===id);return c?c.idx:-1}),String(h.txt).slice(0,80),h.imp])}
   for(const b of R.bubbles){if(b._n)continue;b._n=1;const c=R.cars.find(x=>x.id===b.id);if(c)out.push(["bu",+b.t.toFixed(2),c.idx,String(b.text).slice(0,78),b.kind||"",b.dur])}
   for(const e of R.fxq){if(e._n)continue;e._n=1;if(R.t-e.t0>5)continue;out.push(["fx",+e.t0.toFixed(2),e.type,Math.round(fr(e.f)*1e5),Math.round((e.lat||0)*10),e.col||0,e.col2||0,e.turn||0])}
-  for(const o of out){MP.seq++;MP.log.push([MP.seq,...o])}if(MP.log.length>14)MP.log=MP.log.slice(-14)}
+  // dano por peça do carro 3D (dano3d.js): só as peças que mudaram desde o último envio
+  for(const c of R.cars){const pd=c.pd;if(!pd)continue;const ant=c._pdTx||(c._pdTx=new Uint8Array(pd.length));const ch=[];for(let i=0;i<pd.length;i++){const q=Math.min(250,Math.round(pd[i]*100));if(q!==ant[i]){ant[i]=q;ch.push(i,q)}}if(ch.length)out.push(["pd",c.idx,ch.slice(0,120)])}
+  // pedaços que saíram dos carros (pedacos.js): cada aparelho simula a queda do seu lado, a partir do mesmo começo
+  if(R.pcOut&&R.pcOut.length){const L=R.geo.len,by=new Map();for(const e of R.pcOut.splice(0)){const c=R.cars.find(x=>x.id===e.car);if(!c)continue;const a=by.get(c)||[];if(a.length<12)a.push([e.i,+(+e.t||0).toFixed(2),Math.round((e.prog||0)*L*10),Math.round((e.y||0)*10),Math.round((e.v||0)*10),Math.round((e.chi||0)*1000),Math.round((e.psi||0)*1000),+(+e.E||0).toFixed(1)]);by.set(c,a)}for(const [c,a] of by)out.push(["pc",c.idx,a])}
+  for(const o of out){MP.seq++;MP.log.push([MP.seq,...o])}if(MP.log.length>24)MP.log=MP.log.slice(-24)}
 function mpSnap(){const L=R.geo.len;const ix=c=>c?c.idx:-1;MP.pubN=(MP.pubN||0)+1;const hSkip=R.cars.filter(c=>c.hum).length>2;// com 3 ou 4 jogadores, o detalhe de cada um vai em quadros alternados (cabe no limite de 4 KB)
 
   const cars=R.cars.map(c=>{const f=(c.status==="run"?0:c.status==="fin"?1:c.status==="dnf"?2:3)|(c.pit?4:0)|(c.pit&&c.pit.phase==="stop"?8:0)|(c.dmg.wing>=.5?16:0)|(c.dmg.rwing>=.5?32:0)|(c.dmg.floor>.5?64:0)|(c.tyre.punct?128:0)|((c.acc||0)<-6?256:0)|(c.ovMode?512:0)|((c.smokeT||0)>R.t?1024:0)|(c.parked?2048:0)|(c.blue?4096:0)|((c.dmg.body||0)>.3?8192:0)|((c.tow||0)>.35?16384:0)|(c.dirty?32768:0);
@@ -154,6 +158,8 @@ function mpSnap(){const L=R.geo.len;const ix=c=>c?c.idx:-1;MP.pubN=(MP.pubN||0)+
   const s={t:+R.t.toFixed(2),st:(R.started?1:0)|(R.form&&R.form.phase==="lights"?2:0)|(R.over?4:0)|(R.finishing?8:0),ls:R.lightsStart==null?-1:+R.lightsStart.toFixed(2),go:isFinite(R.go)?+R.go.toFixed(2):-1,
     ld:R.lead,w:+R.w.toFixed(3),rn:R.rain,o:R.order.map(ix),c:cars,sb:R.secBest.map(b=>b?[+b.t.toFixed(3),ix(R.cars.find(c=>c.id===b.id))]:0)};
   if(R.sc)s.sc=[R.sc.type==="sc"?1:2,R.sc.ending?1:0,R.scP!=null?Math.round(fr(R.scP)*1e5):-1];
+  /* safety car de verdade (safety.js): posição, direção, luzes e pit lane */if(R.scCar){const S=R.scCar;s.scc=[Math.round(S.prog*L*10),Math.round((S.y||0)*10),Math.round((S.psi||0)*100),(S.luzes?1:0)|(S.box?2:0)]}
+  /* carros no ar, rolando ou capotados (aereo.js) */{const ar=[];for(const c of R.cars){const a=c.air||c.pose3d;if(a)ar.push([c.idx,Math.round((a.zc||0)*100),Math.round((a.ro||0)*100),Math.round((a.pi||0)*100)])}if(ar.length)s.ar=ar.slice(0,8)}
   if(R.red)s.rd=R.red.phase==="return"?1:R.red.phase==="stopped"?2:3;
   if(R.yellows.length)s.yl=R.yellows.slice(0,8).map(y=>[Math.round(fr(y.a)*1e5),Math.round(fr(y.b)*1e5),y.dbl?1:0]);
   if(R.greenT>R.t)s.gt=+R.greenT.toFixed(1);
@@ -184,10 +190,12 @@ function mpGuestFrame(now){const h=mpHostPeer();const hp=h&&h.presence;
   if(Array.isArray(hp.res)){MP.res=hp.res;if(hp.ph==="res"&&!R.over){R.over=true}}
   if(!MP.snaps.length)return;const last=MP.snaps[MP.snaps.length-1];const T=Math.max(MP.snaps[0].t,last.t+Math.min(.4,(now-last.recv)/1000)-.25);
   let a=MP.snaps[0],b=a;for(let i=0;i<MP.snaps.length;i++)if(MP.snaps[i].t<=T){a=MP.snaps[i];b=MP.snaps[i+1]||a}
-  const k=b.t>a.t?clamp((T-a.t)/(b.t-a.t),0,1):1;mpApplySnap(a.s,b.s,k,Math.min(T,b.t),now)}
+  const k=b.t>a.t?clamp((T-a.t)/(b.t-a.t),0,1):1;mpApplySnap(a.s,b.s,k,Math.min(T,b.t),now);if(typeof pedTick==="function"){const dt=Math.min(.1,Math.max(0,R.t-(MP.pedT??R.t)));MP.pedT=R.t;if(dt>0)pedTick(dt)}}
 function mpApplySnap(A,B,k,T,now){const L=R.geo.len,dt=Math.max(.001,FDT||.016);const wasStarted=R.started;R.t=T;
   R.go=B.go>0?B.go:Infinity;R.lightsStart=B.ls>=0?B.ls:null;R.started=B.go>0&&T>=B.go;R.form.phase=(B.st&2)||R.started?"lights":"out";
   R.over=!!(B.st&4)&&T>=B.t-.3;R.finishing=!!(B.st&8);R.lead=+B.ld||0;R.w=clamp(+B.w||0,0,1);R.rain=+B.rn||0;R.greenT=+B.gt||0;
+  if(Array.isArray(B.scc)&&B.scc.length>=4){const a=Array.isArray(A.scc)?A.scc:B.scc,S=R.scCar||(R.scCar={id:"SC",code:"SC",sc:true,v:0});const pa=(+a[0]||0)/10,pb=(+B.scc[0]||0)/10;const pg=Math.abs(pb-pa)<200?pa+(pb-pa)*k:pb;S.prog=pg/L;S.y=((+a[1]||0)+((+B.scc[1]||0)-(+a[1]||0))*k)/10;S.psi=(+B.scc[2]||0)/100;S.luzes=!!(B.scc[3]&1);S.box=B.scc[3]&2?{fase:"mp"}:null;S.pit=S.box}else R.scCar=null;
+  {const ar=new Map();if(Array.isArray(B.ar))for(const x of B.ar)if(Array.isArray(x))ar.set(x[0],x);R.cars.forEach((c,i)=>{const x=ar.get(i);c.air=null;c.pose3d=x?{zc:(+x[1]||0)/100,ro:(+x[2]||0)/100,pi:(+x[3]||0)/100}:null})}
   if(Array.isArray(B.sc)){R.sc=R.sc||{};R.sc.type=B.sc[0]===1?"sc":"vsc";R.sc.ending=!!B.sc[1];R.scP=B.sc[0]===1&&B.sc[2]>=0?B.sc[2]/1e5:null}else{R.sc=null;R.scP=null}
   R.red=B.rd?{phase:B.rd===1?"return":B.rd===2?"stopped":"restart"}:null;R.redChoose=false;
   R.yellows=Array.isArray(B.yl)?B.yl.map(y=>({a:y[0]/1e5,b:y[1]/1e5,f:y[1]/1e5-.008,dbl:!!y[2],until:1e9})):[];
@@ -225,6 +233,8 @@ function mpApplyLog(lg){for(const e of lg){if(!Array.isArray(e)||!(e[0]>MP.lastS
   else if(k==="ra"){const c=R.cars[e[2]];if(!c)continue;const m={lap,c:c.id,code:c.code,t:String(e[3]),rt:R.t,me:!!e[4],k:GLOSS[e[6]]?e[6]:""};R.radio.unshift(m);if(R.radio.length>40)R.radio.pop();if(e[5]&&c.isP)R.toast={t:R.t,text:m.t}}
   else if(k==="hl"){R.hl.push({t:+e[2]||0,type:String(e[3]),cars:(Array.isArray(e[4])?e[4]:[]).map(i=>R.cars[i]&&R.cars[i].id).filter(Boolean),txt:String(e[5]),imp:clamp(+e[6]||1,1,3),lap});if(R.hl.length>60)R.hl.shift()}
   else if(k==="bu"){const c=R.cars[e[3]];if(c){R.bubbles.push({id:c.id,text:String(e[4]).slice(0,78),kind:BUB_COL[e[5]]?e[5]:"",t:+e[2]||0,dur:clamp(+e[6]||4,1,8)});if(R.bubbles.length>16)R.bubbles.shift()}}
+  else if(k==="pd"){const c=R.cars[e[2]],a=e[3];if(c&&Array.isArray(a)&&typeof d3Estado==="function"){const pd=d3Estado(c);if(pd)for(let j=0;j+1<a.length;j+=2){const i=a[j]|0;if(i>=0&&i<pd.length)pd[i]=clamp((+a[j+1]||0)/100,0,2)}}}
+  else if(k==="pc"){const c=R.cars[e[2]];if(c&&Array.isArray(e[3])){const L=R.geo.len;for(const q of e[3].slice(0,12)){if(!Array.isArray(q))continue;(R.pecasSoltas||(R.pecasSoltas=[])).push({car:c.id,i:q[0]|0,t:+q[1]||R.t,prog:(+q[2]||0)/10/L,y:(+q[3]||0)/10,v:(+q[4]||0)/10,chi:(+q[5]||0)/1000,psi:(+q[6]||0)/1000,E:+q[7]||0})}}}
   else if(k==="fx"&&MP_FX.includes(e[3]))R.fxq.push({type:e[3],t0:+e[2]||0,f:(+e[4]||0)/1e5,lat:(+e[5]||0)/10,col:mpHex(e[6])||"#888888",col2:mpHex(e[7])||"#222222",turn:+e[8]||0})}}
 // comandos do convidado: o estado vai no presence e o anfitrião aplica no seu carro
 function mpCmd(patch){if(!R||!R.mpGuest||R.spect)return;const me=R.cars.find(c=>c.isP);if(!me||!running(me))return;

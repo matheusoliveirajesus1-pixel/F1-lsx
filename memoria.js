@@ -161,10 +161,6 @@ function falaRadio(k){const me=carroEu();if(!me||typeof radio!=="function")retur
     if(OBS.perg>=4){t="Foca na pista, a gente avisa. "+t;if(!OBS.pergF){OBS.pergF=1;registra("muitas_perguntas",{gp})}}resp(t)}}
 function aviso(t){try{rcMsg("Transmissão: "+t,"warn");R.toast={t:R.t,text:t}}catch(e){}}
 // botões do rádio na tela da corrida
-function botoes(){const box=document.querySelector(".radioctl");if(!box||box.querySelector(".memRad"))return;const c=document.createElement("div");c.className="card memRad";
-  c.innerHTML=`<h3>Falar no rádio</h3><div class="memOps">${[["reclamar","Reclamar"],["explodir","Explodir"],["elogiar","Agradecer a equipe"],["carro","Reclamar do carro"]].map(([k,n])=>`<button class="btn sm" data-mem="${k}">${n}</button>`).join("")}</div>
-   <h4 class="ag">Perguntar</h4><div class="memOps">${[["q_frente","Pneu do carro da frente"],["q_chuva","Vai chover?"],["q_box","Quando paramos?"]].map(([k,n])=>`<button class="btn sm" data-mem="${k}">${n}</button>`).join("")}</div>
-   <p class="muted" style="font-size:12.5px;margin:0">O que você fala pode ir ao ar se a TV estiver mostrando a sua disputa.</p>`;box.appendChild(c)}
 if(typeof document!=="undefined")document.addEventListener("click",e=>{const b=e.target.closest("[data-mem]");if(!b)return;e.preventDefault();falaRadio(b.dataset.mem);b.disabled=true;setTimeout(()=>{b.disabled=false},b.dataset.mem.startsWith("q_")?4000:8000)});
 // ---------- ligações com o resto do jogo
 function instala(){

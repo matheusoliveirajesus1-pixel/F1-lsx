@@ -551,7 +551,7 @@ function instala(){if(typeof drawCar!=="function"||drawCar._c3d)return false;con
     if(c._brake){ctx.fillStyle="#FF3030";[-1.6,1.6].forEach(v=>{const q=pt(-12.5*E[0],v*E[1],1.6*E[2]);ctx.fillRect(q[0]-1.1,q[1]-1.1,2.2,2.2)})}
     if(c.isP){const s=pt(0,0,0);ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(s[0],s[1],15*CSC*Z,8*CSC*Z,0,0,7);ctx.stroke()}};
   window.drawCar._c3d=true;
-  const ds=window.drawScene;if(typeof ds==="function"&&!ds._c3d){C3D.dsOrig=ds;window.drawScene=function(){if(window.P3D&&P3D.on&&arguments[0]&&arguments[0].canvas){try{P3D.desenha(...arguments);return}catch(e){P3D.on=false;P3D.erro=String(e.message||e);console.error("3D desligado:",e)}}C3D.fr++;const t0=performance.now();const r=ds.apply(this,arguments);C3D.msCena=performance.now()-t0;C3D.amostra(C3D.msCena);return r};window.drawScene._c3d=true}
+  const ds=window.drawScene;if(typeof ds==="function"&&!ds._c3d){C3D.dsOrig=ds;window.drawScene=function(){if(window.P3D&&P3D.on&&arguments[0]&&arguments[0].canvas){try{P3D.desenha(...arguments);return}catch(e){/* erro no 3D: recria os contextos e tenta de novo no próximo quadro (sem trocar para os carros 2D) */if(P3D.falhou&&P3D.falhou(e))return;P3D.on=false;P3D.erro=String(e.message||e);console.error("3D desligado:",e);if(P3D.avisa)P3D.avisa()}}C3D.fr++;const t0=performance.now();const r=ds.apply(this,arguments);C3D.msCena=performance.now()-t0;C3D.amostra(C3D.msCena);return r};window.drawScene._c3d=true}
   return true}
 // atalho: cria carreira e vai direto para a largada
 async function atalho(){const cl=s=>{const v=[...document.querySelectorAll(s)].find(e=>e.offsetParent!==null);if(v){v.click();return true}return false};const w=ms=>new Promise(r=>setTimeout(r,ms));
@@ -635,9 +635,13 @@ function sobe(M){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const 
   b(M.p,3,"aP");b(M.n,3,"aN");b(M.c,3,"aC");b(M.m,1,"aM");b(M.k,1,"aK");if(M.gc)b(M.gc,1,"aG");if(M.pc)b(M.pc,1,"aPc");const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(M.i),gl.STATIC_DRAW);gl.bindVertexArray(null);return{vao,n:M.i.length}}
 // dois contextos: A (pista, e também os carros nas câmeras em perspectiva) e B (só carros, transparente, para a câmera isométrica)
 const CX={};
+function movel(){try{return matchMedia("(pointer:coarse)").matches||(navigator.deviceMemory||8)<=4}catch(e){return false}}
 function semAA(){try{const q=new URLSearchParams(location.search).get("aa");if(q)return q==="0";return (window.devicePixelRatio||1)>=2&&matchMedia("(pointer:coarse)").matches}catch(e){return false}}
 function criaCtx(id,alpha){const c=document.createElement("canvas");c.id=id;c.style.cssText="position:absolute;left:0;top:0;pointer-events:none;display:none";
-  const g=c.getContext("webgl2",{antialias:!semAA(),alpha,premultipliedAlpha:true,stencil:true});if(!g)throw new Error("sem WebGL2");const o={cv:c,gl:g,UN:{},tex:new Map()};usa(o);o.P=P=prog(VS,FS);
+  const g=c.getContext("webgl2",{antialias:!semAA(),alpha,premultipliedAlpha:true,stencil:true});if(!g)throw new Error("sem WebGL2");const o={cv:c,gl:g,UN:{},tex:new Map()};
+  /* celular sem memória de vídeo: o navegador derruba o contexto (tela preta). Marca e, no próximo quadro, monta tudo de novo */
+  c.addEventListener("webglcontextlost",e=>{e.preventDefault();o.lost=true;P3.perdas=(P3.perdas||[]).filter(t=>performance.now()-t<60000);P3.perdas.push(performance.now());P3.erro="o navegador derrubou o 3D (memória de vídeo)"},false);
+  usa(o);o.P=P=prog(VS,FS);
   for(const n of["uVP","uMod","uNM","uCor","uCor2","uComp","uEye","uSol","uLuz","uCeu","uNeb","uMolh","uDT","uDN","uDA","uDB","uDR","uT","uExc","uGT","uVS","uNoite","uSobre","uOculta","uVivo","uRol","uRoda","uSusp","uPD","uProj","uProjOn","uAT","uDbg","uSM","uSMR","uSMon"])o.UN[n]=g.getUniformLocation(P,n);
   o.car=sobe(malhaCarro(.5));o.carM=sobe(malhaCarro(.2));o.carB=sobe(malhaCarro(.05));P3.trisCarro=malhaCarro(.5).i.length/3;
   const S=new MB();S.quad([-1150,-1000,4],[4350,-1000,4],[4350,1000,4],[-1150,1000,4],[0,0,0],19);o.sombra=sobe(S);const K=new MB();for(const t of ICO)for(const q of t){const b=K.p.length/3;}const Kc=new MB();Kc.copa(0,0,0,1,1,[1,1,1],22,0);o.ceu=sobe(Kc);return o}
@@ -667,7 +671,18 @@ function longe(b,e,far){if(!far||!e)return false;const dx=Math.max(b[0]-e[0],0,e
 function desenhaMalha(M){gl.bindVertexArray(M.vao);CUR.stat.total+=M.n/3;if(!M.t||!CUR.VP||P3.semCorte){gl.drawElements(gl.TRIANGLES,M.n,gl.UNSIGNED_INT,0);CUR.stat.tris+=M.n/3;return}
   let a=-1,n=0;const go=()=>{gl.drawElements(gl.TRIANGLES,n,gl.UNSIGNED_INT,a*4);CUR.stat.tris+=n/3};
   for(const q of M.t){if(longe(q.b,CUR.eye,CUR.far)||!caixaVis(CUR.VP,q.b))continue;CUR.stat.blocos++;if(a>=0&&a+n===q.o)n+=q.n;else{if(a>=0)go();a=q.o;n=q.n}}if(a>=0)go()}
-function init(){if(CX.A)return true;CX.A=criaCtx("p3dA",false);CX.B={cv:document.createElement("canvas")};
+// joga fora os contextos 3D (perdidos ou com erro); o próximo quadro cria tudo de novo
+function descartaCtx(){for(const k of["A","O"]){const o=CX[k];if(o&&o.cv&&o.cv.parentNode)o.cv.parentNode.removeChild(o.cv)}if(CX.G&&CX.G.parentNode)CX.G.parentNode.removeChild(CX.G);if(CX.B&&CX.B.cv&&CX.B.cv.parentNode)CX.B.cv.parentNode.removeChild(CX.B.cv);for(const k of Object.keys(CX))delete CX[k];CTX=null;pista=null;car=null;sombra=null;P3.geo=null;for(const k in CAMST)delete CAMST[k]}
+P3.reinicia=descartaCtx;
+// muitos contextos derrubados em pouco tempo: aparelho no limite. Primeiro alivia (resolução e sombra), só depois desiste
+function aliviaGPU(){const n=(P3.perdas||[]).length;if(n>=2){P3.semMapa=true;P3.esc=Math.min(P3.esc||1,.75)}if(n>=3)P3.esc=Math.min(P3.esc,.6);return n<5}
+P3.falhou=function(e){const t=performance.now();P3.falhas=(P3.falhas||[]).filter(x=>t-x<30000);P3.falhas.push(t);P3.erro=String(e&&e.message||e);try{console.error("3D:",e);localStorage.setItem("paddock-3d-erro",P3.erro.slice(0,200)+" · "+new Date().toISOString())}catch(_){}
+  descartaCtx();if(P3.falhas.length<=3&&aliviaGPU())return true;P3.on=false;P3.desligado=P3.erro;return false};
+// aviso visível quando o 3D desiste de vez (para o jogador saber o motivo e poder contar)
+P3.avisa=function(){try{const st=document.getElementById("stage");if(!st||st.querySelector(".p3dAviso"))return;const d=document.createElement("div");d.className="p3dAviso";d.setAttribute("role","status");
+  d.style.cssText="position:absolute;left:50%;top:44px;transform:translateX(-50%);z-index:30;max-width:min(92%,460px);background:rgba(12,14,18,.92);color:#ECEEF1;border:1px solid #F5A52466;border-radius:10px;padding:8px 12px;font:600 12.5px/1.35 'Titillium Web',system-ui,sans-serif;text-align:center";
+  d.textContent="O 3D parou neste aparelho ("+(P3.erro||"erro")+"). A corrida segue no modo simples.";st.appendChild(d);setTimeout(()=>d.remove(),9000)}catch(e){}};
+function init(){if((CX.A&&(CX.A.lost||CX.A.gl.isContextLost()))||(CX.O&&(CX.O.lost||CX.O.gl.isContextLost()))){if(!aliviaGPU()){descartaCtx();P3.on=false;P3.desligado=P3.erro;if(P3.avisa)P3.avisa();throw new Error("3D desligado: "+P3.erro)}descartaCtx()}if(CX.A)return true;CX.A=criaCtx("p3dA",false);CX.B={cv:document.createElement("canvas")};
   const G2=document.createElement("canvas");G2.id="p3dG";G2.style.cssText="position:absolute;left:0;top:0;pointer-events:none;display:none";CX.G=G2;return true}
 const SOL=(()=>{const v=[-.35,-.5,.75],l=Math.hypot(...v);return v.map(x=>x/l)})();
 const TWI={abudhabi:1};
@@ -704,7 +719,7 @@ const GEOC={g:null,d:null};P3._geoc=GEOC;
 function retSombra(SB){const p=SB.p;if(!SB.i.length)return null;let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;for(let k=0;k<p.length;k+=3){const x=p[k],y=p[k+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
   const px=(x1-x0)*.002+1,py=(y1-y0)*.002+1;x0-=px;y0-=py;x1+=px;y1+=py;return new Float32Array([x0,y0,1/(x1-x0),1/(y1-y0)])}
 // desenha as sombras fixas vistas de cima numa textura 2048x2048 (uma vez por circuito e por janela 3D; leva poucos milissegundos)
-function mapaSombraGPU(o,pv){const g=gl,N=2048;try{if(!o.smP){const vs="#version 300 es\nin vec3 aP;uniform vec4 uR;void main(){gl_Position=vec4((aP.xy-uR.xy)*uR.zw*2.-1.,0.,1.);}",fs="#version 300 es\nprecision mediump float;out vec4 o;void main(){o=vec4(1.);}";
+function mapaSombraGPU(o,pv){const g=gl,N=movel()?1024:2048;try{if(!o.smP){const vs="#version 300 es\nin vec3 aP;uniform vec4 uR;void main(){gl_Position=vec4((aP.xy-uR.xy)*uR.zw*2.-1.,0.,1.);}",fs="#version 300 es\nprecision mediump float;out vec4 o;void main(){o=vec4(1.);}";
     const p=g.createProgram();for(const[t,c]of[[g.VERTEX_SHADER,vs],[g.FRAGMENT_SHADER,fs]]){const sh=g.createShader(t);g.shaderSource(sh,c);g.compileShader(sh);g.attachShader(p,sh)}const L=g.getAttribLocation(P,"aP");if(L>=0)g.bindAttribLocation(p,L,"aP");g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))return false;o.smP=p}
   if(!o.smT)o.smT=g.createTexture();g.activeTexture(g.TEXTURE3);g.bindTexture(g.TEXTURE_2D,o.smT);g.texImage2D(g.TEXTURE_2D,0,g.R8,N,N,0,g.RED,g.UNSIGNED_BYTE,null);
   g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);g.activeTexture(g.TEXTURE0);
@@ -893,14 +908,13 @@ function isoVP(cw,ch){const Z=CAM.z,A=2*Z/cw,Bc=2*Z/ch,ox=-CAM.x*Z+cw/2+(CAM.sx|
   const dc=CAM.y/S,RG=(ch/Z)/S*1.6+600;
   return new Float32Array([A*C,-Bc*S,-1/RG,0, -A*C,-Bc*S,-1/RG,0, 0,Bc,-2*S/RG,0, 2*ox/cw-1,1-2*oy/ch,dc/RG,1])}
 // ---------- câmera
-const CAMST={};const MODO={chase:1,tv:2,onboard:3,aerea:4,grid:5,topo:6};
+const CAMST={};const MODO={chase:1,tv:2,onboard:3,aerea:4,grid:5};
 function camera(c,p,dt,md,chave){const cam=CAMST[chave]||(CAMST[chave]={});const m=WS,dir=[Math.cos(p.h),Math.sin(p.h),0],z0=p.z||0;let e,t,fov=55;const k=CSC/.82;
   if(md===1){e=[p.x-dir[0]*9*m*k,p.y-dir[1]*9*m*k,3.1*m+z0];t=[p.x+dir[0]*7*m,p.y+dir[1]*7*m,.9*m+z0];fov=52}
   else if(md===2){const cs=TRACKGEO.cams||[];let best=null,bd=1e18;for(const q of cs){const d=Math.hypot(q.x-p.x,q.y-p.y);const ahead=(q.x-p.x)*dir[0]+(q.y-p.y)*dir[1];const sc=d-(ahead>0?d*.4:0);if(sc<bd){bd=sc;best=q}}
     if(best){e=[best.x,best.y,9*m];t=[p.x,p.y,.6*m+z0];const d=Math.hypot(best.x-p.x,best.y-p.y);fov=Math.max(7,Math.min(48,2*Math.atan(16*m/d)*180/Math.PI))}else{e=[p.x-dir[0]*30*m,p.y-dir[1]*30*m,12*m];t=[p.x,p.y,z0]}}
   else if(md===3){const sp=Math.sin(p.pt||0);e=[p.x+dir[0]*.2*m,p.y+dir[1]*.2*m,1.25*m+z0];t=[p.x+dir[0]*30*m,p.y+dir[1]*30*m,.7*m+z0+sp*30*m];fov=68}
   else if(md===5){const l=[-Math.sin(p.h),Math.cos(p.h)];e=[p.x+l[0]*5*m-dir[0]*2.5*m,p.y+l[1]*5*m-dir[1]*2.5*m,1.4*m+z0];t=[p.x+dir[0]*2.5*m,p.y+dir[1]*2.5*m,.45*m+z0];fov=46}
-  else if(md===6){/* de cima, girando com o carro (para guiar vendo a pista como num mapa) */e=[p.x-dir[0]*16*m,p.y-dir[1]*16*m,70*m+z0];t=[p.x+dir[0]*18*m,p.y+dir[1]*18*m,z0];fov=50}
   else{e=[p.x-dir[0]*45*m,p.y-dir[1]*45*m,38*m+z0];t=[p.x+dir[0]*8*m,p.y+dir[1]*8*m,z0];fov=48}
   /* câmera livre para capturas de teste (tests/pistasshots.js) */if(P3.camForce){const F=P3.camForce;e=F.e;t=F.t;fov=F.fov||50}
   const corte=cam.alvo!==c||cam.md!==md||!cam.e||(cam.tt&&performance.now()-cam.tt>500);cam.alvo=c;cam.md=md;cam.tt=performance.now();const a=corte||md===3||md===2?1:1-Math.exp(-dt*7);
@@ -927,7 +941,7 @@ function etiquetas(lista,VP,cw,ch,dpr){if(!lab){lab=document.createElement("canv
 // ---------- camadas: A pista 3D · G efeitos no chão (2D do jogo) · B carros 3D · rc efeitos por cima, etiquetas e chuva (2D do jogo)
 function camadas(rc,iso){const par=rc.parentElement;if(par._p3dP!==1){if(getComputedStyle(par).position==="static")par.style.position="relative";par._p3dP=1}if(rc._p3dP!==1){if(getComputedStyle(rc).position==="static")rc.style.position="relative";rc._p3dP=1}
   // resolução da camada 3D: o ajuste automático de qualidade reduz aqui antes de tirar qualquer efeito
-  const dpr=Math.min(2,window.devicePixelRatio||1)*(P3.esc||1),cw=rc.clientWidth,ch=rc.clientHeight,w=Math.round(cw*dpr),h=Math.round(ch*dpr);
+  const dpr=Math.min(movel()?1.5:2,window.devicePixelRatio||1)*(P3.esc||1),cw=rc.clientWidth,ch=rc.clientHeight,w=Math.round(cw*dpr),h=Math.round(ch*dpr);
   if(CX.B.cv.nextSibling!==rc)par.insertBefore(CX.B.cv,rc);if(CX.G.nextSibling!==CX.B.cv)par.insertBefore(CX.G,CX.B.cv);if(CX.A.cv.nextSibling!==CX.G)par.insertBefore(CX.A.cv,CX.G);
   [[CX.A.cv,1,true],[CX.G,2,false],[CX.B.cv,3,false]].forEach(([c,z,vis])=>{c.style.display=vis?"block":"none";c.style.left=rc.offsetLeft+"px";c.style.top=rc.offsetTop+"px";c.style.width=cw+"px";c.style.height=ch+"px";if(c.width!==w||c.height!==h){c.width=w;c.height=h}});
   if(lab)lab.style.display=iso?"none":"block";return{dpr,cw,ch,w,h}}
@@ -987,7 +1001,43 @@ function desenhaCarros(lista,du,iso,C,pv){const E=escalaFisica();const real=!(P3
   for(const q of est){const c=q.c,p=q.p;if(!iso&&Math.hypot(p.x-C.e[0],p.y-C.e[1])>1400*WS)continue;const[Mm,Nm]=matCarro(p,E);gl.uniformMatrix4fv(UN.uMod,false,Mm);gl.uniformMatrix3fv(UN.uNM,false,Nm);setCarro(q);
     gl.uniform3fv(UN.uCor,hex(c.col));gl.uniform3fv(UN.uCor2,hex(c.col2||"#F2F2F2"));gl.uniform3fv(UN.uComp,hex(c.tyre&&typeof COMP!=="undefined"&&COMP[c.tyre.c]?COMP[c.tyre.c].c:"#F5C518"));
     gl.bindTexture(gl.TEXTURE_2D,texCarro(c));const oc=P3._oculta&&P3._oculta===c;if(oc)gl.uniform1f(UN.uOculta,1);gl.bindVertexArray(q.M.vao);gl.drawElements(gl.TRIANGLES,q.M.n,gl.UNSIGNED_INT,0);if(oc)gl.uniform1f(UN.uOculta,0);nv++}
-  gl.uniform4f(UN.uVivo,0,0,0,0);gl.bindVertexArray(null);return nv}
+  gl.uniform4f(UN.uVivo,0,0,0,0);if(!P3._replay){try{desenhaSC(iso,C,E)}catch(e){P3.erroSC=String(e.message||e)}}gl.uniform1i(UN.uDN,du.n);gl.bindVertexArray(null);return nv}
+// ---------- safety car (safety.js): carro de rua com barra de luzes, nas mesmas medidas do modelo (mm; frente em x pequeno)
+function malhaSC(){const B=new MB(),Y=[.95,.66,.04],PR=[.07,.07,.08],VD=[.06,.08,.1],CI=[.62,.64,.68],BR=[1,.97,.9],VM=[.75,.05,.04];
+  const q=(a,b,c,d,col,m)=>B.quad(a,b,c,d,col,m);
+  // carroceria: seções ao longo do carro (x, meia largura, chão, topo)
+  const S=[[420,880,300,560],[640,955,290,680],[1900,985,280,770],[3900,985,280,800],[4900,960,290,780],[5160,870,330,710]];
+  for(let k=0;k<S.length-1;k++){const[a,wa,za,ta]=S[k],[b,wb,zb,tb]=S[k+1];
+    for(const sd of[-1,1]){q([a,sd*wa,za],[b,sd*wb,zb],[b,sd*wb,tb],[a,sd*wa,ta],Y,0);/* faixa preta na lateral */q([a,sd*(wa+2),za+150],[b,sd*(wb+2),zb+150],[b,sd*(wb+2),zb+215],[a,sd*(wa+2),za+215],PR,0)}
+    q([a,-wa,ta],[b,-wb,tb],[b,wb,tb],[a,wa,ta],Y,0);q([a,-wa,za],[b,-wb,zb],[b,wb,zb],[a,wa,za],PR,2)}
+  {const[a,w,z,t]=S[0];q([a,-w,z],[a,w,z],[a,w,t],[a,-w,t],Y,0);const[b,w2,z2,t2]=S[S.length-1];q([b,-w2,z2],[b,w2,z2],[b,w2,t2],[b,-w2,t2],Y,0)}
+  // cabine: para-brisa, teto, vidro traseiro e janelas (vidro escuro)
+  const C0=[1900,890,770],C1=[2650,730,1140],C2=[3480,730,1150],C3=[4350,880,800];
+  const P_=(c,sd)=>[c[0],sd*c[1],c[2]];
+  q(P_(C0,-1),P_(C0,1),P_(C1,1),P_(C1,-1),VD,4);q(P_(C1,-1),P_(C1,1),P_(C2,1),P_(C2,-1),Y,0);q(P_(C2,-1),P_(C2,1),P_(C3,1),P_(C3,-1),VD,4);
+  for(const sd of[-1,1]){q(P_(C0,sd),P_(C1,sd),P_(C2,sd),P_(C3,sd),VD,4)}
+  // barra de luzes no teto: metade esquerda pisca com uCor, direita com uCor2 (aK 1 e 2)
+  const lb=(x0,x1,y0,y1,z0,z1,k)=>{const i0=B.p.length/3;const v=[[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
+    const F=[[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7],[4,5,6,7]];for(const f of F)q(v[f[0]],v[f[1]],v[f[2]],v[f[3]],[1,1,1],6);for(let j=i0;j<B.p.length/3;j++)B.k[j]=k};
+  lb(2820,3180,-620,-40,1150,1230,1);lb(2820,3180,40,620,1150,1230,2);lb(2880,3120,-40,40,1150,1215,4);
+  // faróis e lanternas
+  for(const sd of[-1,1]){q([425,sd*560,470],[425,sd*820,470],[425,sd*820,540],[425,sd*560,540],BR,0);q([5165,sd*560,600],[5165,sd*830,600],[5165,sd*830,670],[5165,sd*560,670],VM,0)}
+  // rodas (pneu e roda de liga leve)
+  const roda=(xc,yc)=>{const n=12,r=335,ri=230,hw=125;for(let k=0;k<n;k++){const a0=k/n*Math.PI*2,a1=(k+1)/n*Math.PI*2;const P0=[xc+Math.cos(a0)*r,0,335+Math.sin(a0)*r],P1=[xc+Math.cos(a1)*r,0,335+Math.sin(a1)*r];
+    q([P0[0],yc-hw,P0[2]],[P1[0],yc-hw,P1[2]],[P1[0],yc+hw,P1[2]],[P0[0],yc+hw,P0[2]],[.05,.05,.05],2);
+    const o=yc+Math.sign(yc)*hw;B.tri([xc,o,335],[xc+Math.cos(a0)*ri,o,335+Math.sin(a0)*ri],[xc+Math.cos(a1)*ri,o,335+Math.sin(a1)*ri],CI,4);
+    q([xc+Math.cos(a0)*ri,o,335+Math.sin(a0)*ri],[xc+Math.cos(a0)*r,o,335+Math.sin(a0)*r],[xc+Math.cos(a1)*r,o,335+Math.sin(a1)*r],[xc+Math.cos(a1)*ri,o,335+Math.sin(a1)*ri],[.05,.05,.05],2)}};
+  for(const x of[1230,4120])for(const sd of[-1,1])roda(x,sd*840);
+  return B}
+function desenhaSC(iso,C,E){const c=R.scCar;if(!c)return;const p=posCarro(c),m=WS,z=p.z||0;if(CUR.VP&&!caixaVis(CUR.VP,[p.x-3.4*m,p.y-3.4*m,z-.3*m,p.x+3.4*m,p.y+3.4*m,z+2*m]))return;
+  if(!CTX.scM)CTX.scM=sobe(malhaSC());const M=CTX.scM;const[Mm,Nm]=matCarro(p,E);gl.uniform4f(UN.uVivo,0,0,0,0);gl.uniform1i(UN.uDN,0);gl.bindVertexArray(M.vao);gl.uniformMatrix4fv(UN.uMod,false,Mm);
+  // sombra no chão
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-4);gl.uniform1f(UN.uProjOn,1);gl.uniform4f(UN.uProj,SOL[0],SOL[1],SOL[2],z+.05);gl.drawElements(gl.TRIANGLES,M.n,gl.UNSIGNED_INT,0);
+  gl.uniform1f(UN.uProjOn,0);gl.disable(gl.POLYGON_OFFSET_FILL);gl.depthFunc(gl.LESS);gl.depthMask(true);gl.disable(gl.BLEND);
+  // carro: luzes piscando alternadas (laranja), apagadas quando ele vai entrar nos boxes
+  const t=performance.now()/1000,ph=Math.floor(t*3.2)%2,ON=[1.6,.75,.05],OFF=[.32,.2,.05];gl.uniformMatrix3fv(UN.uNM,false,Nm);gl.uniform3fv(UN.uCor,c.luzes&&ph===0?ON:OFF);gl.uniform3fv(UN.uCor2,c.luzes&&ph===1?ON:OFF);gl.uniform3fv(UN.uComp,[.1,.1,.1]);
+  gl.drawElements(gl.TRIANGLES,M.n,gl.UNSIGNED_INT,0)}
+P3.malhaSC=malhaSC;
 // ---------- peças soltas (pedacos.js): cada pedaço é a malha da própria peça, girando, quicando e deitada no chão
 function vaoPeca(id){const cache=CTX.ped||(CTX.ped={});if(cache[id]!==undefined)return cache[id];malhaCarro(.2);const D=MCARD[.2],S=D&&CARRO.submalha(D,id);if(!S||!S.i.length)return cache[id]=null;
   const o=S.fixacao;for(let k=0;k<S.p.length;k+=3){S.p[k]+=o[0];S.p[k+1]+=o[1];S.p[k+2]+=o[2]}const b=D.pecas.mapa[id].caixa;const v=sobe(S);v.c=[(b.min[0]+b.max[0])/2,(b.min[1]+b.max[1])/2,(b.min[2]+b.max[2])/2];return cache[id]=v}
@@ -1010,7 +1060,6 @@ function desenhaPedacos(iso,C){const P=R.pedacos;if(!P||!P.length)return 0;const
     if(o.c)gl.bindTexture(gl.TEXTURE_2D,texCarro(o.c));gl.bindVertexArray(o.v.vao);gl.drawElements(gl.TRIANGLES,o.v.n,gl.UNSIGNED_INT,0)}
   gl.bindVertexArray(null);return lst.length}
 P3.desenhaPedacos=desenhaPedacos;
-function garantePista(){usa(CX.A);if(!pista||P3.geo!==TRACKGEO){pista=constroiPista();P3.geo=TRACKGEO;P3._corte=true}}
 // variantes do desenho 2D do jogo: só o que fica no chão (marcas, borracha, poças, DRS, setores) e só o que fica por cima (efeitos, etiquetas)
 function cortaBloco(s,tok){const i=s.indexOf(tok);if(i<0)throw new Error("trecho não achado: "+tok.slice(0,40));let j=tok[0]==="{"?i:i+tok.length-1;const ab=s[j],fe=ab==="{"?"}":")";let n=0;
   for(;j<s.length;j++){const ch=s[j];if(ch===ab)n++;else if(ch===fe){n--;if(!n)break}}let k=j+1;if(s[k]===";")k++;return s.slice(0,i)+s.slice(k)}
@@ -1101,7 +1150,6 @@ function particulas(o,VP,Hpx){if(!o.pp){o.pp=prog(PVS,PFS);o.pb=gl.createBuffer(
     if((R.w||0)>.3&&(c.v||0)>25)for(let k=0;k<10;k++){const d=(1.5+k*.8)*m*2;add(p.x-dx*d+(sh(k,3)-.5)*1.6*m,p.y-dy*d+(sh(k,4)-.5)*1.6*m,z0+.35*m+k*.08*m,(1.4+k*.3)*m,.86,.88,.9,.28*(1-k/10)*R.w)}}
   for(const e of(R.fxq||[])){const age=R.t-e.t0;if(age<0||age>1.6||e.f==null)continue;const q=trackPos(e.f,e.lat||0),z0=P3.H?P3.H(q.x,q.y):0;const fa=e.type==="sparks"?1:0;
     for(let k=0;k<(fa?40:18);k++){const a=sh(k,e.t0)*6.283,s=sh(k+5,e.t0);const r=(fa?6:3)*m*age*(.4+s);const zz=fa?Math.max(0,(3*s-4.9*age*age))*m:(.4+age*1.5)*m;add(q.x+Math.cos(a)*r,q.y+Math.sin(a)*r,z0+zz,fa?.22*m:(1.5+age*2)*m,fa?1:.66,fa?.7:.56,fa?.25:.42,fa?Math.max(0,1-age*1.4):.45*(1-age/1.6))}}
-  /* pontos extras na tela principal: linha ideal de quem está guiando (volante.js) */if(o===CX.A&&typeof P3.extraPts==="function"){try{P3.extraPts(add,m)}catch(e){}}
   if(!Q.length)return;gl.useProgram(o.pp);gl.bindVertexArray(o.pv);gl.bindBuffer(gl.ARRAY_BUFFER,o.pb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(Q),gl.DYNAMIC_DRAW);let L=gl.getAttribLocation(o.pp,"aQ");gl.enableVertexAttribArray(L);gl.vertexAttribPointer(L,4,gl.FLOAT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,o.pk);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(K),gl.DYNAMIC_DRAW);L=gl.getAttribLocation(o.pp,"aK");gl.enableVertexAttribArray(L);gl.vertexAttribPointer(L,4,gl.FLOAT,false,0,0);
   gl.uniformMatrix4fv(gl.getUniformLocation(o.pp,"uVP"),false,VP);gl.uniform1f(gl.getUniformLocation(o.pp,"uH"),Hpx);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.POINTS,0,Q.length/4);gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(null);gl.useProgram(P)}

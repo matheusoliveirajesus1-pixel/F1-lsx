@@ -35,7 +35,6 @@ function shopInit(){if(!shopOn())return null;const t=myTeam();
   if(S.team!==t.id){const old=G.teams.find(x=>x.id===S.team);if(old)for(const k in S.upB)old.car[k]=Math.max(60,+(old.car[k]-S.upB[k]).toFixed(2));
     S.lv={};S.upB={};S.team=t.id;S.log.unshift({t:`Nova equipe: as peças ficaram com a equipe antiga.`})}
   return S}
-function shopLv(id){const S=shopInit();return S?(S.lv[id]||0):0}
 function shopPrice(part,lv){return Math.round(part.p*(lv+1)*(1+lv*.15))}// preço do próximo nível
 // créditos por corrida: participar, terminar, posição e pontos (um novato no meio do grid ganha ~45 por corrida)
 function shopEarn(e){if(!shopOn())return 0;const S=shopInit();const pos=e.status==="ok"?e.pos:22;const c=Math.round(20+(e.status==="ok"?10:0)+Math.max(0,21-pos)*1.5+(e.pts||0));S.cr+=c;S.lastEarn=c;return c}
@@ -101,9 +100,6 @@ function shopTab(){const S=shopInit();if(!S){$("#body").innerHTML=`<div class="c
    <div class="card"><h3>Peças</h3><p class="muted" style="margin:0 0 8px">Cada peça tem 5 níveis. Instalou, já vale na próxima corrida para você e o seu companheiro.</p>${SHOP_PARTS.map(partRow).join("")}</div></div>`;
   document.querySelectorAll("[data-tune]").forEach(el=>el.addEventListener("change",()=>{const S=shopInit();S.tune[el.dataset.tune]=+el.value;save();shopTab()}))}
 // cartão do início: créditos e a melhor compra, com atalho para a oficina
-function shopCard(){const S=shopInit();if(!S)return"";const rec=shopRecommend();
-  return`<div class="card"><h3>Oficina</h3><div class="crd"><b class="num">${S.cr}</b> créditos</div>${rec?`<p style="margin:6px 0">Recomendado: <b>${rec.p.ic} ${rec.p.n} · ${SHOP_LV[rec.lv+1]}</b> (${rec.pr} créditos)</p>`:""}
-   <div class="row">${rec&&rec.can?`<button class="btn sm go" data-act="shopBuy" data-k="${rec.p.id}">Instalar o recomendado</button>`:""}<button class="btn sm" data-act="tab" data-k="shop">Abrir oficina</button></div></div>`}
 function shopAction(a,k){if(a==="shopBuy"){shopBuy(k)}else if(a==="shopAuto"){const S=shopInit();S.tune.auto=k==="1";save()}else if(a==="shopReset"){const S=shopInit();Object.assign(S.tune,autoTune(G.calendar[Math.min(G.round,G.calendar.length-1)]),{auto:false});save()}
   else if(a==="shopSeen"){const S=shopInit();S.seen=true;save()}
   render()}

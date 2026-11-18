@@ -12,7 +12,6 @@ const AUTO=new Set(["me_ack","q_me_ack"]);// confirmações das suas próprias o
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function eu(){return typeof R!=="undefined"&&R&&R.cars?R.cars.find(c=>c.isP):null}
 function gp(){try{return CIR[G.calendar[Math.min(G.round,G.calendar.length-1)]].gp}catch(e){return""}}
-function carroCod(code){return R.cars.find(c=>c.code===code)}
 function noAr(c){const me=eu();if(!me)return false;const i=R.order.indexOf(me),j=R.order.indexOf(c);return Math.abs(i-j)<=1}
 // ---------- 1. o seu piloto não fala sozinho
 // As falas automáticas do seu piloto ficam caladas (sem cartões de resposta rápida). Só as confirmações das suas ordens continuam.

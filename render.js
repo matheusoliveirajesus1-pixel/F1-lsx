@@ -69,8 +69,6 @@ function trackFrame(f){const g=TRACKGEO,M=g.M,P=g.path;f=fr(f);const x=f*M,i=Mat
   return{x:h00*a.x+h10*max+h01*b.x+h11*mbx,y:h00*a.y+h10*may+h01*b.y+h11*mby,dx:d00*a.x+d10*max+d01*b.x+d11*mbx,dy:d00*a.y+d10*may+d01*b.y+d11*mby,ddx:e00*a.x+e10*max+e01*b.x+e11*mbx,ddy:e00*a.y+e10*may+e01*b.y+e11*mby}}
 function trackPos(f,lat){const F=trackFrame(f),h=Math.atan2(F.dy,F.dx);const p={x:F.x,y:F.y,h};if(lat){p.x+=-Math.sin(h)*lat;p.y+=Math.cos(h)*lat}return p}
 function pitPos(f){return pitPosRaw(TRACKGEO.pit,f)}
-function teamIdx(t){return Math.max(0,G.teams.findIndex(x=>x.id===t.id))}
-function lineAt(f){const g=TRACKGEO,M=g.M,x=fr(f)*M,i=Math.floor(x)%M,k=x-Math.floor(x);return g.line[i]+(g.line[(i+1)%M]-g.line[i])*k}
 function carWorld(c){// onde o carro está no mundo: só lê o estado físico (dyn.js). Box, rodada e acidente usam o mesmo cálculo.
   c._stopped=!!(c.pit&&c.pit.phase==="stop");c._yaw=c.yaw||0;
   // só no desenho (RENDER_A definido pelo laço da tela): posição entre o passo anterior e o atual da física, pela fração de tempo que sobrou
@@ -78,7 +76,7 @@ function carWorld(c){// onde o carro está no mundo: só lê o estado físico (d
   if(RENDER_A!=null&&c._pp!=null&&Math.abs(c.prog-c._pp)*R.geo.len<30&&Math.abs(y-c._py)<4){const a=RENDER_A,b=1-a;pr=c._pp*b+c.prog*a;y=c._py*b+y*a;if(ps!=null&&c._ppsi!=null){let d=ps-c._ppsi;d-=Math.round(d/(2*Math.PI))*2*Math.PI;ps=c._ppsi+d*a}}
   const p=trackPos(pr,y*WS);p.h+=ps!=null?ps:Math.atan2(c.vy||0,Math.max(6,c.v||0));return p}
 var RENDER_A=null;
-function scWorld(){if(R.scP==null)return null;const PL=R.pitLane;const f=fr(R.scP);
+function scWorld(){/* safety car de verdade (safety.js): onde o carro está */if(R.scCar&&typeof carWorld==="function"){const p=carWorld(R.scCar);if(R.scCar.box)p.pit=1;return p}if(R.scP==null)return null;const PL=R.pitLane;const f=fr(R.scP);
   if(R.sc&&R.sc.ending){const s=((f-PL.fe)+1)%1*R.geo.len;if(s<PL.D)return pitPos(s/PL.D)}
   return trackPos(R.scP,0)}
 
@@ -250,8 +248,8 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
         const arm=toScreen(base.x,base.y,30*U+lift,cw,ch),top=toScreen(tp.x,tp.y,34*U,cw,ch);ctx.strokeStyle="#333";ctx.lineWidth=Math.max(1.5,2.5*U*Z);ctx.beginPath();ctx.moveTo(T3[0][0],T3[0][1]);ctx.lineTo(top[0],top[1]);ctx.lineTo(arm[0],arm[1]);ctx.stroke();
         const car=toScreen(base.x,base.y,lift+6*U,cw,ch);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(arm[0],arm[1]);ctx.lineTo(car[0],car[1]);ctx.stroke()}}})});
   // safety car
-  const scOn=RS?!!opts.S.sc:(R.sc&&R.sc.type==="sc"&&R.scP!=null);if(scOn){let p;if(RS)p=opts.S.sc;else p=scWorld();
-    items.push({d:p.x+p.y,draw:()=>{drawCar(ctx,cw,ch,{col:"#F2A900",col2:"#1B1B1B",sc:true,code:"SC"},p,detail,{});const s=toScreen(p.x,p.y,11*U,cw,ch);if(RS||!R.sc.ending){ctx.fillStyle=Math.floor(now*4)%2?"#FF9800":"#FFEB3B";ctx.fillRect(s[0]-5,s[1]-2,10,3)}
+  const scOn=RS?!!opts.S.sc:(!!R.scCar||(R.sc&&R.sc.type==="sc"&&R.scP!=null));if(scOn){let p;if(RS)p=opts.S.sc;else p=scWorld();const so3d=typeof P3D!=="undefined"&&P3D&&P3D.topo;/* no 3D o carro é desenhado em 3D; aqui fica só a placa */const luz=RS||(R.scCar?R.scCar.luzes:R.sc&&!R.sc.ending);
+    items.push({d:p.x+p.y,draw:()=>{if(!so3d)drawCar(ctx,cw,ch,{col:"#F2A900",col2:"#1B1B1B",sc:true,code:"SC"},p,detail,{});const s=toScreen(p.x,p.y,11*U,cw,ch);if(luz&&!so3d){ctx.fillStyle=Math.floor(now*4)%2?"#FF9800":"#FFEB3B";ctx.fillRect(s[0]-5,s[1]-2,10,3)}
       ctx.font="700 11px 'Titillium Web',sans-serif";ctx.textAlign="center";const lab="SAFETY CAR";const tw=ctx.measureText(lab).width+8;ctx.fillStyle="#F2A900";ctx.fillRect(s[0]-tw/2,s[1]-22,tw,14);ctx.fillStyle="#111";ctx.fillText(lab,s[0],s[1]-11)}})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.draw());post.forEach(f=>f());// fogo e extintores por cima de tudo
   if(typeof tunnelRange==="function"&&tunnelRange(R.geo))drawTunnelRoof(ctx,cw,ch,Z,opts);if(g.scn&&g.scn.baia&&typeof baiaOver==="function")baiaOver(ctx,cw,ch,Z);

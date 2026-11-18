@@ -28,6 +28,7 @@ function supBuild(TG){if(!TG||!TG.scn||!TG.M)return null;const M=TG.M,S=TG.scn,s
   // caixas: brita ou asfalto de escape (a mesma forma do polígono desenhado: borda de dentro e de fora em cada índice)
   const MATI=["brita","asfalto"];
   for(const gr of TG.gravel||[]){const o=L[gr.o>0?1:-1],a=S.wl[gr.o>0?1:-1],sp=gr.i-gr.i0-2,mat=gr.ro==="brita"&&!street?0:1;
+    /* bordas do polígono desenhado (scene.js), já cortadas por muro, pit lane, prédios e água */if(gr.faixa){for(const[ii,a0,a1]of gr.faixa){if(a1<=a0+.2*WS)continue;const i=W(ii),g0=a0*mW,g1=a1*mW;const novo=isNaN(o.g0[i]);if(novo||g0<o.g0[i])o.g0[i]=g0;if(novo||g1>o.g1[i])o.g1[i]=g1;o.gm[i]=novo?mat:(o.gm[i]===0||mat===0?0:1)}continue}
     for(let k=-sp;k<=sp+6;k++){const i=W(gr.i+k),lim=a?a[i]-.6*WS:1e9,w=Math.abs(k-3)<sp*.6?(street?30:80):(street?26:52);
       const g0=Math.min(TW+3.5*WS,lim)*mW,g1=Math.max(TW+.5*WS,Math.min(TW+(w-17)*WS/2.3,lim))*mW;
       const novo=isNaN(o.g0[i]);if(novo||g0<o.g0[i])o.g0[i]=g0;if(novo||g1>o.g1[i])o.g1[i]=g1;o.gm[i]=novo?mat:(o.gm[i]===0||mat===0?0:1)}}

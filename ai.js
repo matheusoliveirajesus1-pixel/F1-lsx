@@ -6,7 +6,6 @@
 const CARW=2.0,CARL=5.6,TRK_H=7.4,YMAX=TRK_H-1.05;
 // em disputa (atacar, defender, lado a lado, desviar) o piloto usa a pista inteira: pode deixar metade do carro além da linha branca
 const YATK=TRK_H-.1;
-function usesWidth(c){if(c.emerg)return true;if(c.neut)return false;return!!(c.atk||c.defend||c.coverY!=null||c.towY!=null||(c.alongs&&c.alongs.length)||c.emerg||c.bypass)}
 // mapa de fases da pista: 0 reta/aceleração, 1 frenagem, 2 curva; distância até a próxima freada; lado de dentro da próxima curva
 function aiPrep(geo){if(geo.ai)return geo.ai;const N=geo.N,k=geo.k;
   const p=speedProfile(geo,{pw:1,cd:1,cl:1,mass:PH.mass+15},tyreMu("M",0,.2,null),4.0,geo.gk);const v=Float32Array.from(p.v);

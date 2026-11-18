@@ -70,7 +70,6 @@ function hazardAvoid(c){if(!R.started||c.pit||c.ex)return null;const L=R.geo.len
 // ---------- contato físico entre carros (rodado a cada passo, depois do movimento)
 // depois de um choque, a escapada continua com a velocidade e a direção resultantes
 // depois de um toque: a velocidade e a direção resultantes passam para o núcleo de dinâmica (sem segunda física)
-function exSync(c){if(!c.dyn)return;const d=c.dyn,vl=Math.max(0,(c.v||0)*Math.cos(d.chi)),vt=c.vy||0;c.v=Math.hypot(vl,vt);d.chi=c.v>.3?clamp(Math.atan2(vt,Math.max(.1,vl)),-1.5,1.5):d.chi}
 function physContacts(){const P=R.phys;if(!P||P.length<2)return;const L=R.geo.len;R.cpair=R.cpair||{};
   for(const c of P)c.fsN=fr(c.prog)*L;
   const n=P.length;for(let a=0;a<n;a++){const c=P[a];if(!running(c)||c.pit)continue;

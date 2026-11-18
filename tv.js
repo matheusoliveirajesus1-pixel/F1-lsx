@@ -121,11 +121,6 @@ function tvLower(lw,foc){if(typeof bcOn==="function"&&(!bcOn()||(typeof BCX!=="u
     key=`D${foc.id}${p}${Math.round(g*10)}`;html=`<i style="background:${foc.t.c}"></i><b class="lt-p">P${p}</b><span class="lt-n">${esc(foc.d.n)}</span><span class="lt-t">${esc(foc.t.n)}${A?` · ${g.toFixed(1).replace(".",",")} s atrás de ${esc(A.code)}`:" · lidera a corrida"}</span>`}
   if(key===TVX.lowKey)return;TVX.lowKey=key;lw.hidden=!html;lw.classList.toggle("lt",!!html&&!lab);if(html)lw.innerHTML=html}
 // ---------- melhores momentos: guarda os lances (posições de todos os carros) para o resumo no fim
-function tvClipAdd(h){if(TVX.clipQ.some(q=>Math.abs(q.t-h.t)<3)){const q=TVX.clipQ.find(q=>Math.abs(q.t-h.t)<3);q.cars=[...new Set(q.cars.concat(h.cars))];q.imp=Math.max(q.imp,h.imp||1);return}
-  TVX.clipQ.push({t:h.t,txt:h.txt,type:h.type,cars:h.cars.slice(),imp:h.imp||1,lap:h.lap||1})}
-function tvClipTick(){if(!R.rb||!TVX.clipQ.length)return;const out=[];for(const q of TVX.clipQ){if(R.t<q.t+3&&!R.over){out.push(q);continue}
-    const fr0=R.rb.filter(x=>x.t>=q.t-6&&x.t<=q.t+3.5);/* lances mais longos */if(fr0.length<12)continue;const clip={...q,frames:fr0.map(f=>({t:f.t,cars:f.cars.map(c=>({id:c.id,x:c.x,y:c.y,h:c.h,vis:1})),sc:f.sc}))};
-    R.clips.push(clip);if(R.clips.length>12){let lo=0;for(let i=1;i<R.clips.length;i++)if(R.clips[i].imp<R.clips[lo].imp)lo=i;R.clips.splice(lo,1)}}TVX.clipQ=out}
 const HLP={on:false,i:0,t:0,raf:0,last:0};
 function hlCard(){if(!R||!R.clips||!R.clips.length)return"";return`<div class="card" style="grid-column:1/-1"><h3>Melhores momentos <small class="muted">${R.clips.length} lance${R.clips.length>1?"s":""}</small></h3>
   <div class="hlbox"><canvas id="hlcv" width="960" height="420" aria-label="replay dos melhores momentos"></canvas><div class="hlcap" id="hlcap">${esc(R.clips[0].txt)}</div><button class="btn go hlplay" data-act="tvHl" id="hlb">▶ Assistir</button></div></div>`}

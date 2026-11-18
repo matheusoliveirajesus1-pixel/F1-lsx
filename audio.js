@@ -88,14 +88,12 @@ function sndClick(a,fq){if(!SND.on||!SND.ctx)return;const ctx=SND.ctx,t=ctx.curr
 // bipe clássico do rádio de equipe (dois tons) + chiado e motor mais baixo enquanto fala
 function sndRadio(sec){if(!SND.on||!SND.ctx)return;const ctx=SND.ctx,t=ctx.currentTime;SND.duckT=performance.now()+(sec||1.6)*1000;
   [[1250,0],[960,.09]].forEach(([fq,d])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=fq;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.14,t+d+.01);g.gain.linearRampToValueAtTime(0,t+d+.08);o.connect(g);g.connect(SND.b.voice);o.start(t+d);o.stop(t+d+.1)})}
-function sndBeep(n){if(!SND.on||!SND.ctx)return;const ctx=SND.ctx,t=ctx.currentTime;for(let i=0;i<(n||1);i++){const o=ctx.createOscillator(),g=ctx.createGain();o.type="square";o.frequency.value=880;g.gain.setValueAtTime(.08,t+i*.15);g.gain.setValueAtTime(0,t+i*.15+.08);o.connect(g);g.connect(SND.b.fx);o.start(t+i*.15);o.stop(t+i*.15+.1)}}
 // batida: força 0..1 (toque leve = estalo curto; batida forte = estrondo grave e longo com peças voando)
 function sndImpact(force,dist){if(!SND.on||!SND.ctx)return;const ctx=SND.ctx,t=ctx.currentTime;const F=clamp(force,0,1),a=(.12+F*.55)/Math.max(1,dist||1);if(a<.02)return;
   const s=ctx.createBufferSource();s.buffer=SND.noise;const f=ctx.createBiquadFilter();f.type="lowpass";f.frequency.value=300+F*900;const g=ctx.createGain();const len=.15+F*1.1;
   g.gain.setValueAtTime(a,t);g.gain.exponentialRampToValueAtTime(.001,t+len);s.connect(f);f.connect(g);g.connect(SND.b.fx);s.start(t,Math.random());s.stop(t+len+.05);
   const o=ctx.createOscillator(),og=ctx.createGain();o.type="sine";o.frequency.setValueAtTime(70+F*40,t);o.frequency.exponentialRampToValueAtTime(30,t+.25);og.gain.setValueAtTime(a*.9,t);og.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(og);og.connect(SND.b.fx);o.start(t);o.stop(t+.32);
   if(F>.45)for(let i=0;i<4;i++){const d=.08+i*.07+Math.random()*.05;const p=ctx.createOscillator(),pg=ctx.createGain();p.type="square";p.frequency.value=900+Math.random()*1500;pg.gain.setValueAtTime(0,t+d);pg.gain.linearRampToValueAtTime(a*.12,t+d+.005);pg.gain.exponentialRampToValueAtTime(.001,t+d+.05);p.connect(pg);pg.connect(SND.b.fx);p.start(t+d);p.stop(t+d+.06)}}
-function sndCrash(){sndImpact(1,1)}
 // batida em algum lugar da pista: mais baixo quanto mais longe do carro que a câmera mostra
 function sndHitAt(c,F){if(!SND.on||!R||!c)return;const f=R.cars.find(x=>x.isP);let d=1;if(f&&f!==c){let m=Math.abs(fr(c.prog)-fr(f.prog));m=Math.min(m,1-m)*R.geo.len;d=Math.max(1,m/40)}if(d<8)sndImpact(F,d)}
 // ---------- voz (opcional): o navegador lê a narração e o rádio em português

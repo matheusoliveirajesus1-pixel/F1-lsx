@@ -55,7 +55,6 @@ const SP_MARK={
   pin:s=>`<path d="M12 21 C8 15.5 6 12.5 6 9.5 A6 6 0 0 1 18 9.5 C18 12.5 16 15.5 12 21Z" fill="${s}"/><circle cx="12" cy="9.5" r="2.4" fill="#FFFFFF"/>`};
 function sponsorOf(id){return SPONSOR_CAT.find(s=>s.id===id)||null}
 // emblema quadrado (fundo na cor principal, símbolo na segunda cor)
-function sponsorMarkSvg(sp,px){if(!sp)return"";const f=SP_MARK[sp.mk]||SP_MARK.diamond;return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${px||24}" height="${px||24}"><rect width="24" height="24" rx="5" fill="${sp.c}"/>${f(sp.c2)}</svg>`}
 // logotipo completo: símbolo + nome (para placas, menus e a transmissão)
 function sponsorLogoSvg(sp,h){if(!sp)return"";h=h||32;const name=String(sp.n).toUpperCase().replace(/[&<>]/g,"");const vw=25+name.length*7.5+5,w=Math.round(h*vw/24);const f=SP_MARK[sp.mk]||SP_MARK.diamond;
   return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw} 24" width="${w}" height="${h}"><rect width="${vw}" height="24" rx="4" fill="${sp.c2}"/><g transform="translate(2 2) scale(.8333)"><rect width="24" height="24" rx="5" fill="${sp.c}"/>${f(sp.c2)}</g><text x="25" y="16.6" textLength="${name.length*7.5}" lengthAdjust="spacingAndGlyphs" font-family="'Titillium Web',system-ui,sans-serif" font-weight="900" font-style="italic" font-size="12" fill="${sp.c}">${name}</text></svg>`}

@@ -3,7 +3,6 @@
 // semente e as mesmas decisões, o resultado sai idêntico: é a base para um servidor de campeonato conferir corridas.
 // Registro: tudo o que aconteceu (direção de prova, lances, voltas, paradas), para ver no fim ou copiar como JSON.
 function raceSeedPick(){const sd=(W&&W.seed)||1+Math.floor(Math.random()*2147483000);if(W&&W.seed)RNG=mulberry(sd);return sd}
-function raceSeedEnd(){if(W&&W.seed)RNG=Math.random}
 function rlog(kind,txt,extra){if(!R)return;if(!R.log)R.log=[];if(R.log.length>3000)return;R.log.push({t:+(R.t||0).toFixed(2),lap:Math.max(0,(R.lead||0)+1),k:kind,txt:String(txt),...(extra||{})})}
 // grava tudo que passa pela direção de prova e pelos lances da transmissão
 (function(){if(typeof rcMsg!=="function")return;const _rc=rcMsg;globalThis.rcMsg=function(t,cls,k){rlog("dp",t,cls?{cls}:null);return _rc.apply(this,arguments)};

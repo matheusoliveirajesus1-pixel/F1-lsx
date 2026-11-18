@@ -21,7 +21,7 @@ function pedHash(s,k){let h=2166136261^k;for(let i=0;i<s.length;i++){h^=s.charCo
 // medidas da peça (m) pelo catálogo do modelo
 function pedMedidas(M,i){const b=M.lista[i].cx;return[(b.max[0]-b.min[0])/1000,(b.max[1]-b.min[1])/1000,(b.max[2]-b.min[2])/1000]}
 // transforma os eventos de peça solta (dano3d.js) em pedaços
-function pedNovos(){const E=R.pecasSoltas;if(!E||!E.length)return;const M=typeof d3Meta==="function"?d3Meta():null;if(!M){E.length=0;return}const P=R.pedacos||(R.pedacos=[]);
+function pedNovos(){const E=R.pecasSoltas;if(!E||!E.length)return;/* online: o anfitrião manda o começo de cada pedaço para os outros (mp.js) */if(R.mpHost){const o=R.pcOut||(R.pcOut=[]);for(const e of E)if(o.length<40)o.push(e)}const M=typeof d3Meta==="function"?d3Meta():null;if(!M){E.length=0;return}const P=R.pedacos||(R.pedacos=[]);
   for(const e of E){const c=R.cars.find(x=>x.id===e.car);const p=M.lista[e.i];if(!c||!p)continue;const b=p.cx,dim=pedMedidas(M,e.i);
     // onde a peça estava no carro (corpo: l para a frente, w para a esquerda) → pista
     const cxm=(b.min[0]+b.max[0])/2,cym=(b.min[1]+b.max[1])/2,czm=(b.min[2]+b.max[2])/2,l=(M.cx-cxm)/M.kx,w=-cym/M.ky,ps=e.psi||0;
@@ -67,4 +67,3 @@ function pedTick(dt){pedNovos();const P=R.pedacos;if(!P||!P.length)return;const 
   for(let k=P.length-1;k>=0;k--){const q=P[k],naPista=Math.abs(q.y)<TRK_H+1.5,age=R.t-q.t0;
     if(age>(naPista?PED.RETIRA_PISTA:PED.RETIRA_FORA)||(naPista&&R.sc&&age>PED.RETIRA_SC&&q.parado))P.splice(k,1)}}
 // pose para o desenho
-function pedPose(q){return{prog:q.prog,y:q.y,z:q.z,ya:q.ya,ro:q.ro,pi:q.pi}}

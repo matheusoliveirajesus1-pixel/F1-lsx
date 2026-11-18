@@ -23,7 +23,6 @@ function fillAttrs(d){const a=d.a;const v=(x,y,w)=>clamp(Math.round((a[x]??75)*(
   for(const k of Object.keys(ATTR))if(a[k]==null)a[k]=der[k]?der[k]():75;if(!d.pers)d.pers=genPers(d);
   if(!d.exp){const st0=d.me?0:Math.max(0,Math.round((d.age-21)*20));const s=(d.stats&&d.stats.starts)||0;d.exp={yrs:+(st0/22).toFixed(1),starts:st0+s,wet:Math.round(st0*.12),laps:{}}}}
 function ovr(d){const a=d.a;return Math.round(a.pace*.22+a.quali*.09+a.cons*.08+a.tyre*.07+a.ovt*.06+a.def*.05+a.wet*.05+a.brk*.05+a.cor*.05+a.ctrl*.04+a.craft*.05+a.trc*.04+a.start*.03+a.ers*.03+a.mental*.03+a.fitness*.02+a.adapt*.02+a.fuel*.01+a.gear*.01+a.kerb*.01)}
-function carFrom(t){const c={};for(const k of["aero","chas","susp","brk","rel"])c[k]=clamp(Math.round(t+rr(-3,3)),60,97);c.eng=Math.round(85+((PU[t.pu]||{power:1}).power-1)*250);return c}
 function newGame(o){DID=0;
   G={v:1,garage:GARAGE0.slice(),year:2026,season:1,round:0,calendar:CIRCUITS.map(c=>c.id),settings:{dist:o.dist||.25,sound:true},drivers:{},teams:[],results:[],news:[],articles:[],phase:"home",
     social:{feed:[],trends:[]},fame:{pop:8,rep:20,followers:12000},money:0,trust:55,rel:{},h2h:{q:[0,0],r:[0,0]},xp:0,train:"auto",ach:{},history:[],offers:[],pending:[],mood:"neutro",gameOver:null};
@@ -47,7 +46,6 @@ function mate(){const t=myTeam();return G.drivers[t.drivers.find(id=>id!==G.me)]
 function news(t,cls){G.news.unshift({s:G.season,r:G.round,t,cls:cls||""});if(G.news.length>90)G.news.pop()}
 function carAvg(t){const c=t.car;return(c.eng+c.aero+c.chas+c.susp+c.brk+c.rel)/6}
 function teamDrivers(t){return t.drivers.map(id=>G.drivers[id])}
-function activeDrivers(t){return teamDrivers(t)}
 // ---------- classificação do campeonato
 function standings(){const dr={},tm={};G.teams.forEach(t=>tm[t.id]={id:t.id,pts:0,wins:0,best:99});
   for(const r of G.results.filter(r=>r.season===G.season))for(const e of r.cls){dr[e.d]=dr[e.d]||{id:e.d,team:e.team,pts:0,wins:0,pod:0,best:99};

@@ -72,16 +72,17 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
   {const D=c.dmg||{},w=D.whl||[0,0,0,0];c.crippled=R.started&&!c.pit&&(!!(c.tyre&&(c.tyre.rim||c.tyre.punct))||(D.off!=null&&D.off>=0)||(D.wing||0)>=.6||(D.rwing||0)>=.5||Math.max(w[0],w[1],w[2],w[3])>.6)}c.vCap=Infinity;c.hard=false;c.dirty=false;c.atk=false;c.defend=false;c.bypass=false;
   const A=c.ahead,dA=c.dA,B=c.behind;c.cdAtt=Math.max(0,c.cdAtt-dt);
   if(ph!==1)c.diveRoll=false;
-  if(c.pitCall&&R.started&&pitDist(c)<330)yT=g.pitSide*4.1;
+  if(c.pitCall&&R.started&&pitDist(c)<330)yT=pitLado(g)*4.1;
   else if(c.yieldTo){const mt=R.cars.find(x=>x.id===c.yieldTo);if(!mt||!running(mt)||mt.pit||mt.prog>c.prog){c.yieldTo=null}else if((c.prog-mt.prog)*g.len<140){yT=-Math.sign(mt.y||ideal||1)*4.4;m*=.94;if(!c.yielded||c.yielded.to!==mt.id)bubble(c,c.gb&&c.gb.to===mt.id?`Devolvendo a posição para ${mt.code}`:`Ordem de equipe: abrindo para ${mt.code}`,"order",4);c.yielded={to:mt.id,t:R.t}}}
   else if(c.blue){if(!c.blueSide)c.blueSide={s:-(Math.sign(ideal||c.y||1)),t:R.t};c.blueSide.t=R.t;yT=c.blueSide.s*5.6;m*=ph===0?.975:.99}/* bandeira azul: escolhe um lado e fica nele até ser passado (sem ziguezague) */
   else if(c.crippled){yT=-Math.sign(ideal||c.y||1)*4.6}
   else if(!neutral&&A&&dA<120){
     const lapped=A.prog<c.prog-.5,lapping=A.prog>c.prog+.5;
     const slowA=!A.ex&&(lapped||A.lose>0||A.crippled)||(A.pitCall&&pitDist(A)<330)||(A.pitExit&&R.t-A.pitExit<8)||A.yieldTo===c.id||(R.qMode&&A.q&&c.q&&c.q.st==="push"&&A.q.st!=="push");/* classificação: quem não está em volta rápida é carro lento */
-    if(slowA){c.bypass=true;if(dA<85&&Math.abs(A.y-c.y)<3.4){const s=A.pitCall?-g.pitSide:A.blue?(A.blueSide?-A.blueSide.s:(-Math.sign(A.y)||1)):sideRoom(A.y,c.y);yT=clamp(A.y+s*3.4,-YMAX,YMAX)}}
+    if(slowA){c.bypass=true;if(dA<85&&Math.abs(A.y-c.y)<3.4){const s=A.pitCall?-pitLado(g):A.blue?(A.blueSide?-A.blueSide.s:(-Math.sign(A.y)||1)):sideRoom(A.y,c.y);yT=clamp(A.y+s*3.4,-YMAX,YMAX)}}
     else if(!lapping)battle(c,A,dA,ph,ins,nb);
   }else if(c.att)c.att=null;
+  /* indo ao box (perto da entrada) ou avariado: não ataca; antes o ataque comprometido segurava o carro do outro lado e ele perdia a entrada do box */if(c.att&&((c.pitCall&&R.started&&pitDist(c)<330)||c.crippled))c.att=null;
   if(c.att&&c.att.commit&&c.att.y!=null)yT=c.att.y;
   else if(!neutral&&ph===0&&A&&dA<75&&dA>CARL+1&&!c.bypass&&!c.blue&&!c.yieldTo&&!(c.pitCall&&R.started&&pitDist(c)<330)&&nb>120)yT=clamp(A.y,-YMAX,YMAX);// pega o vácuo
   // defesa: uma única mudança de trajetória antes da freada, para o lado de dentro
@@ -138,7 +139,7 @@ function aiDrive(c,dt){const g=R.geo,AI=g.ai,N=g.N,i=Math.floor(fr(c.prog)*N)%N;
     // bandeira amarela: proibido ultrapassar; o carro da frente conta em qualquer lado da pista (só se passa carro com problema)
     if(R.started&&!R.red&&((R.sc&&!R.sc.unlapOn&&!c.unlap)||(!R.sc&&R.yellows.length&&inYellow(c)))&&!c.emerg){/* safety car e VSC: mantém a posição igual */const H=c.ahead;if(H&&c.dA<(Q?dQ:1e9)&&running(H)&&!H.pit&&!H.ex&&!(H.lose>0)&&(H.v||0)>12&&c.dA<60){Q=H;dQ=c.dA}}
   if(Q&&!(c.lateBrake&&c.lateBrake.id===Q.id)){const close=!neutral&&ph===0&&c.att&&c.att.commit&&Q===A;const tw=!neutral&&ph===0&&Q===A&&(c.tow||0)>.3;const dmin=CARL+(close?1.2+c.v*.045:tw?.8+c.v*.08/* no vácuo encosta mais */:.8+c.v*(R.sc&&R.sc.type==="sc"?.38:neutral?.15:.13));// reação: o piloto percebe a velocidade do carro da frente com um pequeno atraso
-    const tau=(.1+(1-clamp((sk(c,"craft")-55)/45,0,1))*.28)*(1+(c.spray||0)*1.6);if(c.pqId!==Q.id){c.pqId=Q.id;c.pqv=Q.v}else c.pqv+=(Q.v-c.pqv)*Math.min(1,dt/tau);const qv=neutral?Q.v:Math.max(Q.v,c.pqv);const qa=Math.min(0,Q.acc||0);/* freada fora do normal do carro da frente (desviando, travando, batendo): o de trás reage a ela */let qx=0;if(Q.prof&&qa<-8){const N=g.N,j=Math.floor(fr(Q.prof?Q.prog:0)*N)%N,v0=Q.prof.v[j],v1=Q.prof.v[(j+1)%N];const exp=Math.min(0,(v1*v1-v0*v0)/(2*DS));qx=qa-exp}
+    const tau=(.1+(1-clamp((sk(c,"craft")-55)/45,0,1))*.28)*(1+(c.spray||0)*1.6);if(c.pqId!==Q.id){c.pqId=Q.id;c.pqv=Q.v}else c.pqv+=(Q.v-c.pqv)*Math.min(1,dt/tau);const qa=Math.min(0,Q.acc||0);/* carro da frente freando: o piloto antecipa o que ele vai perder no tempo de reação (choque agora é de verdade, não amortece) */const qv=Math.max(0,(neutral?Q.v:Math.max(Q.v,c.pqv))+(qa<-4&&!(c.att&&c.att.commit)&&!Q.crippled&&Math.abs((Q.y||0)-(c.y||0))<CARW+.2?qa*tau*.6:0)/* só quem está bem atrás, na mesma linha, e não está atacando */);/* freada fora do normal do carro da frente (desviando, travando, batendo): o de trás reage a ela */let qx=0;if(Q.prof&&qa<-8){const N=g.N,j=Math.floor(fr(Q.prof?Q.prog:0)*N)%N,v0=Q.prof.v[j],v1=Q.prof.v[(j+1)%N];const exp=Math.min(0,(v1*v1-v0*v0)/(2*DS));qx=qa-exp}
     const dec=neutral||c.spray>.3?28:(c.v||0)>45?34:30;/* em corrida o piloto confia na própria freada: não freia antes só porque o da frente está freando para a curva */let cap=dQ>dmin?Math.sqrt(Math.max(0,qv*qv+2*dec*(dQ-dmin)+(qa<-8&&(neutral||qx<-6)?qa*Q.v*.35:0))):qv-(dmin-dQ)/.6;cap=Math.max(cap,dQ<CARL+1.5?0:dQ<dmin*.6?Q.v*.5:Q.v*.8-1.5);// colado demais: pode frear até parar (antes havia um piso que fazia o de trás bater no da frente)
     // contornando um carro parado/rodado: anda devagar enquanto sai de trás dele (o carro só vai para o lado andando para frente)
     // carro parado/rodado na frente: para deixando espaço para esterçar (nunca de nariz encostado) e só avança para o lado quando o caminho estiver livre
@@ -215,3 +216,7 @@ function aiTeamOrders(c){if(!running(c)||c.pit||c.yieldTo)return;const mt=R.cars
   if(c.hum)return;// o jogador recebe a pergunta pelo rádio
   if(mt.hum){c.yieldTo=mt.id;radio(mt,`${G.engineer||"Engenheiro"}: "Pedimos para ${c.code} abrir para você. Ele vai deixar passar."`,{k:"ordem"});rcMsg(`Ordem de equipe na ${c.t.n}: ${c.code} abre para ${mt.code}.`);return}
   c.yieldTo=mt.id;if(pos(c)<=10)narr(`Ordem de equipe na ${c.t.n}: ${c.code} vai deixar ${mt.code} passar.`,1)}
+
+// lado da entrada do box: o lado em que o pit lane de verdade começa (pitLatAt); o palpite pela geometria (geo.pitSide) às vezes
+// apontava o lado errado e o carro chegava à entrada do outro lado da pista, perdendo o box volta após volta
+function pitLado(g){if(R.pitLane&&typeof pitLatAt==="function"){if(R._pitLadoG!==g||R._pitLadoL!==R.pitLane){const y=pitLatAt(fr(R.pitLane.fe)+1e-4);R._pitLado=y?Math.sign(y):g.pitSide;R._pitLadoG=g;R._pitLadoL=R.pitLane}return R._pitLado}return g.pitSide}

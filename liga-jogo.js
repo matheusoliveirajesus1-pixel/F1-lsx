@@ -101,6 +101,7 @@ function pilInstall() {
   const css = document.createElement("style"); css.textContent = `body.ligapil{--dock:118px;overflow:hidden;background:#0b0d10}
   body.ligapil #stage{position:fixed!important;left:0;right:0;top:0;bottom:var(--dock);z-index:9000;margin:0!important;border-radius:0!important;max-width:none!important}
   body.ligapil #lower,body.ligapil #hTowerMode{display:none!important}
+  body.ligapil .rvBox{z-index:9500;bottom:calc(var(--dock) + 12px)}/* botão do rádio sobre a pista, acima do painel */
   body.ligapil #ask{position:fixed!important;left:50%;transform:translateX(-50%);bottom:calc(var(--dock) + 12px);top:auto!important;z-index:9600;width:min(560px,calc(100% - 24px));margin:0!important}
   #lpDock{position:fixed;left:0;right:0;bottom:0;height:var(--dock);z-index:9100;background:#111419;border-top:1px solid #262c35;color:#eceef1;font:13px/1.2 Inter,system-ui,sans-serif;display:flex;flex-direction:column;padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));gap:8px}
   #lpDock .inf{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font:600 13px/1 ui-monospace,Menlo,monospace;color:#aab2bd}#lpDock .inf b{color:#eceef1;font-size:15px}#lpDock .inf .pos{font:800 italic 26px/1 "Barlow Condensed","Arial Narrow",sans-serif;color:#fff}
@@ -110,7 +111,7 @@ function pilInstall() {
   #lpDock button.on{background:#eceef1;color:#0b0d10;border-color:#eceef1}#lpDock button.go{background:#ff4d2e;border-color:#ff4d2e;color:#fff;font-weight:800;font-size:13px}#lpDock button.go:disabled{opacity:.45}
   #lpDock button.df.on{background:#4da3ff;border-color:#4da3ff;color:#06121f}#lpDock .tyS{color:#ff4b5c}#lpDock .tyM{color:#ffd23f}#lpDock .tyH{color:#eceef1}#lpDock .tyI{color:#3ddc84}#lpDock .tyW{color:#4da3ff}
   #lpDock .tp{margin-left:auto;display:flex;gap:6px}#lpDock .tp button{flex:none;padding:6px 10px}
-  @media (max-width:860px){body.ligapil{--dock:44vh}#lpDock .grp{grid-template-columns:repeat(2,minmax(0,1fr));overflow:auto;align-content:start}#lpDock .g.w{grid-column:1/-1}#lpDock .inf{gap:10px;font-size:12px}#lpDock .inf b{font-size:13px}}`;
+  @media (max-width:860px){body.ligapil{--dock:150px}#lpDock .grp{grid-template-columns:repeat(2,minmax(0,1fr));overflow:auto;align-content:start}#lpDock .g.w{grid-column:1/-1}#lpDock .inf{gap:10px;font-size:12px}#lpDock .inf b{font-size:13px}}`;
   document.head.appendChild(css);
   const fit = fitRaceCanvas; globalThis.fitRaceCanvas = function () { if (!document.body.classList.contains("ligapil")) return fit(); const cv = document.getElementById("rc"), st = document.getElementById("stage"); if (!cv || !st) return fit();
     const dpr = Math.min(2, window.devicePixelRatio || 1), cw = st.clientWidth, ch = st.clientHeight; if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) { cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); cv.style.width = cw + "px"; cv.style.height = ch + "px" } const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, cw, ch } };
@@ -145,12 +146,8 @@ function pilTick() {
     ${me.pen ? `<span class="bad">PUNIÇÃO <b>${me.pen} s</b></span>` : ""}${R.sc ? `<span class="al"><b>${R.sc.type === "vsc" ? "VSC" : "SAFETY CAR"}</b></span>` : ""}${R.red ? `<span class="bad"><b>BANDEIRA VERMELHA</b></span>` : ""}${me.pitCall ? `<span class="al">BOX: <b>${me.pitCall}</b></span>` : ""}`;
   const I = typeof intentOf === "function" ? intentOf(me) : {}; const lc = LIGA.lc; const can = running(me) && !me.pit && R.started && !R.sc && !R.red;
   const sg = (a, opts, cur) => `<div class="sg">${opts.map(([k, n]) => `<button data-lp="${a}:${k}" class="${cur === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
-  const grp = `<div class="g"><span>Ritmo · 1 2 3</span>${sg("pace", [["tyres", "Pneus"], ["bal", "Normal"], ["push", "Forçar"]], I.pace)}</div>
-    <div class="g"><span>Risco</span>${sg("risk", [["safe", "Seguro"], ["norm", "Normal"], ["all", "Tudo"]], I.risk)}</div>
-    <div class="g w"><span>Bateria</span>${sg("e", [["auto", "Auto"], ["save", "Carga"], ["defend", "Defesa"], ["attack", "Ataque"]], lc.e)}</div>
-    <div class="g w"><span>Lado do ataque</span>${sg("at", [["auto", "Auto"], ["in", "Dentro"], ["out", "Fora"], ["wait", "Espera"]], lc.at)}</div>
-    <div class="g w"><span>Disputa · espaço · D</span><div class="sg"><button data-lp="go" class="go" ${can && A ? "" : "disabled"} title="Forçar ultrapassagem (espaço)">Ultrapassar!</button><button data-lp="df" class="df${lc.df ? " on" : ""}">Defender</button></div></div>
-    <div class="g w"><span>Box <span class="tp"><button data-lp="som" title="Som">${UI.sound ? "🔊" : "🔈"}</button><button data-lp="sair">Sair</button></span></span><div class="sg">${["S", "M", "H", "I", "W"].map((c) => `<button data-lp="box:${c}" class="ty${c}${me.pitCall === c ? " on" : ""}">${c}</button>`).join("")}${me.pitCall ? `<button data-lp="box:x">✕</button>` : ""}</div></div>`;
+  /* no painel só a disputa; ritmo, risco, bateria, lado do ataque e box ficam no botão Rádio (radio-vivo.js) */
+  const grp = `<div class="g w"><span>Disputa · espaço · D <span class="tp"><button data-lp="som" title="Som">${UI.sound ? "🔊" : "🔈"}</button><button data-lp="sair">Sair</button></span></span><div class="sg"><button data-lp="go" class="go" ${can && A ? "" : "disabled"} title="Forçar ultrapassagem (espaço)">Ultrapassar!</button><button data-lp="df" class="df${lc.df ? " on" : ""}">Defender</button></div></div>`;
   if (LIGA.q) { document.body.style.setProperty("--dock", "50px"); const t = `<span class="pos">CLASSIFICAÇÃO</span><span>Use o painel no canto da pista: <b>Sair para a pista</b> e <b>Abortar</b>.</span><span class="tp"><button data-lp="som">${UI.sound ? "🔊" : "🔈"}</button></span>`; const a = document.getElementById("lpInf"), g = document.getElementById("lpGrp"); if (a._h !== t) { a._h = t; a.innerHTML = t; g.innerHTML = ""; g._h = "" } return }
   document.body.style.removeProperty("--dock");
   const a = document.getElementById("lpInf"), g = document.getElementById("lpGrp"); if (a._h !== inf) { a._h = inf; a.innerHTML = inf } if (g._h !== grp) { g._h = grp; g.innerHTML = grp }

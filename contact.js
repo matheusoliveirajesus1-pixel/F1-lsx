@@ -7,7 +7,7 @@ const WHEEL={FL:0,FR:1,RL:2,RR:3},WNAME=["dianteiro esquerdo","dianteiro direito
 const AXF=1.75,AXR=-1.65,WB=AXF-AXR;// eixos (m a partir do centro do carro)
 function dmgInit(c){const d=c.dmg;d.wingL=d.wingL||0;d.wingR=d.wingR||0;d.nose=d.nose||0;d.cool=d.cool||0;d.side=d.side||0;if(!d.whl)d.whl=[0,0,0,0];d.off=d.off||-1;d.loose=d.loose||0}
 // resume as peças nos valores que o resto do jogo já usa (tempo de volta, visual, multijogador)
-function dmgSync(c){const d=c.dmg;dmgInit(c);d.wing=Math.min(1,Math.max(d.wing||0,Math.max(d.wingL,d.wingR)*.8+Math.min(d.wingL,d.wingR)*.2+d.nose*.5));d.susp=Math.min(1,Math.max(...d.whl));d.body=Math.min(1,Math.max(d.body||0,d.side));recalc(c)}
+function dmgSync(c){const d=c.dmg;dmgInit(c);d.wing=Math.min(1,Math.max(d.wing||0,Math.max(d.wingL,d.wingR)*.8+Math.min(d.wingL,d.wingR)*.2+d.nose*.5));d.susp=Math.min(1,Math.max(...d.whl));d.body=Math.min(1,Math.max(d.body||0,d.side));recalc(c);/* o que quebrou aparece quebrado no carro 3D (dano3d.js) */if(typeof d3DaFisica==="function")d3DaFisica(c)}
 // ---------- paredes e escape (em metros a partir do centro da pista)
 function wallM(c,sign){const f=fr(c.prog);let w=null;if(typeof sceneWallLat==="function"&&typeof TRACKGEO!=="undefined"&&TRACKGEO&&TRACKGEO.scn)w=sceneWallLat(f,sign);if(w!=null)return w/WS;
   const g=R.geo,i=Math.floor(f*g.N)%g.N;const cn=cornerAt(g,i);if(R.C.street)return TRK_H+2.4;if(cn&&(cn.ro==="muro"))return TRK_H+4;if(cn&&cn.ro==="brita")return TRK_H+16;return TRK_H+20}
@@ -19,7 +19,7 @@ function exSafe(c){const L=R.geo.len,wait=R.t-c.ex.until,disc=(c.d.pers||{}).dis
   for(const o of R.cars){if(o===c||!running(o)||o.pit||o.ex||(o.v||0)<6)continue;let d=fr(c.prog)*L-fr(o.prog)*L;if(d<0)d+=L;if(d>0&&d<Math.max(40,(o.v||0)*2.3)&&Math.abs((o.y||0)-Math.sign(c.y||1)*YMAX)<4)return false}return true}
 function exStuck(c){const f=fr(c.prog);R.errLog&&R.errLog.beach++;rcMsg(`${c.code} atolou na brita!`,"bad","escape");narr(`${c.code} ATOLOU NA BRITA! A corrida acabou para ele.`,3);hlight("crash",[c],`${c.code} preso na brita`,3);c.ex=null;dnf(c,"Atolou na brita","beach");crowdEv(f,.9);triggerSC(c.y&&Math.abs(c.y)>TRK_H+9?"vsc":"sc")}
 // batida no muro: a força do impacto decide se acaba ou se segue avariado
-function exWall(c,imp,v){if(typeof sndHitAt==="function")sndHitAt(c,clamp(imp/22,.2,1));const f=fr(c.prog),cn=nextCorner(c),nm=cn?`na ${cn.n}`:"";R.fxq.push({type:"sparks",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"parts",f,lat:c.y||0,t0:R.t,col:c.col,col2:c.col2});
+function exWall(c,imp,v){/* a quina que bateu amassa ou perde peças (dano3d.js) */if(typeof d3Parede==="function")d3Parede(c,Math.sign(c.y||1),imp);if(typeof sndHitAt==="function")sndHitAt(c,clamp(imp/22,.2,1));const f=fr(c.prog),cn=nextCorner(c),nm=cn?`na ${cn.n}`:"";R.fxq.push({type:"sparks",f,lat:c.y||0,t0:R.t});R.fxq.push({type:"parts",f,lat:c.y||0,t0:R.t,col:c.col,col2:c.col2});
   const ro=R.C.street?"muro":(c.ex&&c.ex.ro)||"barreira";
   if(imp>11){c.crashRo=ro==="muro"?"muro":"brita";c.crashFire=imp>24&&(c.fuel||0)>20;c.crashFast=clamp(imp/26,0,1);R.errLog&&R.errLog.dnf++;c._crashPhys=1;
     rcMsg(`ACIDENTE: ${c.code} bateu ${ro==="muro"?"no muro":"na barreira"} ${nm}!`,"bad","escape");narr(imp>18?`BATIDA FORTE! ${c.code} vai direto para o muro ${nm}!`:`${c.code} bate ${nm} e está fora!`,3);hlight("crash",[c],`Acidente de ${c.code}`,3);
@@ -76,21 +76,23 @@ function physContacts(){const P=R.phys;if(!P||P.length<2)return;const L=R.geo.le
   const n=P.length;for(let a=0;a<n;a++){const c=P[a];if(!running(c)||c.pit)continue;
     for(let q=1;q<=3;q++){const o=P[(a+q)%n];if(o===c||!running(o)||o.pit)continue;let ds=o.fsN-c.fsN;if(ds>L/2)ds-=L;if(ds<-L/2)ds+=L;
       // detecção antes de entrar: conta como toque se, na velocidade de aproximação atual, o de trás encostaria dentro do próximo passo
-      const rr=ds>=0?c:o,ff=rr===c?o:c,appr=Math.max(0,(rr.v||0)-(ff.v||0));if(Math.abs(ds)>=CARL+appr*SIM_DT)continue;
-      const dy=(o.y||0)-(c.y||0);if(Math.abs(dy)>=CARW)continue;
-      const key=c.id<o.id?c.id+"|"+o.id:o.id+"|"+c.id;const was=(R.cpair[key]||-9)>R.t-.3;R.cpair[key]=R.t;
-      const rear=ds>=0?c:o,front=rear===c?o:c,dsa=Math.abs(ds),ov=CARL-dsa,oy=CARW-Math.abs(dy);const pre={rv:rear.vy||0,fv:front.vy||0,rearAtt:!!(rear.att&&rear.att.commit),frontCov:front.coverY!=null};
-      if(ov/CARL<oy/CARW){// batida de frente/traseira
-        // impulso: o de trás perde velocidade, o da frente ganha (é empurrado para frente pela física); a sobreposição que sobrar
-        // é desfeita aos poucos (no máximo 0,12 m por passo, invisível), nunca de uma vez
-        const close=Math.max(0,(rear.v||0)-(front.v||0));if(close>0){const va=((rear.v||0)+(front.v||0))/2;rear.v=Math.max(0,va-close*.12);front.v=va+close*.12}
-        if(ov>0){const cr=Math.min(ov,.12);rear.prog-=cr*.75/L;front.prog+=cr*.25/L;rear.fsN-=cr*.75;if((rear.v||0)>(front.v||0))rear.v=front.v||0}
-        exSync(rear);exSync(front);if(!was||close>2)contactEvent(rear,front,"long",close,{off:(front.y||0)-(rear.y||0),ds:dsa,pre})}
-      else{// lado a lado
-        const s=Math.sign(dy)||1;const push=Math.min(oy/2+.02,.08);/* separação lateral aos poucos; a velocidade lateral faz o resto */if(!c.ex||!o.ex){c.y=(c.y||0)-s*push;o.y=(o.y||0)+s*push}
-        const close=Math.max(0,((c.vy||0)-(o.vy||0))*s);if(close>0){const avg=((c.vy||0)+(o.vy||0))/2;c.vy=avg-s*close*.3;o.vy=avg+s*close*.3}
-        exSync(c);exSync(o);// rotação pelo ponto do toque: o empurrão fora do centro gira os dois carros
-        if(close>0&&c.dyn&&o.dyn){const dr=-s*.55*close*clamp(ds/CARL,-1,1);c.dyn.r+=dr;o.dyn.r+=dr;c.dyn.beta+=dr*.05;o.dyn.beta+=dr*.05}const dv=Math.abs((c.v||0)-(o.v||0));const slowBoth=(c.v||0)<8&&(o.v||0)<8;if(!was||(close>1.5&&!slowBoth)||close>4)contactEvent(rear,front,"lat",close+dv*.08,{ds:dsa,side:s,dy,pre,mover:((c.vy||0)*s>(-(o.vy||0)*s))?c:o})}}}}
+      const rr=ds>=0?c:o,ff=rr===c?o:c,appr=Math.max(0,(rr.v||0)-(ff.v||0));if(Math.abs(ds)>=CARL+1+appr*SIM_DT)continue;
+      const dy=(o.y||0)-(c.y||0);if(Math.abs(dy)>=CARL)continue;
+      /* lado a lado andando paralelos (mesmo ângulo): a caixa girada pela pista exageraria a largura (o carro real é estreito atrás e
+         arredondado nas pontas); só um carro atravessado (rodando ou com ângulo bem diferente) ocupa mais que a largura */
+      /* um dos dois no ar acima da altura do outro: passa por cima */if((c.air&&c.air.zc>1.4)||(o.air&&o.air.zc>1.4))continue;
+      if(Math.abs(dy)>=CARW&&Math.abs((c.psi||0)-(o.psi||0))<.15&&!(c.dyn&&c.dyn.spin)&&!(o.dyn&&o.dyn.spin))continue;
+      const key=c.id<o.id?c.id+"|"+o.id:o.id+"|"+c.id;const cp=R.cpair[key],was=!!cp&&cp.t>R.t-.6;
+      const rear=ds>=0?c:o,front=rear===c?o:c,dsa=Math.abs(ds);const pre={rv:rear.vy||0,fv:front.vy||0,rearAtt:!!(rear.att&&rear.att.commit),frontCov:front.coverY!=null};
+      /* corpos rígidos (colisao.js): impulso no ponto do contato, quantidade de movimento conservada, giro pelo braço de alavanca */
+      const h=colResolve(c,o,ds,SIM_DT);if(!h)continue;/* o mesmo toque (carros ainda encostados, um rodando por cima do outro) não conta de novo: só um choque bem mais forte que o anterior */
+      exSyncSoft(c);exSyncSoft(o);const E=h.vn;const s=Math.sign(dy)||1;const Ep=was?cp.E:0;R.cpair[key]={t:R.t,E:Math.max(E,was?cp.E*.9:0)};if(E<=.05)continue;/* encostados mas já se afastando: sem novo toque */
+      if(was&&E<Ep*1.5+2)continue;
+      /* dano por peça no ponto exato do toque, nos dois carros (dano3d.js) */if(typeof d3PontoPista==="function"){d3PontoPista(c,0,h.pt,E);d3PontoPista(o,ds,h.pt,E)}
+      if(h.long){if(!was||E>2)contactEvent(rear,front,"long",E,{off:(front.y||0)-(rear.y||0),ds:dsa,pre,roda:h.roda})}
+      else{const slowBoth=(c.v||0)<8&&(o.v||0)<8;if(!was||(E>1.5&&!slowBoth)||E>4)contactEvent(rear,front,"lat",E,{ds:dsa,side:s,dy,pre,roda:h.roda,mover:((c.vy||0)*s>(-(o.vy||0)*s))?c:o})}}}}
+// depois do impulso: mantém o estado de escapada coerente (c.ex lê c.vy)
+function exSyncSoft(c){if(c.ex)c.ex.vy=c.vy||0}
 // ---------- dano por peça a partir do impacto
 function contactEvent(rear,front,mode,E,g){R.nTouch=(R.nTouch||0)+1;if(typeof sndHitAt==="function")sndHitAt(front,clamp(E/3,.05,.8));dmgInit(rear);dmgInit(front);const f=fr(front.prog),out=[];const add=(car,t)=>out.push([car,t]);
   if(E<.35&&mode==="lat"){if(!rear._rub||R.t-rear._rub>4){rear._rub=R.t;R.fxq.push({type:"sparks",f,lat:((rear.y||0)+(front.y||0))/2,t0:R.t})}return}
@@ -104,8 +106,7 @@ function contactEvent(rear,front,mode,E,g){R.nTouch=(R.nTouch||0)+1;if(typeof sn
       if(ao<.6){front.dmg.floor=Math.min(1,(front.dmg.floor||0)+E*.04);if(E>5){front.dmg.rwing=Math.min(1,(front.dmg.rwing||0)+(E-4)*.12);add(front,"asa traseira danificada");bump(front,1)}}
       if(E>8){front.dmg.gear=Math.min(1,(front.dmg.gear||0)+(E-6)*.05);if(front.dmg.gear>.6)latentFail(front,"Câmbio",front.dmg.gear)}
       // toque fora do centro gira o carro da frente
-      const torque=E*Math.min(1.6,ao)*(1+R.w*.8);if(ao>=.35&&E>2&&torque>3.3*(1-R.w*.35)){spun=front;exStart(front,"spin",{dir:off>0?-1:1,cause:"toque"});bump(front,2)}
-      if(E>14&&!spun){exStart(front,"crash",{dir:sideAt(f),cause:"toque"});bump(front,3)}
+      /* a rodada agora vem do impulso fora do centro (colisao.js); aqui só a gravidade para as mensagens e os comissários */if(ao>=.35&&E>2)bump(front,2);if(E>14)bump(front,3)
       if(E>12){rear.dmg.whl[WHEEL.FL]+=.3;rear.dmg.whl[WHEEL.FR]+=.3;add(rear,"suspensão dianteira danificada")}}}
   else{// lado a lado: onde as rodas e as laterais se encostam
     const ds=g.ds,s=g.side;const leftOf=(car)=>car===rear?(s>0):(s<0);// contato do lado esquerdo do carro?
@@ -116,7 +117,7 @@ function contactEvent(rear,front,mode,E,g){R.nTouch=(R.nTouch||0)+1;if(typeof sn
         if(E>2.8&&!car.tyre.punct&&rnd()<clamp((E-2.5)/6,.1,.6)){car.tyre.punct=true;car.tyre.pw=wi;add(car,`pneu ${WNAME[wi]} furado`);bump(car,2);if(!car.pitCall)car.pitCall=COMP[car.tyre.c].dry?pickDry(R.L-car.lap):car.tyre.c}
         else add(car,car.dmg.whl[wi]>.3?`suspensão ${WNAMEF[wi]} entortou`:"roda com roda");bump(car,car.dmg.whl[wi]>.3?1:0)}
       // rodas que se encaixam: a traseira do carro da frente é empurrada e ele gira
-      if(wheelPair==="cruzado"&&E>2.9){spun=front;exStart(front,"spin",{dir:g.side>0?1:-1,cause:"toque"});bump(front,2);if(E>8){exStart(rear,"crash",{dir:Math.sign(rear.y||1),cause:"toque"});bump(rear,3)}}}
+      if(wheelPair==="cruzado"&&E>2.9){bump(front,2);if(E>8)bump(rear,3)}/* o giro e a escapada vêm da física do choque */}
     else{const tip=rear;const L0=leftOf(tip);const wd=Math.max(0,E-.9)*.1;if(L0)tip.dmg.wingL+=wd;else tip.dmg.wingR+=wd;add(tip,"placa da asa dianteira danificada");bump(tip,1);
       const hit=front;hit.dmg.side=Math.min(1,hit.dmg.side+E*.08);hit.dmg.floor=Math.min(1,(hit.dmg.floor||0)+E*.03);if(E>4){hit.dmg.cool=Math.min(1,hit.dmg.cool+(E-3)*.07);add(hit,"radiador danificado");bump(hit,1);if(hit.dmg.cool>.55)latentFail(hit,"Motor",hit.dmg.cool)}else add(hit,"lateral raspada")}
     // empurrado para fora da pista

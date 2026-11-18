@@ -95,11 +95,11 @@ function tvRadioSC(){const c=R.order.slice(0,8).find(x=>running(x)&&!x.hum&&!x.p
 // ---------- cartão do SEU rádio (falas do voice.js: você e o engenheiro), no mesmo estilo do rádio da transmissão, em qualquer câmera.
 // Uma fala por vez: a próxima espera a atual ficar pelo menos 2,5 s na tela; falas que esperaram mais de 6 s são descartadas.
 const MYR={cur:null,q:[]};
-function tvMyRadioSay(c,txt,who){if(!c||!txt)return;const now=performance.now()/1000;MYR.q.push({c,txt,who:who||"me",at:now});if(MYR.q.length>3)MYR.q.shift()}
+function tvMyRadioSay(c,txt,who){if(!c||!txt)return;const now=performance.now()/1000;/* a mesma fala duas vezes seguidas não entra */const ult=MYR.q[MYR.q.length-1]||MYR.cur;if(ult&&ult.txt===txt&&now-(ult.at||ult.t0)<4)return;MYR.q.push({c,txt,who:who||"me",at:now});if(MYR.q.length>5)MYR.q.shift()}
 function tvMyRadio(ctx,cw,ch,now){if(!R||R.over&&!MYR.cur)return;let r=MYR.cur;
-  if(MYR.q.length&&(!r||now-r.t0>Math.min(2.5,r.dur))){MYR.q=MYR.q.filter(x=>now-x.at<6);const n=MYR.q.shift();if(n){r=MYR.cur={...n,t0:now,dur:Math.min(7,3.4+n.txt.length*.035)}}}
+  if(MYR.q.length&&(!r||now-r.t0>Math.min(2.5,r.dur))){MYR.q=MYR.q.filter(x=>now-x.at<(x.who==="eng"?12:7));/* a resposta do engenheiro espera mais na fila: é informação */const n=MYR.q.shift();if(n){r=MYR.cur={...n,t0:now,dur:Math.min(n.who==="eng"?11:7,3.4+n.txt.length*.045)}}}
   if(!r)return;const a=now-r.t0;if(a>r.dur){MYR.cur=null;return}const mob=cw<640;const k=Math.min(1,a/.25,(r.dur-a)/.3);const col=r.c.t?r.c.t.c:"#E10600";const eng=r.who==="eng";
-  ctx.save();ctx.globalAlpha=k;const fs=mob?12:14;ctx.font=`600 italic ${fs}px ${TVF}`;const lines=tvWrap(ctx,`“${r.txt}”`,mob?cw*.62:300).slice(0,3);const w=Math.max(190,Math.max(...lines.map(l=>ctx.measureText(l).width))+26),h=40+lines.length*fs*1.3;
+  ctx.save();ctx.globalAlpha=k;const fs=mob?12:14;ctx.font=`600 italic ${fs}px ${TVF}`;/* a resposta do engenheiro é informação: cabe inteira (até 6 linhas, cartão mais largo) */const lines=tvWrap(ctx,`“${r.txt}”`,mob?cw*.7:(eng?380:300)).slice(0,eng?6:3);const w=Math.max(190,Math.max(...lines.map(l=>ctx.measureText(l).width))+26),h=40+lines.length*fs*1.3;
   // embaixo do cartão da transmissão quando os dois estão na tela
   let y=mob?ch*.55:ch*.36;if(TVX.rad&&(typeof bcOn!=="function"||bcOn())&&tvOn()){ctx.font=`600 italic ${fs}px ${TVF}`;const n=Math.min(3,tvWrap(ctx,`“${TVX.rad.txt}”`,mob?cw*.62:300).length);y+=40+n*fs*1.3+8}
   const x=10-(1-k)*40;ctx.fillStyle="rgba(8,10,14,.9)";ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,5,h);

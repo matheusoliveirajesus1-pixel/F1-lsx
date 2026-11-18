@@ -189,6 +189,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     if(typeof FX2!=="undefined"){if(FX2.evento(ctx,e,s,q,age,Z,cw,ch))return;if(e.type==="parts"||e.type==="debris")FX2.clarao(ctx,e,s,age,Z)}// efeitos 2.0 (fx2.js)
     if(e.type==="skid")return;// marca antiga desenhada por fórmula: substituída pelas marcas reais das rodas (R.marks)
     if(e.type==="sparks"){const k=age/1.8;for(let j=0;j<16;j++){const a=j*2.39+e.t0,r=(4+k*30*(.5+((j*7)%5)/5))*U*Z;ctx.strokeStyle=`rgba(255,${180+((j*37)%70)},60,${1-k})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(s[0]+Math.cos(a)*r*.6,s[1]-4*Z+Math.sin(a)*r*.35);ctx.lineTo(s[0]+Math.cos(a)*r,s[1]-4*Z+Math.sin(a)*r*.55-k*6*Z);ctx.stroke()}return}
+    if(e.type==="parts"&&typeof P3D!=="undefined"&&P3D.on&&typeof pedTick==="function")return;/* no 3D, as peças de verdade (pedacos.js) */
     if(e.type==="parts"){// pedaços de asa voando e caindo na pista
       for(let j=0;j<8;j++){const a=j*2.13+e.t0*7,sp=(7+(j%3)*4)*WS,tt=Math.min(age,1.4),d=sp*tt,z=Math.max(0,(7*tt-4.9*tt*tt))*WS*.8;
         const px=q.x+Math.cos(a)*d,py=q.y+Math.sin(a)*d;const p=toScreen(px,py,z,cw,ch);const sh=toScreen(px,py,0,cw,ch);const r=(1.6+(j%2))*U*Z,rot=age*(6+j)*(j%2?1:-1);
@@ -201,7 +202,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
   // objetos com profundidade
   const items=[],occl=[];// occl: acidentes que não podem ficar escondidos atrás de arquibancadas
   // destroços na pista
-  if(detail&&R.debris&&R.debris.length){const L=R.geo.len;for(const d of R.debris){const p=trackPos(d.fs/L,d.y*WS);const q=toScreen(p.x,p.y,0,cw,ch);if(!onScreen(q,cw,ch,20))continue;const z=WS*Z;
+  if(detail&&R.debris&&R.debris.length&&!(typeof P3D!=="undefined"&&P3D.on&&typeof pedTick==="function")){const L=R.geo.len;for(const d of R.debris){const p=trackPos(d.fs/L,d.y*WS);const q=toScreen(p.x,p.y,0,cw,ch);if(!onScreen(q,cw,ch,20))continue;const z=WS*Z;
       for(let k=0;k<3;k++){const a=(d.fs*7+k*2.1)%6.28;ctx.fillStyle=k===0?d.col:k===1?d.col2:"#1A1A1A";ctx.save();ctx.translate(q[0]+Math.cos(a)*1.4*z,q[1]+Math.sin(a)*.7*z);ctx.rotate(a);ctx.fillRect(-.9*z,-.35*z,1.8*z,.7*z);ctx.restore()}}}
   const post=[],spost=[];if(g.scn)sceneItems(items,spost,ctx,cw,ch,night,now,detail);
   if(detail){
@@ -217,13 +218,13 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
       ctx.globalAlpha=1}})});
     g.boards.forEach(b=>{const s=toScreen(b.x,b.y,0,cw,ch);if(!onScreen(s,cw,ch,40*U))return;items.push({d:b.x+b.y,draw:()=>{isoBox(ctx,b.x,b.y,22*U,2*U,5*U,b.h,b.c,shade(b.c,.6),shade(b.c,.8),cw,ch);if(b.sp)boardLogo(ctx,b,cw,ch,Z)}})});
     if(detail)pitCrewItems(ctx,items,cw,ch,Z);
-    g.garages.forEach((ga,i)=>{const t=G.teams.find(x=>Math.abs(garF(x)-ga.f)<.004)||G.teams[i];/* mesma ordem das paradas (garF) */const s=toScreen(ga.x,ga.y,0,cw,ch);if(!onScreen(s,cw,ch,80*U))return;items.push({d:ga.x+ga.y,draw:()=>{isoBox(ctx,ga.x,ga.y,26*U,16*U,14*U,ga.h,t?t.c:"#888",shade(t?t.c:"#888888",.5),shade(t?t.c:"#888888",.72),cw,ch)}})});
+    g.garages.forEach((ga,i)=>{const t=G.teams.find(x=>Math.abs(garF(x)-ga.f)<.004)||G.teams[i];/* mesma ordem das paradas (garF) */const s=toScreen(ga.x,ga.y,0,cw,ch);if(!onScreen(s,cw,ch,80*U))return;items.push({d:ga.x+ga.y,draw:()=>{isoBox(ctx,ga.x,ga.y,ga.w||26*U,ga.d||16*U,14*U,ga.h,t?t.c:"#888",shade(t?t.c:"#888888",.5),shade(t?t.c:"#888888",.72),cw,ch)}})});
     g.posts.forEach(p=>{const s=toScreen(p.x,p.y,0,cw,ch);if(!onScreen(s,cw,ch,40*U))return;items.push({d:p.x+p.y,draw:()=>{{const Tp=isoBox(ctx,p.x,p.y,7*U,7*U,7*U,0,"#F57C00","#AEB5BE","#D3D8DE",cw,ch);ctx.fillStyle="#F57C00";poly(ctx,Tp);ctx.fill();ctx.strokeStyle="#8A4400";ctx.lineWidth=1;ctx.stroke()}const fs=flagState(p.f);const top=toScreen(p.x,p.y,10*U,cw,ch);
       if(fs==="red")drawFlag(ctx,top,"#E10600",Z,now);else if(fs==="yellow")drawFlag(ctx,top,"#FFD400",Z,now);else if(fs==="dbl"){drawFlag(ctx,top,"#FFD400",Z,now);drawFlag(ctx,[top[0]-8*Z,top[1]],"#FFD400",Z,now+.3)}
       else if(fs==="sc"||fs==="vsc"){drawFlag(ctx,top,"#FFD400",Z,now);ctx.fillStyle="#111";ctx.fillRect(top[0]-12*Z-8,top[1]-14,16,9);ctx.fillStyle="#FFD400";ctx.font="700 7px 'Roboto Mono',monospace";ctx.textAlign="center";ctx.fillText(fs==="sc"?"SC":"VSC",top[0]-12*Z,top[1]-7)}
       else if(fs==="green")drawFlag(ctx,top,"#21C55D",Z,now);else if(fs==="chk")drawFlag(ctx,top,"#FFF",Z,now,"chk")}})});
     // pórtico de largada
-    {const a=trackPos(0,-(TW+6*U)),b=trackPos(0,TW+6*U);items.push({d:(a.x+b.x)/2+(a.y+b.y)/2+30*U,draw:()=>{const A0=toScreen(a.x,a.y,0,cw,ch),A1=toScreen(a.x,a.y,34*U,cw,ch),B0=toScreen(b.x,b.y,0,cw,ch),B1=toScreen(b.x,b.y,34*U,cw,ch);
+    {const PO=g.scn&&g.scn.props3d&&g.scn.props3d.portico,a=trackPos(0,-(PO?PO.Lb:TW+6*U)),b=trackPos(0,PO?PO.La:TW+6*U);items.push({d:(a.x+b.x)/2+(a.y+b.y)/2+30*U,draw:()=>{const A0=toScreen(a.x,a.y,0,cw,ch),A1=toScreen(a.x,a.y,34*U,cw,ch),B0=toScreen(b.x,b.y,0,cw,ch),B1=toScreen(b.x,b.y,34*U,cw,ch);
       ctx.strokeStyle="#2B2F36";ctx.lineWidth=Math.max(2,3*U*Z);ctx.beginPath();ctx.moveTo(A0[0],A0[1]);ctx.lineTo(A1[0],A1[1]);ctx.lineTo(B1[0],B1[1]);ctx.lineTo(B0[0],B0[1]);ctx.stroke();
       const lit=!RS&&!R.started&&R.form&&R.form.phase==="lights"&&R.lightsStart!=null?Math.min(5,Math.max(0,Math.floor(R.t-R.lightsStart)+1)):(!RS&&R.rs&&R.rs.phase==="lights"&&R.t>=R.rs.lightsStart)?Math.min(5,Math.floor(R.t-R.rs.lightsStart)+1):0;for(let k=0;k<5;k++){const u=.3+k*.1;const x=A1[0]+(B1[0]-A1[0])*u,y=A1[1]+(B1[1]-A1[1])*u;ctx.fillStyle=k<lit?"#FF1A1A":"#3A0000";ctx.beginPath();ctx.arc(x,y+3,Math.max(2,3*U*Z),0,7);ctx.fill();if(k<lit){ctx.fillStyle="rgba(255,40,40,.3)";ctx.beginPath();ctx.arc(x,y+3,Math.max(4,7*U*Z),0,7);ctx.fill()}}}})}
   }

@@ -122,7 +122,7 @@ function dynBici(c,d,v,aLatD,AF,AR,dt,noc,out,surpresa,aG,mz){aG=aG||0;mz=mz||0;
     dl+=(delta-dl)*Math.min(1,h/.06);const af=Math.atan2(vy+A*wz,vx)-dl,ff=pneuF(af,ffm);d.alF=af;d.alR=ar;/* ângulos de deriva (pneu.js usa para o aquecimento) */
     const ayq=(ff+fr)*Math.cos(bv);wz=clamp(wz+(A*ff-B*fr+mz)/K2*h,-3.4,3.4);bv+=((ayq+aG)/v-wz)*h;ay+=ayq+aG}
   d.wz=clamp(wz,-3.4,3.4);/* nenhum carro gira mais que ~3,4 rad/s (rodada de verdade) */d.beta=-bv;d.delta=dl;d._dbg=[aLatD,ay/n,ffm,frm];return{ay:ay/n,fSat}}
-function dynStep(c,dt,vT,hard,brk,yT,o){if(!c.dyn)dynInit(c);o=o||{};const n=Math.max(1,Math.ceil(dt/.0501));for(let k=0;k<n;k++)dynSub(c,dt/n,vT,hard,brk,yT,o);
+function dynStep(c,dt,vT,hard,brk,yT,o){if(!c.dyn)dynInit(c);o=o||{};/* fora do plano (aereo.js): no ar, rolando ou capotado, os pneus não mandam */if(c.air&&typeof aerPasso==="function"&&!c.pit){aerPasso(c,dt);return}const n=Math.max(1,Math.ceil(dt/.0501));for(let k=0;k<n;k++)dynSub(c,dt/n,vT,hard,brk,yT,o);if(typeof aerTropeco==="function"&&running(c))aerTropeco(c);
   /* encalhado: parado fora da pista (brita, grama, quina de muro) por ~25 s sem conseguir voltar = abandono, como na vida real
      (sem isso, uma bandeira vermelha esperava esse carro para sempre) */
   if(!c.pit&&R.started&&typeof running==="function"&&running(c)&&(c.v||0)<1.5&&Math.abs(c.y||0)>TRK_H+.5){const sAt=(c.prog||0)*R.geo.len;if(!c._presoRef)c._presoRef={s:sAt,y:c.y||0};c._preso=(c._preso||0)+dt;

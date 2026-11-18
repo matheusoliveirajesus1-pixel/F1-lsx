@@ -53,7 +53,7 @@ function respostaDe(k,me){const i=R.order.indexOf(me),A=R.order[i-1],B=R.order[i
   return""}
 function pergunta(k){const me=eu();if(!me)return;const q=(PERGS.find(x=>x[0]===k)||[])[1];if(!q)return;try{radio(me,q,{me:1})}catch(e){}
   const t=respostaDe(k,me);R._rvPerg=(R._rvPerg||0)+1;setTimeout(()=>{try{radio(me,`${G.engineer||"Engenheiro"}: "${t}"`)}catch(e){}},1200+Math.random()*900);return t}
-function pedePneu(comp){const me=eu();if(!me)return;if(comp==="fica"){cmdBoxC(me,null);return}cmdBoxC(me,comp);
+function pedePneu(comp){const me=eu();if(!me)return;const manda=k=>typeof uiAct==="function"?uiAct("box",k):cmdBoxC(me,k);if(comp==="fica"){manda(null);return}manda(comp);
   const T=COMP[comp];const chuva=R.rain||0;let aviso=null;if(T&&T.dry&&chuva>.45)aviso="A pista está molhada. Tem certeza que quer pneu de seco?";else if(T&&!T.dry&&chuva<.1&&!(typeof rainAt==="function"&&rainAt(me.lap+2)>.2))aviso="Não tem chuva prevista, esse pneu vai derreter.";
   if(aviso)setTimeout(()=>{try{radio(me,`${G.engineer||"Engenheiro"}: "${aviso}"`)}catch(e){}},2200)}
 // ---------- 2. botão do rádio e painel
@@ -75,13 +75,49 @@ const css=document.createElement("style");css.textContent=`
 .rvX{all:unset;pointer-events:auto;cursor:pointer;align-self:flex-end;font-size:13px;color:#9097A3;padding:4px 6px}`;document.head.appendChild(css);
 const box=document.createElement("div");box.className="rvBox";box.hidden=true;box.innerHTML=`<div class="rvCard" id="rvPrompt" hidden></div><div class="rvCard" id="rvMenu" hidden></div><button class="rvBtn" id="rvBtn" aria-haspopup="dialog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="7" y="7" width="10" height="14" rx="2"/><path d="M12 7V3M9 3h6M10 12h4M10 16h4"/></svg>Rádio</button>`;
 document.body.appendChild(box);
-function desenhaMenu(abre){const el=box.querySelector("#rvMenu");if(!abre){el.hidden=true;return}el.hidden=false;const me=eu();const atual=me&&me.tyre?me.tyre.c:null;
-  el.innerHTML=`<button class="rvX" data-rvm="fecha" aria-label="Fechar">Fechar ✕</button><h4>Perguntar à equipe</h4><div class="rvGrid">${PERGS.map(([k,n])=>`<button class="rvOp" data-rvq="${k}">${n}</button>`).join("")}</div>
-   <h4>Pedir pneus (box)</h4><div class="rvGrid rvPn">${Object.keys(COMP).map(k=>`<button class="rvOp rvTy" data-rvp="${k}"><i style="background:${COMP[k].c}"></i>${COMP[k].n}${k===atual?" <small>atual</small>":""}</button>`).join("")}<button class="rvOp" data-rvp="fica">Ficar na pista</button></div>`}
-box.addEventListener("click",e=>{const q=e.target.closest("[data-rvq]");if(q){e.preventDefault();desenhaMenu(false);pergunta(q.dataset.rvq);return}
+// O rádio concentra tudo o que é conversa com a equipe: box (com a leitura do engenheiro), ordens ao piloto e perguntas.
+// Três abas: BOX · PILOTO · PERGUNTAR. No topo, a situação de agora (posição, pneu, plano).
+const RVT={aba:"box"};
+const css2=document.createElement("style");css2.textContent=`
+.rvTabs{display:flex;gap:4px;background:#0E0F12;border-radius:12px;padding:3px}.rvTabs button{all:unset;flex:1;text-align:center;cursor:pointer;padding:9px 4px;border-radius:9px;font:700 12px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9097A3;min-height:20px}
+.rvTabs button.on{background:#2A2E36;color:#fff}.rvTabs button:focus-visible{outline:2px solid #fff}
+.rvSit{display:flex;flex-wrap:wrap;gap:4px 12px;font:600 12.5px/1.3 Inter,system-ui,sans-serif;color:#C9CDD4}.rvSit b{color:#fff}
+.rvEng{background:#13202B;border-left:3px solid #5BD1FF;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.4;color:#E6F6FF}.rvEng small{display:block;font:800 10px/1 Inter,sans-serif;letter-spacing:.12em;color:#5BD1FF;margin-bottom:4px}
+.rvOp.on{background:#E8432A;color:#fff}.rvOp.on small{color:#FFE1DA}.rvOp.sug{box-shadow:inset 0 0 0 2px #5BD1FF}
+.rvSeg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.rvSeg.q4{grid-template-columns:repeat(4,minmax(0,1fr))}.rvSeg .rvOp{text-align:center;padding:10px 6px;font-size:13px}
+.rvMenuBody{max-height:min(58vh,520px);overflow:auto;display:flex;flex-direction:column;gap:8px}`;document.head.appendChild(css2);
+function vidaComp(me,k){try{const T=COMP[k];const f=Object.assign({},me,{tyre:Object.assign({},me.tyre,{c:k,wear:0,age:0,temp:T&&T.opt||me.tyre.temp})});const r=wearRate(f);return r>0?Math.floor(.8/r):null}catch(e){return null}}
+// o pneu que o engenheiro sugere agora: chuva manda; no seco, o do plano ou o que chega ao fim
+function sugestao(me){const left=Math.max(0,R.L-me.lap),chuva=R.rain||0,logo=typeof rainAt==="function"?rainAt(me.lap+2):chuva;
+  if(chuva>.62||logo>.7)return"W";if(chuva>.3||logo>.4)return"I";const st=me.plan&&me.plan.stops&&me.plan.stops[me.planIdx];if(st&&COMP[st.c]&&COMP[st.c].dry)return st.c;
+  try{return pickDry(left)}catch(e){return"M"}}
+function ehLiga(){return typeof LIGA!=="undefined"&&LIGA.on&&R&&R.mpGuest}
+function desenhaMenu(abre){const el=box.querySelector("#rvMenu");if(!abre){el.hidden=true;return}el.hidden=false;const me=eu();if(!me){el.hidden=true;return}
+  const ty=me.tyre||{},T=COMP[ty.c]||{},i=R.order.indexOf(me),A=R.order[i-1],B=R.order[i+1],v=vidaPneu(me),w=Math.round((ty.wear||0)*100);
+  const sit=`<div class="rvSit"><span><b>P${i+1}</b></span><span>Volta <b>${Math.min(R.L,me.lap+1)}/${R.L}</b></span><span>${esc(T.n||"Pneu")} <b>${w}%</b> gasto${v!=null?` · ~${v} v`:""}</span>${A?`<span>${esc(A.code)} <b>+${gapS(A,me).toFixed(1)}</b></span>`:""}${B?`<span>${esc(B.code)} <b>−${gapS(me,B).toFixed(1)}</b></span>`:""}${me.pitCall?`<span style="color:#FFD400">BOX: <b>${esc(COMP[me.pitCall].n)}</b></span>`:""}</div>`;
+  const tabs=`<div class="rvTabs" role="tablist">${[["box","Box"],["pil","Piloto"],["perg","Perguntar"]].map(([k,n])=>`<button role="tab" aria-selected="${RVT.aba===k}" class="${RVT.aba===k?"on":""}" data-rvt="${k}">${n}</button>`).join("")}</div>`;
+  let corpo="";
+  if(RVT.aba==="box"){const sg=sugestao(me),pp=typeof pitPredict==="function"?pitPredict(me):null;
+    const leitura=respostaDe("box",me)+(pp?` Se parar agora, volta em P${pp.pos}${pp.behind?` atrás do ${pp.behind.code}`:""} (perde ~${Math.round(pp.loss)} s).`:"")+(R.sc?` ${R.sc.type==="vsc"?"VSC":"Safety car"} na pista: parar agora custa menos.`:"");
+    corpo=`<div class="rvEng"><small>Leitura do engenheiro</small>${esc(leitura)}</div><h4>Pedir pneus</h4><div class="rvGrid rvPn">${Object.keys(COMP).map(k=>{const vv=COMP[k].dry?vidaComp(me,k):null;return`<button class="rvOp rvTy${me.pitCall===k?" on":""}${k===sg&&me.pitCall!==k?" sug":""}" data-rvp="${k}"><i style="background:${COMP[k].c}"></i>${esc(COMP[k].n)}<small>${me.pitCall===k?"pedido":k===sg?"sugerido":vv!=null?`~${vv} voltas`:k===ty.c?"atual":""}</small></button>`}).join("")}<button class="rvOp" data-rvp="fica">${me.pitCall?"Cancelar box":"Ficar na pista"}</button></div>`}
+  else if(RVT.aba==="pil"){const I=typeof intentOf==="function"?intentOf(me):{};const seg=(a,ops,cur,q4)=>`<div class="rvSeg${q4?" q4":""}">${ops.map(([k,n])=>`<button class="rvOp${cur===k?" on":""}" data-rvo="${a}:${k}">${n}</button>`).join("")}</div>`;
+    corpo=`<h4>Ritmo</h4>${seg("pace",INT_PACE,I.pace)}<h4>Disputas</h4>${seg("risk",INT_RISK,I.risk)}`;
+    if(ehLiga()&&LIGA.lc)corpo+=`<h4>Bateria</h4>${seg("e",[["auto","Auto"],["save","Carregar"],["defend","Defesa"],["attack","Ataque"]],LIGA.lc.e,1)}<h4>Lado do ataque</h4>${seg("at",[["auto","Auto"],["in","Por dentro"],["out","Por fora"],["wait","Esperar"]],LIGA.lc.at,1)}`;
+    corpo+=`<div class="rvEng"><small>O que o piloto está fazendo</small>${esc(typeof brainNow==="function"?brainNow(me):"—")}</div>`}
+  else corpo=`<div class="rvGrid">${PERGS.map(([k,n])=>`<button class="rvOp" data-rvq="${k}">${n}</button>`).join("")}</div>`;
+  el.innerHTML=`<button class="rvX" data-rvm="fecha" aria-label="Fechar">Fechar ✕</button>${sit}${tabs}<div class="rvMenuBody">${corpo}</div>`}
+// ordens ao piloto (ritmo e disputa valem no jogo normal e na liga; bateria e lado do ataque, na liga)
+function ordem(a,k){const me=eu();if(!me)return;if(a==="pace"||a==="risk"){if(typeof uiAct==="function")uiAct(a,k)}else if(typeof pilAcao==="function")pilAcao(a,k);
+  const N={pace:{tyres:"Cuida dos pneus, sem forçar.",bal:"Ritmo normal.",push:"Pode forçar, quero o ritmo de classificação."},risk:{safe:"Nada de risco, traz o carro inteiro.",norm:"Disputa normal.",all:"Tudo ou nada: vai pra cima."},e:{auto:"Bateria no automático.",save:"Carrega a bateria nesta volta.",defend:"Bateria em defesa.",attack:"Bateria toda pra atacar."},at:{auto:"Escolhe você por onde passar.",in:"Ataca por dentro na freada.",out:"Tenta por fora.",wait:"Espera, ainda não ataca."}};
+  const t=N[a]&&N[a][k];if(t)setTimeout(()=>{try{radio(me,`${G.engineer||"Engenheiro"}: "Copiado. ${t}"`)}catch(e){}},700)}
+box.addEventListener("click",e=>{const t=e.target.closest("[data-rvt]");if(t){e.preventDefault();RVT.aba=t.dataset.rvt;desenhaMenu(true);return}
+  const o=e.target.closest("[data-rvo]");if(o){e.preventDefault();const[a,k]=o.dataset.rvo.split(":");ordem(a,k);setTimeout(()=>desenhaMenu(true),60);return}
+  const q=e.target.closest("[data-rvq]");if(q){e.preventDefault();desenhaMenu(false);pergunta(q.dataset.rvq);return}
   const p=e.target.closest("[data-rvp]");if(p){e.preventDefault();desenhaMenu(false);pedePneu(p.dataset.rvp);return}
   const m=e.target.closest("[data-rvm]");if(m){e.preventDefault();desenhaMenu(false);return}
   if(e.target.closest("#rvBtn")){const el=box.querySelector("#rvMenu");desenhaMenu(el.hidden)}});
+// com o menu aberto, a situação se atualiza (a cada 1 s, sem perder o foco de quem usa teclado)
+const _h0=setInterval(()=>{const el=box.querySelector("#rvMenu");if(el&&!el.hidden&&!el.contains(document.activeElement))desenhaMenu(true)},1000);if(_h0&&_h0.unref)_h0.unref();
 // mostra o botão só durante a corrida ou a classificação
 const _h1=setInterval(()=>{const ativo=typeof R!=="undefined"&&R&&R.started&&!R.over&&!!document.querySelector("#app .stage")&&!!eu();if(box.hidden===ativo)box.hidden=!ativo;
   if(!ativo){const el=box.querySelector("#rvMenu");if(!el.hidden)desenhaMenu(false)}},150);if(_h1&&_h1.unref)_h1.unref();

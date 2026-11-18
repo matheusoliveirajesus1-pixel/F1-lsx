@@ -184,7 +184,7 @@ function updWrecks(){scClearTick();for(const w of R.wrecks){if(w.c&&!w.removed){
   R.yellows=R.yellows.filter(y=>y.w?!y.w.removed:R.t<y.until)}
 function bubble(c,text,kind,dur){if(!c||!R.bubbles)return;R.bubbles.push({id:c.id,text:text.length>78?text.slice(0,76)+"…":text,kind:kind||"",t:R.t,dur:dur||4.5});if(R.bubbles.length>16)R.bubbles.shift()}
 function rcMsg(t,cls,k){R.msgs.unshift({lap:Math.max(1,R.lead+1),t,cls:cls||"",k});if(R.msgs.length>60)R.msgs.pop()}
-function radio(c,t,o){const m={lap:Math.max(1,R.lead+1),c:c.id,code:c.code,t,rt:R.t,...(o||{})};R.radio.unshift(m);if(R.radio.length>40)R.radio.pop();if(o&&o.pause&&c.isP)R.toast={t:R.t,text:t};if(c.hum&&!(o&&o.vox))bubble(c,(o&&o.me?"":"🎧 ")+t.replace(/^[^:"]{2,22}: "?/,"").replace(/"$/,""),o&&o.me?"me":"radio",5)}
+function radio(c,t,o){const m={lap:Math.max(1,R.lead+1),c:c.id,code:c.code,t,rt:R.t,...(o||{})};R.radio.unshift(m);if(R.radio.length>40)R.radio.pop();if(o&&o.pause&&c.isP)R.toast={t:R.t,text:t};if(c.hum&&!(o&&o.vox)){/* o seu rádio aparece na tela no cartão de rádio (como os da transmissão), não em balão sobre o carro */const txt=t.replace(/^[^:"]{2,22}: "?/,"").replace(/"$/,"");if(c.isP&&typeof tvMyRadioSay==="function")tvMyRadioSay(c,txt,o&&o.me?"me":"eng");else bubble(c,(o&&o.me?"":"🎧 ")+txt,o&&o.me?"me":"radio",5)}}
 function pos(c){return R.order.indexOf(c)+1}
 function running(c){return c.status==="run"}
 
@@ -254,7 +254,7 @@ function pitArrive(c){const P=c.pit;const busy=R.pitBusy[c.t.id]||0;if(busy>R.t)
   if(c.hum)radio(c,`Pit stop: pneu ${COMP[P.comp].n}${P.note?" ("+P.note+")":""}.`);
   if(P.note.includes("porca")&&(c.isP||pos(c)<=5)){narr(`Problema no pit stop de ${c.code}! A roda não saiu.`,2);hlight("pit",[c],`Pit stop lento de ${c.code}`,c.isP?2:1)}}
 function pitService(c){const P=c.pit,comp=P.comp;const keepN=typeof pxService==="function"&&pxService(c);if(c.dmg&&!keepN){const d=c.dmg;d.wingL=0;d.wingR=0;d.nose=0;d.loose=0;c._wbL=0;c._wbR=0;c.bo=0}c.tyre={c:comp,wear:0,temp:82,grain:0,blister:0,punct:false,age:0};if(!c.used.includes(comp))c.used.push(comp);
-  if(c.dmg.wing>=.3&&!keepN)c.dmg.wing=0;if(c.dmg.rwing>=.3)c.dmg.rwing=0;if(c.dmg.floor>.3){c.dmg.floor=0;c.floorMsg=0}if(P.penS){c.pen=Math.max(0,+(c.pen-P.penS).toFixed(3));P.penS=0;c.penServe=c.pen>0}
+  if(c.dmg.wing>=.3&&!keepN)c.dmg.wing=0;if(c.dmg.rwing>=.3)c.dmg.rwing=0;if(c.dmg.floor>.3){c.dmg.floor=0;c.floorMsg=0}if(typeof d3Conserta==="function")d3Conserta(c);if(P.penS){c.pen=Math.max(0,+(c.pen-P.penS).toFixed(3));P.penS=0;c.penServe=c.pen>0}
   if(c.hum){const st=c.plan&&c.plan.stops[c.planIdx];if(st&&Math.abs(st.lap-c.lap)<=6)c.planIdx++;radio(c,`Parado ${P.stop.toFixed(1)}s.${P.stop<2.35&&!P.note?" Pit stop excelente da equipe!":P.stop>3.6&&!P.note?" Pit stop lento.":""} Vai, vai, vai!`);c.wearWarn=0;c.compWarn=0}
   recalc(c)}
 function exitPit(c){c.pit=null;c.pitExit=R.t;c.lineN=0;c.att=null;recalc(c);// a posição lateral continua de onde o carro está (fim do pit lane), sem salto
@@ -433,8 +433,8 @@ function step(dt){
     const brk=geo.ai.ph[i]===1||c.prof.v[(i+1)%N]<c.prof.v[i]-.02;
     if(typeof revStep==="function"&&!c.ex)revStep(c,dt,v1);
     // o núcleo de dinâmica move o carro (única autoridade); na recuperação de uma escapada o alvo é voltar à pista
-    let yT=c.yT;if(R.sc&&R.sc.unlapOn&&!c.emerg)yT=c.unlap?-4.4:2.4;// retardatários passando: a fila anda pela direita e deixa a esquerda livre
-    if(c.tyre.rim&&v1>38){v1=38;hard=true}// rodando no aro
+    let yT=c.yT;if(R.sc&&R.sc.unlapOn&&!c.emerg&&!(toPit&&pitDist(c)<600))yT=c.unlap?-4.4:2.4;/* quem vai ao box sai da fila para pegar a entrada (antes perdia a entrada volta após volta e rodava no aro até quebrar) */// retardatários passando: a fila anda pela direita e deixa a esquerda livre
+    if(c.tyre.rim){/* no aro o eixo quase não segura: devagar também nas curvas (antes só limitava a 137 km/h e o carro saía reto na curva antes do box, volta após volta) */const vr=Math.min(38,speedAt(c,f)*.62);if(v1>vr){v1=vr;hard=true}}// rodando no aro
     if(c.ex){const rc=dynRecover(c);v1=rc.v;yT=rc.y;hard=true}
     let dopt={em:!!c.emerg};if(R.rs&&c.rsSlot!=null&&!c.ex){const r=rsDrive(c,dt);if(r.stop){c.v=0;continue}v1=r.v;yT=r.y;hard=true;dopt={amax:6,dmax:12,sMax:c.rsSlot}}
     const before=Math.floor(c.prog),pb=c.prog;dynStep(c,dt,Math.max(0,v1),hard,brk,yT,dopt);if(!running(c))continue;
@@ -451,7 +451,7 @@ function step(dt){
     if(c.fuel<=0){c.fuel=0;dnf(c,"Sem combustível","stop");rcMsg(`${c.code} ficou sem combustível!`,"bad");continue}
     if(c.pendFail!=null&&c.prog>=c.pendFail){c.pendFail=null;mechFail(c,c.pendWhy);c.pendWhy=null;if(!running(c))continue}
     if(Math.floor(c.prog)>before&&Math.floor(c.prog)>=1)onLap(c)}
-  if(R.started&&R.phys){physContacts();debrisTick(dt);looseTick()}
+  if(R.started&&R.phys){physContacts();debrisTick(dt);looseTick()}/* peças soltas (pedacos.js) */if(typeof pedTick==="function")pedTick(dt);
   if(R.red&&R.red.phase==="return"&&R.cars.filter(running).every(c=>c.parked||c.pit)&&R.cars.some(c=>c.parked)&&R.cars.filter(running).every(c=>c.parked)){R.red.phase="stopped";R.redChoose=true}
   // ordem da corrida
   R.order=R.cars.slice().sort((a,b)=>{const ra=a.status==="dnf"||a.status==="dsq",rb=b.status==="dnf"||b.status==="dsq";if(ra!==rb)return ra?1:-1;

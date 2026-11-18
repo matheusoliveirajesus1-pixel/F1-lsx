@@ -237,10 +237,7 @@ function raceStep(){const me=R.cars.find(c=>c.isP);UI.trace=new Float32Array(R.g
    <div class="rpanes">
     <section class="pane pane-radio${UI.rtab==="radio"?" on":""}" data-pane="radio"><div class="radioctl">
      <div class="card"><h3>Seu piloto</h3><div class="brnow" id="brNow">—</div>
-      <h4 class="ag">Ritmo</h4><div class="seg">${INT_PACE.map(([k,n])=>`<button data-act="pace" data-k="${k}" id="ip_${k}">${n}</button>`).join("")}</div>
-      <h4 class="ag">Disputas</h4><div class="seg">${INT_RISK.map(([k,n])=>`<button data-act="risk" data-k="${k}" id="ir_${k}">${n}</button>`).join("")}</div>
-      <p class="muted" style="font-size:12px;margin:2px 0 0">Energia, asa, ataque, defesa e ajustes do carro são decisões do piloto, pelo que ele vê na pista.</p>${R.goals&&R.goals.length?`<h4 class="ag">Metas da equipe</h4><div id="goalsLive">${goalsHtml(R.goals,true)}</div>`:""}</div>
-     <div class="card"><h3>Box ${ib("pitlane")}</h3><div class="tyrepick">${["S","M","H","I","W"].map(c=>`<button data-act="box" data-k="${c}">${tyreBadge(c)}${COMP[c].n}</button>`).join("")}</div><div class="row"><button class="btn sm" data-act="box" data-k="">Cancelar box</button><span class="muted num" id="pitp" style="font-size:12.5px"></span></div></div>
+      <p class="muted" style="font-size:12px;margin:2px 0 0">Ordens ao piloto, box e perguntas à equipe ficam no botão <b>Rádio</b>.</p>${R.goals&&R.goals.length?`<h4 class="ag">Metas da equipe</h4><div id="goalsLive">${goalsHtml(R.goals,true)}</div>`:""}</div>
      <div class="card" style="grid-column:1/-1"><h3>Rádio</h3><ul class="rfeed" id="rfeed"></ul></div></div></section>
     <section class="pane pane-tele${UI.rtab==="tele"?" on":""}" data-pane="tele"><div class="wxbox"><canvas id="radar" width="440" height="300" aria-label="radar de chuva"></canvas><div id="wxfc" class="wxfc"></div></div><div class="wheel" id="wheel"></div><canvas class="trace" id="trace" width="900" height="220" aria-label="telemetria de velocidade"></canvas></section>
     <section class="pane pane-pos card tower${UI.rtab==="pos"?" on":""}" data-pane="pos" style="padding:10px"><h3 id="lapc">Volta</h3><div class="tw"><table><tbody id="tower"></tbody></table></div><h3>Direção de prova</h3><ul class="feed" id="rcfeed"></ul><h3>Transmissão</h3><ul class="feed" id="nfeed"></ul></section>
@@ -386,7 +383,7 @@ function updatePanels(now){const me=R.cars.find(c=>c.isP);
     if(me){{const I=intentOf(me);INT_PACE.forEach(([k])=>{const b=$("#ip_"+k);if(b)b.classList.toggle("on",I.pace===k)});INT_RISK.forEach(([k])=>{const b=$("#ir_"+k);if(b)b.classList.toggle("on",I.risk===k)});
         {const gl=$("#goalsLive");if(gl&&R.goals&&R.t>(UI.goalT||0)){UI.goalT=R.t+1;const h=goalsHtml(R.goals,true);if(gl.innerHTML!==h)gl.innerHTML=h}}
         const n=$("#brNow");if(n){const gb=me.gb||me.gbShow;const gt=gb?R.cars.find(x=>x.id===gb.to):null;const t=gb?`Devolvendo a posição${gt?" ao "+gt.code:""}`:brainNow(me);if(n.textContent!==t)n.textContent=t}}
-      const pp=pitPredict(me);$("#pitp").textContent=me.pitCall?`Box chamado: ${COMP[me.pitCall].n}`:pp?`Parar agora: volta em ${pp.pos}º (−${pp.loss.toFixed(0)}s)`:""}}
+      const pp=pitPredict(me),pe=$("#pitp");if(pe)pe.textContent=me.pitCall?`Box chamado: ${COMP[me.pitCall].n}`:pp?`Parar agora: volta em ${pp.pos}º (−${pp.loss.toFixed(0)}s)`:""}}
   const vz=el=>!!(el&&el.offsetParent);if(vz($("#wheel")))wheelPanel(me);if(vz($("#trace"))){drawTrace(me);if(typeof drawTraceCmp==="function")drawTraceCmp(me)}if(typeof wxDraw==="function")wxDraw();askPanel();raceExtras()}
 // painel do volante: estrutura criada uma vez; a cada quadro só os textos mudam (sem recriar botões nem mudar a altura)
 function wheelBuild(el){el.innerHTML=`<div class="leds">${"<i></i>".repeat(15)}</div>

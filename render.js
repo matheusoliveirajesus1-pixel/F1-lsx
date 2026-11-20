@@ -232,7 +232,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     if(!RS&&detail&&!c.pit){const dm=c.dmg||{};const v=c.v||0;const ix=Math.floor(fr(c.prog)*g.M)%g.M;
       const spark=(dm.wing>=.5||dm.floor>.5||(dm.susp||0)>.6||(c.tyre&&c.tyre.punct))&&v>25&&Math.random()<.7||(v>76&&g.geo.ai&&g.geo.ai.ph[Math.floor(fr(c.prog)*g.geo.N)%g.geo.N]===0&&Math.random()<.035);
       if(spark)items.push({d:p.x+p.y+.6,draw:()=>drawSparks(ctx,cw,ch,p,v)});
-      if(c.smokeT&&c.smokeT>R.t)items.push({d:p.x+p.y-1.5,draw:()=>drawSmokeTrail(ctx,cw,ch,p,R.t)})}items.push({d:p.x+p.y+.5,draw:()=>drawCar(ctx,cw,ch,c,p,detail,opts)})});
+      if(c.smokeT&&c.smokeT>R.t)items.push({d:p.x+p.y-1.5,draw:()=>drawSmokeTrail(ctx,cw,ch,p,R.t)})}/* o carro é desenhado em 3D */});
   if(!RS&&typeof carFxAll==="function")carFxAll(items,ctx,cw,ch,WP,detail);
   // carcaças, fiscais e guindaste
   R.wrecks.forEach(w=>{if(RS?(T<w.t0||T>=w.removeAt):w.removed)return;const age=T-w.t0,dur=w.removeAt-w.t0;const se=1;
@@ -240,7 +240,7 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
     const rp=RS&&w.c&&RS[w.c.id];const base=rp?{x:rp.x,y:rp.y,h:rp.h}:w.c?carWorld(w.c):trackPos(w.f,(w.lat||0)*WS);let lift=0,dx=0;
     const truckIn=Math.min(1,Math.max(0,(age-dur*.25)/(dur*.25)));const liftK=Math.max(0,(age-dur*.6)/(dur*.4));lift=Math.min(1,liftK)*24*U;
     const s=toScreen(base.x,base.y,0,cw,ch);if(!onScreen(s,cw,ch,200*U*Z+40))return;if(age<25)occl.push({x:s[0],y:s[1],d:base.x+base.y});
-    items.push({d:base.x+base.y,draw:()=>{drawCar(ctx,cw,ch,w.c||{col:w.col,col2:w.col2,wreck:true,code:w.code},{x:base.x,y:base.y,h:base.h},detail,{z:lift});
+    items.push({d:base.x+base.y,draw:()=>{/* a carcaça é desenhada em 3D */
       if(w.fire&&age>w.slide&&age<18)post.push(()=>{if(age<16)drawFire(ctx,cw,ch,base,age,Z,now);if(age>5)drawExt(ctx,cw,ch,base,age,Z,now)});if(w.kind==="beach"&&age<4){ctx.fillStyle=`rgba(217,197,144,${.5*(1-age/4)})`;const q=toScreen(base.x,base.y,4*U,cw,ch);ctx.beginPath();ctx.ellipse(q[0],q[1],(12+age*6)*U*Z,(6+age*3)*U*Z,0,0,7);ctx.fill()}
       if(age<dur*.9){for(let k=0;k<5;k++){const a=(age*1.3+k*1.7)%3;const q=toScreen(base.x,base.y,(8+a*14)*U,cw,ch);ctx.fillStyle=`rgba(90,90,90,${.35*(1-a/3)})`;ctx.beginPath();ctx.arc(q[0]+Math.sin(k+age)*6*U*Z,q[1],(4+a*5)*U*Z,0,7);ctx.fill()}}
       if(age>6&&detail){const m=U*Z;for(let k=0;k<3;k++){const q=toScreen(base.x+Math.cos(k*2.1)*16*U,base.y+Math.sin(k*2.1)*16*U,0,cw,ch);ctx.fillStyle="#FF8F00";ctx.fillRect(q[0]-1.5*m,q[1]-6*m,3*m,6*m);ctx.fillStyle="#F1C9A5";ctx.beginPath();ctx.arc(q[0],q[1]-7.5*m,1.6*m,0,7);ctx.fill()}}
@@ -248,13 +248,13 @@ function drawScene(ctx,cw,ch,opts){opts=opts||{};const g=TRACKGEO,Z=CAM.z,wet=R.
         const arm=toScreen(base.x,base.y,30*U+lift,cw,ch),top=toScreen(tp.x,tp.y,34*U,cw,ch);ctx.strokeStyle="#333";ctx.lineWidth=Math.max(1.5,2.5*U*Z);ctx.beginPath();ctx.moveTo(T3[0][0],T3[0][1]);ctx.lineTo(top[0],top[1]);ctx.lineTo(arm[0],arm[1]);ctx.stroke();
         const car=toScreen(base.x,base.y,lift+6*U,cw,ch);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(arm[0],arm[1]);ctx.lineTo(car[0],car[1]);ctx.stroke()}}})});
   // safety car
-  const scOn=RS?!!opts.S.sc:(!!R.scCar||(R.sc&&R.sc.type==="sc"&&R.scP!=null));if(scOn){let p;if(RS)p=opts.S.sc;else p=scWorld();const so3d=typeof P3D!=="undefined"&&P3D&&P3D.topo;/* no 3D o carro é desenhado em 3D; aqui fica só a placa */const luz=RS||(R.scCar?R.scCar.luzes:R.sc&&!R.sc.ending);
-    items.push({d:p.x+p.y,draw:()=>{if(!so3d)drawCar(ctx,cw,ch,{col:"#F2A900",col2:"#1B1B1B",sc:true,code:"SC"},p,detail,{});const s=toScreen(p.x,p.y,11*U,cw,ch);if(luz&&!so3d){ctx.fillStyle=Math.floor(now*4)%2?"#FF9800":"#FFEB3B";ctx.fillRect(s[0]-5,s[1]-2,10,3)}
+  const scOn=RS?!!opts.S.sc:(!!R.scCar||(R.sc&&R.sc.type==="sc"&&R.scP!=null));if(scOn){let p;if(RS)p=opts.S.sc;else p=scWorld();/* o carro é desenhado em 3D; aqui fica só a placa */
+    items.push({d:p.x+p.y,draw:()=>{const s=toScreen(p.x,p.y,11*U,cw,ch);
       ctx.font="700 11px 'Titillium Web',sans-serif";ctx.textAlign="center";const lab="SAFETY CAR";const tw=ctx.measureText(lab).width+8;ctx.fillStyle="#F2A900";ctx.fillRect(s[0]-tw/2,s[1]-22,tw,14);ctx.fillStyle="#111";ctx.fillText(lab,s[0],s[1]-11)}})}
   items.sort((a,b)=>a.d-b.d).forEach(i=>i.draw());post.forEach(f=>f());// fogo e extintores por cima de tudo
   if(typeof tunnelRange==="function"&&tunnelRange(R.geo))drawTunnelRoof(ctx,cw,ch,Z,opts);if(g.scn&&g.scn.baia&&typeof baiaOver==="function")baiaOver(ctx,cw,ch,Z);
   // ponte de Suzuka: quem passa por baixo some sob o tabuleiro; quem está em cima é desenhado de novo por cima dele
-  if(R.geo&&typeof fichaOf==="function"&&fichaOf(R.geo.id).ponte){const B=bridgeCross(g);if(B){const on=bridgeCars(g,B,WP);if(on.lo.length){drawBridgeDeck(ctx,cw,ch,Z,true);on.hi.forEach(c=>drawCar(ctx,cw,ch,c,WP[c.id],detail,opts))}}}
+  if(R.geo&&typeof fichaOf==="function"&&fichaOf(R.geo.id).ponte){const B=bridgeCross(g);if(B){const on=bridgeCars(g,B,WP);if(on.lo.length)drawBridgeDeck(ctx,cw,ch,Z,true)}}
   if(night){ctx.fillStyle="rgba(6,10,30,.5)";ctx.fillRect(0,0,cw,ch);ctx.save();ctx.globalCompositeOperation="lighter";for(let i=0;i<g.M;i+=24){const q=trackPos(i/g.M,0);const s=toScreen(q.x,q.y,0,cw,ch);if(!onScreen(s,cw,ch,80*U*Z))continue;const r=60*U*Z;const gr=ctx.createRadialGradient(s[0],s[1],0,s[0],s[1],r);gr.addColorStop(0,"rgba(255,236,190,.22)");gr.addColorStop(1,"rgba(255,236,190,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(s[0],s[1],r,0,7);ctx.fill()}
     ctx.restore()}
   spost.forEach(f=>f());if(night&&g.scn&&g.scn.nl){ctx.fillStyle="rgba(255,214,140,.85)";for(const q of g.scn.nl)ctx.fillRect(q[0]-1,q[1]-1,2,2);g.scn.nl.length=0}

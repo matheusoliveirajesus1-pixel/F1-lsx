@@ -464,94 +464,13 @@ Render.prototype.decal=function(cv){const gl=this.gl;if(!this.dt)this.dt=gl.crea
 G.Render3D=Render;
 })(typeof window!=="undefined"?window:globalThis);
 
-// ---------- Carro 3D no jogo (TESTE): ?carro3d=1 liga os carros 3D na corrida; ?carro3d=0 mostra só o medidor
+// ---------- gancho do 3D na cena do jogo, atalho de teste e medidor de desempenho (?medidor=1)
 (function(){if(typeof window==="undefined"||typeof document==="undefined"||typeof location==="undefined")return;
-const QS=new URLSearchParams(location.search);const PARAM=QS.get("carro3d");
-const C3D=window.C3D={on:false,medidor:QS.get("medidor")==="1"||!!window.C3D_MED,lod:+(QS.get("lod")||.3),larg:+(QS.get("larg")||1.3),ok:false,n:0,tiles:new Map(),fr:0,quadro:-1,erro:null};
-const hex=h=>{h=String(h||"#888");if(h.length===4)h="#"+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];return[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255]};
-const VS=`#version 300 es
-in vec3 aP;in vec3 aN;in vec3 aC;in float aM;in float aK;
-uniform vec4 uCar;// x,y,zb,h
-uniform vec4 uIso;// ISO_C,ISO_S,Z,escala(mm->mundo)
-uniform vec4 uCam;// CAM.x,CAM.y,cw/2+sx,ch/2+sy
-uniform vec4 uTile;// x0,y0,w,h (px CSS)
-uniform vec2 uXC;// u do eixo dianteiro, profundidade de referência
-uniform vec3 uCor;uniform vec3 uCor2;uniform vec3 uComp;
-uniform vec3 uEsc;// escala comprimento, largura, altura
-out vec3 vN;out vec3 vC;out float vM;flat out float vK;out vec3 vW;out vec3 vMP;out vec3 vMN;
-void main(){float s=uIso.w;float u=(uXC.x-aP.x*s)*uEsc.x,v=-aP.y*s*uEsc.y,z=aP.z*s*uEsc.z+uCar.z;float c=cos(uCar.w),si=sin(uCar.w);
-  vec3 w=vec3(uCar.x+u*c-v*si,uCar.y+u*si+v*c,z);vW=w;
-  vec3 m=normalize(vec3(-aN.x/uEsc.x,-aN.y/uEsc.y,aN.z/uEsc.z));vMP=aP;vMN=aN;vec3 n=vec3(m.x*c-m.y*si,m.x*si+m.y*c,m.z);vN=n;vC=aK>2.5?uComp:aK>1.5?uCor2:aK>.5?uCor:aC;vM=aM;vK=aK;
-  float sx=((w.x-w.y)*uIso.x-uCam.x)*uIso.z+uCam.z,sy=((w.x+w.y)*uIso.y-w.z-uCam.y)*uIso.z+uCam.w;
-  float d=(w.x+w.y+2.*uIso.y*w.z)-uXC.y;
-  gl_Position=vec4((sx-uTile.x)/uTile.z*2.-1.,1.-(sy-uTile.y)/uTile.w*2.,-d/60.,1.);}`;
-const FS=`#version 300 es
-precision highp float;in vec3 vN;in vec3 vC;in float vM;flat in float vK;in vec3 vW;in vec3 vMP;in vec3 vMN;uniform vec3 uV;`+DECAL.GLSL+`uniform float uLuz;out vec4 o;
-vec3 amb(vec3 r){float y=r.z;vec3 c=mix(vec3(.10),vec3(.32),smoothstep(-.2,.4,y));c+=vec3(1.6)*smoothstep(.8,.95,y);c+=vec3(.7)*smoothstep(.1,.0,abs(y-.25));return c;}
-void main(){vec3 N=normalize(vN);vec3 V=uV;if(dot(N,V)<0.)N=-N;int m=int(vM+.5);int k=int(vK+.5);
-  vec3 base=vC;float rough=.3,spec=.5,fres=.6,metal=0.;
-  if(m==0||m==6){rough=.14;spec=.9;fres=1.;}else if(m==1){rough=.35;spec=.4;fres=.5;}else if(m==2){rough=.8;spec=.1;fres=.12;}else if(m==3){rough=.3;spec=.6;fres=.5;metal=.6;}else if(m==4){rough=.05;spec=1.2;fres=1.;metal=1.;}
-  if(uDN>0&&(m==0||m==1||m==8)){vec4 dc=decal(vMP,normalize(vMN));base=mix(base,dc.rgb,dc.a);if(dc.a>.5){rough=.16;spec=.85;fres=.9;}}
-  vec3 L1=normalize(vec3(-.3,-.5,1.)),L2=normalize(vec3(.7,.3,.5));
-  float d1=max(dot(N,L1),0.),d2=max(dot(N,L2),0.),hemi=.5+.5*N.z;
-  vec3 col=base*(1.*d1+.3*d2+.38*hemi+.08)*(1.-metal*.6);
-  vec3 H=normalize(L1+V);col+=vec3(pow(max(dot(N,H),0.),mix(300.,14.,rough))*spec);
-  vec3 R=reflect(-V,N);float F=.04+.96*pow(1.-max(dot(N,V),0.),5.);col+=amb(R)*mix(F*fres,1.,metal)*(1.-rough*.85)*mix(vec3(1.),base*1.5,metal);
-  col*=mix(.5,1.,smoothstep(.0,1.2,vW.z));col=col/(1.+col*.15);o=vec4(col*uLuz,1.);}`;
-let gl,cv,P,vao,nI,U={};
-function prog(v,f){const p=gl.createProgram();for(const[t,s]of[[gl.VERTEX_SHADER,v],[gl.FRAGMENT_SHADER,f]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh)}gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p}
-function init(){if(C3D.ok||C3D.erro)return C3D.ok;try{cv=document.createElement("canvas");cv.width=1024;cv.height=1024;
-  gl=cv.getContext("webgl2",{antialias:true,premultipliedAlpha:true,preserveDrawingBuffer:true,alpha:true});if(!gl)throw new Error("sem WebGL2");
-  P=prog(VS,FS);const D=CARRO.construir({lod:C3D.lod,cor:"#FF0000",cor2:"#00FF00"});const M=D.mesh;C3D.tris=M.i.length/3;
-  vao=gl.createVertexArray();gl.bindVertexArray(vao);const buf=(a,n,l)=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(a),gl.STATIC_DRAW);const L=gl.getAttribLocation(P,l);if(L>=0){gl.enableVertexAttribArray(L);gl.vertexAttribPointer(L,n,gl.FLOAT,false,0,0)}};
-  buf(M.p,3,"aP");buf(M.n,3,"aN");buf(M.c,3,"aC");buf(M.m,1,"aM");buf(M.k,1,"aK");const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(M.i),gl.STATIC_DRAW);nI=M.i.length;
-  for(const n of["uCar","uIso","uCam","uTile","uXC","uEsc","uCor","uCor2","uComp","uV","uLuz","uDT","uDN","uDA","uDB","uDR"])U[n]=gl.getUniformLocation(P,n);C3D.ok=true}catch(e){C3D.erro=String(e.message||e);C3D.on=false}return C3D.ok}
-// pintura com patrocinadores: uma textura por carro (equipe + número)
-const TEX=new Map();
-function texCarro(c){const k=(c.t&&c.t.id)+"|"+(c.num??"");let e=TEX.get(k);if(e&&!e.suja)return e.tex;
-  if(!e){e={cv:document.createElement("canvas"),tex:gl.createTexture(),suja:true};TEX.set(k,e)}
-  const sp=typeof carSponsors==="function"&&c.t?carSponsors(c.t):null;
-  DECAL.textura({canvas:e.cv,m:sp&&sp.m,s:sp&&sp.s,num:c.num,equipe:c.t&&c.t.n},512,()=>{e.suja=true});e.suja=false;
-  gl.bindTexture(gl.TEXTURE_2D,e.tex);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,e.cv);gl.generateMipmap(gl.TEXTURE_2D);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return e.tex}
-// escala: entre-eixos do desenho do jogo (u 7.6 → -8.3) = 3400 mm
-const S_MM=15.9/3400,XC=7.6;
-// largura extra para combinar com o visual do jogo (o modelo real é mais fino que o desenho antigo)
-const esc=()=>{const L=C3D.larg||1;return[1+(L-1)*.25,L,1+(L-1)*.45]};
-const caixa=(p,zb)=>{const co=Math.cos(p.h),si=Math.sin(p.h);let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;const k=CSC;
-  const E=esc();for(const u of[-12.6*E[0],9.6*E[0]])for(const v of[-5.4*E[1],5.4*E[1]])for(const z of[0,4.9*E[2]]){const s=toScreen(p.x+(u*co-v*si)*k,p.y+(u*si+v*co)*k,z*k+zb,0,0);if(s[0]<x0)x0=s[0];if(s[0]>x1)x1=s[0];if(s[1]<y0)y0=s[1];if(s[1]>y1)y1=s[1]}return[x0-2,y0-2,x1+2,y1+2]};
-// prepara o atlas: desenha todos os carros visíveis deste quadro, cada um no seu retângulo
-function prepara(cw,ch){const t0=performance.now();C3D.tiles.clear();if(!init())return;const dpr=(typeof qDpr==="function"?qDpr():1);const Z=CAM.z;
-  const lista=[];for(const c of R.cars){const p=c._w;if(!p||c.sc||c.status==="dnf"||c.status==="dsq")continue;const zb=0;const b=caixa(p,zb);// caixa em coords sem o deslocamento do centro (cw=ch=0)
-    const ox=cw/2,oy=ch/2,x0=b[0]+ox,y0=b[1]+oy,x1=b[2]+ox,y1=b[3]+oy;if(x1<-20||y1<-20||x0>cw+20||y0>ch+20)continue;lista.push({c,p,x0,y0,w:x1-x0,h:y1-y0})}
-  // empacota em prateleiras
-  let W=cv.width,H=cv.height,x=0,y=0,lh=0;const need=(w,h)=>{if(x+w>W){x=0;y+=lh+2;lh=0}const r=[x,y];x+=w+2;lh=Math.max(lh,h);return r};
-  const pos=[];let maxW=0;for(const t of lista){const w=Math.ceil(t.w*dpr),h=Math.ceil(t.h*dpr);maxW=Math.max(maxW,w)}
-  const alvoW=Math.min(4096,Math.max(1024,maxW+4));if(cv.width!==alvoW){cv.width=alvoW;W=alvoW}
-  for(const t of lista){const w=Math.ceil(t.w*dpr),h=Math.ceil(t.h*dpr);pos.push(need(w,h))}const altura=Math.min(4096,Math.max(256,y+lh+4));if(cv.height<altura||cv.height>altura*2){cv.height=Math.ceil(altura/256)*256}H=cv.height;
-  gl.viewport(0,0,cv.width,cv.height);gl.disable(gl.SCISSOR_TEST);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.enable(gl.SCISSOR_TEST);gl.useProgram(P);gl.bindVertexArray(vao);
-  const v=[1,1,2*ISO_S],vl=Math.hypot(...v);gl.uniform3f(U.uV,v[0]/vl,v[1]/vl,v[2]/vl);gl.uniform4f(U.uIso,ISO_C,ISO_S,Z,S_MM*CSC);gl.uniform3fv(U.uEsc,esc());gl.uniform4f(U.uCam,CAM.x,CAM.y,cw/2+(CAM.sx||0),ch/2+(CAM.sy||0));
-  const du=DECAL.uniforms();gl.uniform4fv(U.uDA,du.A);gl.uniform4fv(U.uDB,du.B);gl.uniform4fv(U.uDR,du.R);gl.uniform1i(U.uDN,C3D.patro===false?0:du.n);gl.uniform1i(U.uDT,0);gl.activeTexture(gl.TEXTURE0);
-  const noite=R&&R.C&&R.C.night;gl.uniform1f(U.uLuz,noite?.62:1);
-  lista.forEach((t,i)=>{const[px,py]=pos[i];const w=Math.ceil(t.w*dpr),h=Math.ceil(t.h*dpr);if(py+h>cv.height)return;
-    gl.viewport(px,cv.height-py-h,w,h);gl.scissor(px,cv.height-py-h,w,h);gl.clear(gl.DEPTH_BUFFER_BIT);
-    const c=t.c,p=t.p;gl.uniform4f(U.uCar,p.x,p.y,0,p.h);gl.uniform4f(U.uTile,t.x0,t.y0,w/dpr,h/dpr);gl.uniform2f(U.uXC,XC*CSC,p.x+p.y);
-    gl.uniform3fv(U.uCor,hex(c.col));gl.uniform3fv(U.uCor2,hex(c.col2||"#F2F2F2"));const cp=c.tyre&&typeof COMP!=="undefined"&&COMP[c.tyre.c]?COMP[c.tyre.c].c:"#F5C518";gl.uniform3fv(U.uComp,hex(cp));
-    if(C3D.patro!==false)gl.bindTexture(gl.TEXTURE_2D,texCarro(c));gl.drawElements(gl.TRIANGLES,nI,gl.UNSIGNED_INT,0);C3D.tiles.set(c,{p,sx:px,sy:py,sw:w,sh:h,x:t.x0,y:t.y0,w:w/dpr,h:h/dpr})});
-  gl.disable(gl.SCISSOR_TEST);C3D.n=C3D.tiles.size;C3D.msGL=performance.now()-t0}
-function instala(){if(typeof drawCar!=="function"||drawCar._c3d)return false;const orig=drawCar;
-  window.drawCar=function(ctx,cw,ch,c,p,detail,o){if(window.P3D&&P3D.topo&&c&&!c.sc&&(!(o&&o.z!==undefined)||(c.id!=null&&P3D.destroco&&P3D.destroco(c)&&!(o&&o.z>0))))return;if(!C3D.on||!detail||CAM.z<.5||!c||c.sc||c.wreck||p!==c._w)return orig.apply(this,arguments);
-    if(C3D.quadro!==C3D.fr){C3D.quadro=C3D.fr;try{prepara(cw,ch)}catch(e){C3D.erro=String(e.message||e);C3D.on=false;return orig.apply(this,arguments)}}
-    const t=C3D.tiles.get(c);if(!t)return orig.apply(this,arguments);
-    // sombra no chão
-    const k=CSC,co=Math.cos(p.h),si=Math.sin(p.h),Z=CAM.z;const E=esc();const pts=[[-12.2,-4.6],[9,-5],[12.6,-5.4],[12.6,5.4],[9,5],[-12.2,4.6]].map(([u,v])=>{u*=E[0];v*=E[1];const s=toScreen(p.x+(u*co-v*si)*k,p.y+(u*si+v*co)*k,0,cw,ch);return[s[0]+1.2*Z,s[1]+.8*Z]});
-    ctx.fillStyle="rgba(0,0,0,.3)";ctx.beginPath();pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fill();
-    ctx.drawImage(cv,t.sx,t.sy,t.sw,t.sh,t.x,t.y,t.w,t.h);
-    const pt=(u,v,z)=>toScreen(p.x+(u*co-v*si)*k,p.y+(u*si+v*co)*k,z*k,cw,ch);
-    if(c._brake){ctx.fillStyle="#FF3030";[-1.6,1.6].forEach(v=>{const q=pt(-12.5*E[0],v*E[1],1.6*E[2]);ctx.fillRect(q[0]-1.1,q[1]-1.1,2.2,2.2)})}
-    if(c.isP){const s=pt(0,0,0);ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(s[0],s[1],15*CSC*Z,8*CSC*Z,0,0,7);ctx.stroke()}};
-  window.drawCar._c3d=true;
-  const ds=window.drawScene;if(typeof ds==="function"&&!ds._c3d){C3D.dsOrig=ds;window.drawScene=function(){if(window.P3D&&P3D.on&&arguments[0]&&arguments[0].canvas){try{P3D.desenha(...arguments);return}catch(e){/* erro no 3D: recria os contextos e tenta de novo no próximo quadro (sem trocar para os carros 2D) */if(P3D.falhou&&P3D.falhou(e))return;P3D.on=false;P3D.erro=String(e.message||e);console.error("3D desligado:",e);if(P3D.avisa)P3D.avisa()}}C3D.fr++;const t0=performance.now();const r=ds.apply(this,arguments);C3D.msCena=performance.now()-t0;C3D.amostra(C3D.msCena);return r};window.drawScene._c3d=true}
+const QS=new URLSearchParams(location.search);
+const C3D=window.C3D={medidor:QS.get("medidor")==="1"||!!window.C3D_MED,fr:0,erro:null};
+// Os carros só existem em 3D (P3D, abaixo). Aqui fica o gancho: a cena do jogo é desenhada pelo 3D em todas as telas.
+function instala(){const ds=window.drawScene;if(C3D.inst||typeof ds!=="function"||ds._c3d)return false;C3D.inst=true;/* uma vez só (o medidor de desempenho embrulha a função depois) */
+  {C3D.dsOrig=ds;window.drawScene=function(){if(window.P3D&&P3D.on&&arguments[0]&&arguments[0].canvas){try{P3D.desenha(...arguments);return}catch(e){/* erro no 3D: recria os contextos e tenta de novo no próximo quadro (sem trocar para os carros 2D) */if(P3D.falhou&&P3D.falhou(e))return;P3D.on=false;P3D.erro=String(e.message||e);console.error("3D desligado:",e);if(P3D.avisa)P3D.avisa()}}C3D.fr++;const t0=performance.now();const r=ds.apply(this,arguments);C3D.msCena=performance.now()-t0;C3D.amostra(C3D.msCena);return r};window.drawScene._c3d=true}
   return true}
 // atalho: cria carreira e vai direto para a largada
 async function atalho(){const cl=s=>{const v=[...document.querySelectorAll(s)].find(e=>e.offsetParent!==null);if(v){v.click();return true}return false};const w=ms=>new Promise(r=>setTimeout(r,ms));
@@ -563,9 +482,9 @@ async function atalho(){const cl=s=>{const v=[...document.querySelectorAll(s)].f
 const AM=[];let fps=0,ult=performance.now(),qn=0,el=null;
 C3D.amostra=ms=>{AM.push(ms);if(AM.length>120)AM.shift()};
 function medidor(){if(!C3D.medidor)return;if(!el){el=document.createElement("div");el.id="c3dMed";el.style.cssText="position:fixed;left:8px;top:8px;z-index:99999;background:rgba(10,12,16,.86);color:#E8EAEE;font:600 12px/1.45 ui-monospace,Menlo,monospace;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.14);min-width:190px;pointer-events:auto";document.body.appendChild(el);
-  el.addEventListener("click",e=>{const b=e.target.closest("[data-c3d]");if(!b)return;const a=b.dataset.c3d;if(a==="modo"){C3D.on=!C3D.on;AM.length=0}if(a==="pista"){P3D.on=!P3D.on;P3D.erro=null;AM.length=0}if(a==="cam"){P3D.cam=(P3D.cam+1)%P3D.nomes.length;P3D._corte=true}if(a==="larg"){const L=[1,1.15,1.3,1.45];C3D.larg=L[(L.indexOf(C3D.larg)+1)%L.length]}if(a==="lod"){const L=[.2,.3,.5];C3D.lod=L[(L.indexOf(C3D.lod)+1)%L.length];C3D.ok=false;C3D.erro=null;AM.length=0}if(a==="ver"){window.open(window.C3D_VISOR||"carro3d.html","_blank")}if(a==="ir")atalho()})}
+  el.addEventListener("click",e=>{const b=e.target.closest("[data-c3d]");if(!b)return;const a=b.dataset.c3d;if(a==="cam"){P3D.cam=(P3D.cam+1)%P3D.nomes.length;P3D._corte=true}if(a==="ver"){window.open(window.C3D_VISOR||"carro3d.html","_blank")}if(a==="ir")atalho()})}
   qn++;const t=performance.now();if(t-ult>=1000){fps=qn*1000/(t-ult);qn=0;ult=t;const m=AM.length?AM.reduce((a,b)=>a+b,0)/AM.length:0;const p95=AM.length?[...AM].sort((a,b)=>a-b)[Math.floor(AM.length*.95)]:0;
-    el.innerHTML=`<div style="color:#FF6A4D;letter-spacing:.08em">DESEMPENHO 3D</div><div>FPS: <b>${fps.toFixed(0)}</b>${window.P3D&&P3D.on?` · pista ${((P3D.stat?P3D.stat.tris:P3D.tris||0)/1000).toFixed(0)}k de ${((P3D.tris||0)/1000).toFixed(0)}k tri desenhados · ${P3D.stat?P3D.stat.carros:P3D.nv||0} carros na tela · resolução ${Math.round((P3D.esc||1)*100)}%`:" · 2D (sem WebGL2)"}</div><div>quadro: ${m.toFixed(1)} ms (p95 ${p95.toFixed(1)})</div>${window.P3D&&P3D.erro?`<div style="color:#f66">${P3D.erro}</div>`:""}`}
+    el.innerHTML=`<div style="color:#FF6A4D;letter-spacing:.08em">DESEMPENHO 3D</div><div>FPS: <b>${fps.toFixed(0)}</b>${window.P3D&&P3D.on?` · pista ${((P3D.stat?P3D.stat.tris:P3D.tris||0)/1000).toFixed(0)}k de ${((P3D.tris||0)/1000).toFixed(0)}k tri desenhados · ${P3D.stat?P3D.stat.carros:P3D.nv||0} carros na tela · resolução ${Math.round((P3D.esc||1)*100)}%`:" · sem 3D: carros não aparecem"}</div><div>quadro: ${m.toFixed(1)} ms (p95 ${p95.toFixed(1)})</div>${window.P3D&&P3D.erro?`<div style="color:#f66">${P3D.erro}</div>`:""}`}
   }
 (function loop(){try{instala();if(window.P3D)P3D.quadro();medidor()}catch(e){}requestAnimationFrame(loop)})();
 })();
@@ -679,9 +598,11 @@ function aliviaGPU(){const n=(P3.perdas||[]).length;if(n>=2){P3.semMapa=true;P3.
 P3.falhou=function(e){const t=performance.now();P3.falhas=(P3.falhas||[]).filter(x=>t-x<30000);P3.falhas.push(t);P3.erro=String(e&&e.message||e);try{console.error("3D:",e);localStorage.setItem("paddock-3d-erro",P3.erro.slice(0,200)+" · "+new Date().toISOString())}catch(_){}
   descartaCtx();if(P3.falhas.length<=3&&aliviaGPU())return true;P3.on=false;P3.desligado=P3.erro;return false};
 // aviso visível quando o 3D desiste de vez (para o jogador saber o motivo e poder contar)
-P3.avisa=function(){try{const st=document.getElementById("stage");if(!st||st.querySelector(".p3dAviso"))return;const d=document.createElement("div");d.className="p3dAviso";d.setAttribute("role","status");
-  d.style.cssText="position:absolute;left:50%;top:44px;transform:translateX(-50%);z-index:30;max-width:min(92%,460px);background:rgba(12,14,18,.92);color:#ECEEF1;border:1px solid #F5A52466;border-radius:10px;padding:8px 12px;font:600 12.5px/1.35 'Titillium Web',system-ui,sans-serif;text-align:center";
-  d.textContent="O 3D parou neste aparelho ("+(P3.erro||"erro")+"). A corrida segue no modo simples.";st.appendChild(d);setTimeout(()=>d.remove(),9000)}catch(e){}};
+P3.avisa=function(){try{const st=document.getElementById("stage");if(!st||st.querySelector(".p3dAviso"))return;const d=document.createElement("div");d.className="p3dAviso";d.setAttribute("role","alert");
+  d.style.cssText="position:absolute;left:50%;top:44px;transform:translateX(-50%);z-index:30;width:min(92%,440px);background:rgba(12,14,18,.94);color:#ECEEF1;border:1px solid #F5A52488;border-radius:10px;padding:10px 12px;font:600 12.5px/1.4 'Titillium Web',system-ui,sans-serif;text-align:center;display:grid;gap:8px;justify-items:center";
+  const t=document.createElement("div");t.textContent="Os carros são desenhados só em 3D, e o 3D parou neste aparelho ("+(P3.erro||"erro")+"). A corrida continua, mas sem os carros na tela. Fechar outras abas ou apps ajuda.";
+  const b=document.createElement("button");b.type="button";b.textContent="Tentar o 3D de novo";b.style.cssText="min-height:36px;padding:6px 14px;border-radius:8px;border:1px solid #F5A524;background:#3A2A0A;color:#FFD27A;font:700 13px 'Titillium Web',sans-serif;cursor:pointer";
+  b.addEventListener("click",()=>{P3.falhas=[];P3.perdas=[];P3.erro=null;P3.desligado=null;P3.on=true;d.remove()});d.append(t,b);st.appendChild(d)}catch(e){}};
 function init(){if((CX.A&&(CX.A.lost||CX.A.gl.isContextLost()))||(CX.O&&(CX.O.lost||CX.O.gl.isContextLost()))){if(!aliviaGPU()){descartaCtx();P3.on=false;P3.desligado=P3.erro;if(P3.avisa)P3.avisa();throw new Error("3D desligado: "+P3.erro)}descartaCtx()}if(CX.A)return true;CX.A=criaCtx("p3dA",false);CX.B={cv:document.createElement("canvas")};
   const G2=document.createElement("canvas");G2.id="p3dG";G2.style.cssText="position:absolute;left:0;top:0;pointer-events:none;display:none";CX.G=G2;return true}
 const SOL=(()=>{const v=[-.35,-.5,.75],l=Math.hypot(...v);return v.map(x=>x/l)})();
